@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth, UserRole } from '@/auth/context';
 import { cn } from '@/lib/utils';
-import { LogOut, User, LayoutDashboard, BadgeCheck, Users, Mail, FileText } from 'lucide-react';
+import { LogOut, User, LayoutDashboard, BadgeCheck, Users, Mail, FileText, Settings, Building2, GitMerge, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import emmpaLogo from '@/assests/emmpa.png';
 import icsLogo from '@/assests/ics.png';
@@ -66,7 +66,7 @@ export function DashboardLayout() {
                 <div className="border-b border-primary mx-4 mb-6"></div>
 
                 <nav className="flex-1 px-4 space-y-2">
-                    {user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.NISS_OFFICER  && (
+                    {user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.NISS_OFFICER && (
                         <NavLink
                             to="/admin"
                             end
@@ -164,6 +164,49 @@ export function DashboardLayout() {
                                 <FileText className="h-5 w-5" />
                                 Form Builder
                             </NavLink>
+
+                            <NavLink
+                                to={`${basePath}/organizations`}
+                                className={({ isActive }) =>
+                                    cn(
+                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                        isActive
+                                            ? "bg-[#e6f4ea] text-primary"
+                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                    )
+                                }
+                            >
+                                <Building2 className="h-5 w-5" />
+                                Organizations
+                            </NavLink>
+                            <NavLink
+                                to={`${basePath}/workflow`}
+                                className={({ isActive }) =>
+                                    cn(
+                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                        isActive
+                                            ? "bg-[#e6f4ea] text-primary"
+                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                    )
+                                }
+                            >
+                                <GitMerge className="h-5 w-5" />
+                                Workflow Builder
+                            </NavLink>
+                            <NavLink
+                                to={`${basePath}/permissions`}
+                                className={({ isActive }) =>
+                                    cn(
+                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                        isActive
+                                            ? "bg-[#e6f4ea] text-primary"
+                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                    )
+                                }
+                            >
+                                <ShieldAlert className="h-5 w-5" />
+                                Permissions
+                            </NavLink>
                             <NavLink
                                 to={`${basePath}/badge-templates`}
                                 className={({ isActive }) =>
@@ -177,6 +220,20 @@ export function DashboardLayout() {
                             >
                                 <BadgeCheck className="h-5 w-5" />
                                 Badge Templates
+                            </NavLink>
+                            <NavLink
+                                to={`${basePath}/settings`}
+                                className={({ isActive }) =>
+                                    cn(
+                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                        isActive
+                                            ? "bg-[#e6f4ea] text-primary"
+                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                    )
+                                }
+                            >
+                                <Settings className="h-5 w-5" />
+                                System Settings
                             </NavLink>
                         </>
                     )}
@@ -217,6 +274,6 @@ export function DashboardLayout() {
                     © 2025 Ethiopian Media Association. All rights reserved.
                 </footer>
             </main>
-        </div>
+        </div >
     );
 }
