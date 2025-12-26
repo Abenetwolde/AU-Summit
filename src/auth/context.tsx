@@ -14,20 +14,29 @@ export enum UserRole {
     DRONE_CLEARANCE_OFFICER = 'DRONE_CLEARANCE_OFFICER'
 }
 
+export interface Permission {
+    key: string;
+    label: string;
+    description: string | null;
+    category?: string;
+}
+
 interface User {
     id: string;
     name: string;
     email: string;
     role: UserRole;
+    roleName?: string;
     gate?: string;
-    permissions?: any[]; // For storing API permissions
+    permissions?: Permission[]; // For storing API permissions
 }
 
 interface AuthContextType {
     user: User | null;
-    login: (email: string, role: UserRole, permissions?: any[], fullName?: string) => void;
+    login: (email: string, role: UserRole, permissions?: Permission[], fullName?: string, roleName?: string) => void;
     logout: () => void;
     isAuthenticated: boolean;
+    checkPermission: (permissionKey: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,13 +53,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     });
 
-    const login = (email: string, role: UserRole, permissions: any[] = [], fullName: string = 'Officer Sara Kamil') => {
+    const checkPermission = (permissionKey: string): boolean => {
+        if (!user || !user.permissions) return false;
+        // Super admin generally has all permissions, but based on strict requirement we check the list.
+        // If needed, we can add a bypass for SUPER_ADMIN here.
+        return user.permissions.some(p => p.key === permissionKey);
+    };
+
+    const login = (email: string, role: UserRole, permissions: Permission[] = [], fullName: string = 'Officer Sara Kamil', roleName?: string) => {
         // Use provided name/permissions if available (from API), otherwise default
         const newUser: User = {
             id: '1234-AU',
             name: fullName,
             email,
             role,
+            roleName,
             gate: 'GATE 1',
             permissions
         };
@@ -66,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+        <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, checkPermission }}>
             {children}
         </AuthContext.Provider>
     );

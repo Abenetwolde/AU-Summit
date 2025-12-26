@@ -41,13 +41,15 @@ export function DashboardLayout() {
     };
 
     const getTitle = () => {
+        if (user?.roleName) return user.roleName;
+
         if (user?.role === UserRole.SUPER_ADMIN) return 'Super Admin';
         if (user?.role === UserRole.ICS_OFFICER) return 'ICS Officer';
         if (user?.role === UserRole.NISS_OFFICER) return 'NISS Officer';
         if (user?.role === UserRole.INSA_OFFICER) return 'INSA Officer';
         if (user?.role === UserRole.CUSTOMS_OFFICER) return 'Customs Officer';
         if (user?.role === UserRole.AU_ADMIN) return 'AU Admin';
-        return 'EMA (Ethiopian Media Association)';
+        return 'EMA (Ethiopian Media Authority)';
     };
 
     return (
@@ -56,7 +58,7 @@ export function DashboardLayout() {
             <aside className="w-64 bg-gray-100/50 border-r border-gray-200 hidden md:flex flex-col fixed inset-y-0 text-gray-900">
                 <div className="p-6">
                     <div className="flex items-center gap-2 text-primary">
-                        <img src={getLogo()} alt="Logo" className="h-10 w-auto object-contain" />
+                        {/* <img src={getLogo()} alt="Logo" className="h-10 w-auto object-contain" /> */}
                         <h1 className="text-xl font-bold font-sans leading-tight">
                             {getTitle()}
                         </h1>
@@ -66,7 +68,7 @@ export function DashboardLayout() {
                 <div className="border-b border-primary mx-4 mb-6"></div>
 
                 <nav className="flex-1 px-4 space-y-2">
-                    {user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.NISS_OFFICER && (
+                    {user?.role && (
                         <NavLink
                             to="/admin"
                             end

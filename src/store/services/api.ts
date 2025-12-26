@@ -163,9 +163,6 @@ export interface EmailTemplate {
     attachmentUrl: string | null;
     createdAt: string;
     updatedAt: string;
-    attachmentUrl: string | null;
-    createdAt: string;
-    updatedAt: string;
 }
 
 export interface LandingPageSettings {

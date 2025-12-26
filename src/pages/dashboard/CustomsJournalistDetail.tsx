@@ -11,6 +11,7 @@ import { EquipmentVerification } from '@/components/EquipmentVerification';
 import { SystemCheckSuccess } from '@/components/SystemCheckSuccess';
 import { exportJournalistDetailToPDF } from '@/lib/export-utils';
 import { useAuth, UserRole } from '@/auth/context';
+import { PermissionGuard } from '@/auth/PermissionGuard';
 
 export function CustomsJournalistDetail() {
     const { id } = useParams();
@@ -254,7 +255,7 @@ export function CustomsJournalistDetail() {
                         equipment={(journalist as any).equipment || [
                             { type: 'Lens', model: 'Sony FE 24-70mm GM' },
                             { type: 'Camera Body', model: 'Sony A7S III' },
-                              { type: 'Drone', model: 'Rode VideoMic Pro' },
+                            { type: 'Drone', model: 'Rode VideoMic Pro' },
                         ]}
                         showActions={!isReadOnly}
                     />
@@ -275,19 +276,21 @@ export function CustomsJournalistDetail() {
                         <CardContent className="space-y-4">
                             <SystemCheckSuccess show={showSystemCheck} />
 
-                            <Button
-                                className="w-full bg-cyan-500 hover:bg-cyan-600 font-bold"
-                                onClick={() => setShowSystemCheck(true)}
-                                disabled={isReadOnly}
-                            >
-                                <Check className="h-4 w-4 mr-2" /> Approve Equipment
-                            </Button>
-                            <Button
-                                className="w-full bg-red-100 hover:bg-red-200 text-red-600 font-bold shadow-none"
-                                disabled={isReadOnly}
-                            >
-                                <X className="h-4 w-4 mr-2" /> Reject Equipment
-                            </Button>
+                            <PermissionGuard permission="verification:equipment:approve">
+                                <Button
+                                    className="w-full bg-cyan-500 hover:bg-cyan-600 font-bold"
+                                    onClick={() => setShowSystemCheck(true)}
+                                    disabled={isReadOnly}
+                                >
+                                    <Check className="h-4 w-4 mr-2" /> Approve Equipment
+                                </Button>
+                                <Button
+                                    className="w-full bg-red-100 hover:bg-red-200 text-red-600 font-bold shadow-none"
+                                    disabled={isReadOnly}
+                                >
+                                    <X className="h-4 w-4 mr-2" /> Reject Equipment
+                                </Button>
+                            </PermissionGuard>
 
                             <p className="text-xs text-center text-gray-400">Applied: 15 Dec 2024</p>
                         </CardContent>

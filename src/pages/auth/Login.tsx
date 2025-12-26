@@ -39,7 +39,7 @@ export function Login() {
                 }
 
                 // Call context login to set state
-                login(user.email, roleEnum, user.permissions, user.fullName);
+                login(user.email, roleEnum, user.permissions, user.fullName, user.roleName);
 
                 // Navigate based on role (using same logic as below)
                 navigateBasedOnRole(roleEnum, user.email);
