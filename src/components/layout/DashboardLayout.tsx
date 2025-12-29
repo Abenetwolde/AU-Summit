@@ -11,7 +11,7 @@ import customsLogo from '@/assests/customs.png';
 import auLogo from '@/assests/au.png';
 
 export function DashboardLayout() {
-    const { user, logout } = useAuth();
+    const { user, logout, checkPermission } = useAuth();
     const navigate = useNavigate();
 
     const handleLogout = () => {
@@ -20,12 +20,6 @@ export function DashboardLayout() {
     };
 
     const getBasePath = () => {
-        if (user?.role === UserRole.SUPER_ADMIN) return '/admin';
-        if (user?.role === UserRole.ICS_OFFICER) return '/ics';
-        if (user?.role === UserRole.NISS_OFFICER) return '/niss';
-        if (user?.role === UserRole.INSA_OFFICER) return '/insa';
-        if (user?.role === UserRole.CUSTOMS_OFFICER) return '/customs';
-        if (user?.role === UserRole.AU_ADMIN) return '/au-admin';
         return '/dashboard';
     };
 
@@ -68,9 +62,24 @@ export function DashboardLayout() {
                 <div className="border-b border-primary mx-4 mb-6"></div>
 
                 <nav className="flex-1 px-4 space-y-2">
+                         {/* <NavLink
+                        to={`${basePath}/admin`}
+                        className={({ isActive }) =>
+                            cn(
+                                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                isActive
+                                    ? "bg-[#e6f4ea] text-primary"
+                                    : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                            )
+                        }
+                    >
+                        <Users className="h-5 w-5" />
+                       Dashboard
+                    </NavLink> */}
+                    {/* Dashboard - Accessible to all logged in users who have a role */}
                     {user?.role && (
                         <NavLink
-                            to="/admin"
+                            to="/dashboard/admin"
                             end
                             className={({ isActive }) =>
                                 cn(
@@ -85,6 +94,10 @@ export function DashboardLayout() {
                             Dashboard
                         </NavLink>
                     )}
+
+                    {/* Journalist List - Typically accessible to most officers */}
+                    {/* Assuming a basic permission 'application:view' or similar exists, using 'application:view:all' or specific view permissions as gate */}
+                    {/* For now, keeping it broadly available but we could gate it if needed. Leaving as is per plan foundation, or strictly 'application:view:all' */}
 
                     <NavLink
                         to={`${basePath}/journalists`}
@@ -101,7 +114,10 @@ export function DashboardLayout() {
                         List of journalists
                     </NavLink>
 
-                    {user?.role !== UserRole.AU_ADMIN && (
+
+
+                    {/* Accredited Journalists - 'application:view:approved' */}
+                    {checkPermission('application:view:approved') && (
                         <NavLink
                             to={`${basePath}/accredited`}
                             className={({ isActive }) =>
@@ -118,8 +134,8 @@ export function DashboardLayout() {
                         </NavLink>
                     )}
 
-                    {/* Shared Administrative links (restricted based on role) */}
-                    {(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.NISS_OFFICER) && (
+                    {/* User Management - 'user:view:all' */}
+                    {checkPermission('user:view:all') && (
                         <NavLink
                             to={`${basePath}/users`}
                             className={({ isActive }) =>
@@ -136,122 +152,149 @@ export function DashboardLayout() {
                         </NavLink>
                     )}
 
-                    {user?.role === UserRole.SUPER_ADMIN && (
-                        <>
-                            <NavLink
-                                to={`${basePath}/email-templates`}
-                                className={({ isActive }) =>
-                                    cn(
-                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                        isActive
-                                            ? "bg-[#e6f4ea] text-primary"
-                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                    )
-                                }
-                            >
-                                <Mail className="h-5 w-5" />
-                                Email Templates
-                            </NavLink>
-                            <NavLink
-                                to={`${basePath}/form-builder`}
-                                className={({ isActive }) =>
-                                    cn(
-                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                        isActive
-                                            ? "bg-[#e6f4ea] text-primary"
-                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                    )
-                                }
-                            >
-                                <FileText className="h-5 w-5" />
-                                Form Builder
-                            </NavLink>
+                    {/* Email Templates - 'email:template:view' (Not in key list provided, falling back to role or assuming generic admin permission) */}
+                    {/* Provided keys don't have email template specific. Using SUPER_ADMIN fallback or could map to 'workflow:config:manage' if related, but likely just SUPER_ADMIN specific for now as per plan */}
+                    {(user?.role === UserRole.SUPER_ADMIN) && (
+                        <NavLink
+                            to={`${basePath}/email-templates`}
+                            className={({ isActive }) =>
+                                cn(
+                                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                    isActive
+                                        ? "bg-[#e6f4ea] text-primary"
+                                        : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                )
+                            }
+                        >
+                            <Mail className="h-5 w-5" />
+                            Email Templates
+                        </NavLink>
+                    )}
 
-                            <NavLink
-                                to={`${basePath}/organizations`}
-                                className={({ isActive }) =>
-                                    cn(
-                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                        isActive
-                                            ? "bg-[#e6f4ea] text-primary"
-                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                    )
-                                }
-                            >
-                                <Building2 className="h-5 w-5" />
-                                Organizations
-                            </NavLink>
-                            <NavLink
-                                to={`${basePath}/roles`}
-                                className={({ isActive }) =>
-                                    cn(
-                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                        isActive
-                                            ? "bg-[#e6f4ea] text-primary"
-                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                    )
-                                }
-                            >
-                                <Shield className="h-5 w-5" />
-                                Roles
-                            </NavLink>
-                            <NavLink
-                                to={`${basePath}/workflow`}
-                                className={({ isActive }) =>
-                                    cn(
-                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                        isActive
-                                            ? "bg-[#e6f4ea] text-primary"
-                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                    )
-                                }
-                            >
-                                <GitMerge className="h-5 w-5" />
-                                Workflow Builder
-                            </NavLink>
-                            <NavLink
-                                to={`${basePath}/permissions`}
-                                className={({ isActive }) =>
-                                    cn(
-                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                        isActive
-                                            ? "bg-[#e6f4ea] text-primary"
-                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                    )
-                                }
-                            >
-                                <ShieldAlert className="h-5 w-5" />
-                                Permissions
-                            </NavLink>
-                            <NavLink
-                                to={`${basePath}/badge-templates`}
-                                className={({ isActive }) =>
-                                    cn(
-                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                        isActive
-                                            ? "bg-[#e6f4ea] text-primary"
-                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                    )
-                                }
-                            >
-                                <BadgeCheck className="h-5 w-5" />
-                                Badge Templates
-                            </NavLink>
-                            <NavLink
-                                to={`${basePath}/settings`}
-                                className={({ isActive }) =>
-                                    cn(
-                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                        isActive
-                                            ? "bg-[#e6f4ea] text-primary"
-                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                    )
-                                }
-                            >
-                                <Settings className="h-5 w-5" />
-                                System Settings
-                            </NavLink>
-                        </>
+                    {/* Form Builder - 'form:view:all' */}
+                    {checkPermission('form:view:all') && (
+                        <NavLink
+                            to={`${basePath}/form-builder`}
+                            className={({ isActive }) =>
+                                cn(
+                                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                    isActive
+                                        ? "bg-[#e6f4ea] text-primary"
+                                        : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                )
+                            }
+                        >
+                            <FileText className="h-5 w-5" />
+                            Form Builder
+                        </NavLink>
+                    )}
+
+                    {/* Organizations - 'organization:view:all' */}
+                    {checkPermission('organization:view:all') && (
+                        <NavLink
+                            to={`${basePath}/organizations`}
+                            className={({ isActive }) =>
+                                cn(
+                                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                    isActive
+                                        ? "bg-[#e6f4ea] text-primary"
+                                        : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                )
+                            }
+                        >
+                            <Building2 className="h-5 w-5" />
+                            Organizations
+                        </NavLink>
+                    )}
+
+                    {/* Roles - 'role:view:all' */}
+                    {checkPermission('role:view:all') && (
+                        <NavLink
+                            to={`${basePath}/roles`}
+                            className={({ isActive }) =>
+                                cn(
+                                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                    isActive
+                                        ? "bg-[#e6f4ea] text-primary"
+                                        : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                )
+                            }
+                        >
+                            <Shield className="h-5 w-5" />
+                            Roles
+                        </NavLink>
+                    )}
+
+                    {/* Workflow Builder - 'workflow:config:view' */}
+                    {checkPermission('workflow:config:view') && (
+                        <NavLink
+                            to={`${basePath}/workflow`}
+                            className={({ isActive }) =>
+                                cn(
+                                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                    isActive
+                                        ? "bg-[#e6f4ea] text-primary"
+                                        : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                )
+                            }
+                        >
+                            <GitMerge className="h-5 w-5" />
+                            Workflow Builder
+                        </NavLink>
+                    )}
+
+                    {/* Permissions - 'permission:matrix:view' */}
+                    {checkPermission('permission:matrix:view') && (
+                        <NavLink
+                            to={`${basePath}/permissions`}
+                            className={({ isActive }) =>
+                                cn(
+                                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                    isActive
+                                        ? "bg-[#e6f4ea] text-primary"
+                                        : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                )
+                            }
+                        >
+                            <ShieldAlert className="h-5 w-5" />
+                            Permissions
+                        </NavLink>
+                    )}
+
+                    {/* Badge Templates - No specific permission key in provided list, keeping SUPER_ADMIN */}
+                    {user?.role === UserRole.SUPER_ADMIN && (
+                        <NavLink
+                            to={`${basePath}/badge-templates`}
+                            className={({ isActive }) =>
+                                cn(
+                                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                    isActive
+                                        ? "bg-[#e6f4ea] text-primary"
+                                        : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                )
+                            }
+                        >
+                            <BadgeCheck className="h-5 w-5" />
+                            Badge Templates
+                        </NavLink>
+                    )}
+
+                    {/* System Settings - SUPER_ADMIN specific */}
+                    {user?.role === UserRole.SUPER_ADMIN && (
+                        <NavLink
+                            to={`${basePath}/settings`}
+                            className={({ isActive }) =>
+                                cn(
+                                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                    isActive
+                                        ? "bg-[#e6f4ea] text-primary"
+                                        : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                )
+                            }
+                        >
+                            <Settings className="h-5 w-5" />
+                            System Settings
+                        </NavLink>
                     )}
                 </nav>
 
@@ -266,7 +309,8 @@ export function DashboardLayout() {
                             </div>
                             <div>
                                 <p className="text-sm font-bold text-gray-900">{user?.name}</p>
-                                <p className="text-xs text-gray-500">ID: #{user?.id}</p>
+                                <p className="text-xs text-gray-500 truncate max-w-[150px]">{user?.email}</p>
+                                <p className="text-xs text-gray-400">ID: #{user?.id}</p>
                             </div>
                         </div>
                     </div>

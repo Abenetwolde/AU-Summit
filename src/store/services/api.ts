@@ -200,6 +200,72 @@ export interface EmailTemplatesResponse {
     };
 }
 
+// Workflow Configuration Types
+export interface WorkflowConfig {
+    id: number;
+    step: string;
+    dependencyType: 'ALL' | 'ANY' | 'NONE';
+    dependsOn: string[];
+    isActive: boolean;
+    requiredPermission: string;
+    description: string;
+    order: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface WorkflowConfigResponse {
+    success: boolean;
+    message: string;
+    data: WorkflowConfig[];
+}
+
+export interface SingleWorkflowConfigResponse {
+    success: boolean;
+    message: string;
+    data: WorkflowConfig;
+}
+
+export interface CreateWorkflowConfigPayload {
+    step: string;
+    dependencyType: 'ALL' | 'ANY' | 'NONE';
+    dependsOn: string[];
+    requiredPermission: string;
+    isActive: boolean;
+    order: number;
+    description: string;
+}
+
+export interface BulkUpdateWorkflowPayload {
+    configurations: {
+        step: string;
+        dependencyType: 'ALL' | 'ANY' | 'NONE';
+        dependsOn: string[];
+        requiredPermission: string;
+        isActive: boolean;
+        order: number;
+        description?: string;
+    }[];
+}
+
+export interface WorkflowBulkUpdateResponse {
+    success: boolean;
+    message: string;
+    data: {
+        results: {
+            step: string;
+            status: string;
+            config: WorkflowConfig;
+        }[];
+        errors: any[];
+        validation: {
+            hasCircularDependencies: boolean;
+            circularDependencies: string[];
+            recommendation: string;
+        };
+    };
+}
+
 // Responses
 export interface RolesResponse {
     success: boolean;
@@ -324,7 +390,7 @@ export const api = createApi({
             return headers;
         },
     }),
-    tagTypes: ['Role', 'Permission', 'Category', 'Application', 'Organization', 'User', 'EmailTemplate', 'LandingPage'],
+    tagTypes: ['Role', 'Permission', 'Category', 'Application', 'Organization', 'User', 'EmailTemplate', 'LandingPage', 'Workflow'],
     endpoints: (builder) => ({
         login: builder.mutation<LoginResponse, any>({
             query: (credentials) => ({
@@ -387,7 +453,7 @@ export const api = createApi({
         updateCategory: builder.mutation<Category, { id: number; data: Partial<Category> }>({
             query: ({ id, data }) => ({
                 url: `/permissions/categories/${id}`,
-                method: 'PATCH',
+                method: 'PUT',
                 body: data,
             }),
             invalidatesTags: ['Category'],
@@ -587,6 +653,33 @@ export const api = createApi({
             }),
             invalidatesTags: ['LandingPage'],
         }),
+        // Workflow Configuration
+        getWorkflowConfigs: builder.query<WorkflowConfig[], void>({
+            query: () => '/workflow/config',
+            transformResponse: (response: WorkflowConfigResponse) => response.data,
+            providesTags: ['Workflow'],
+        }),
+        createWorkflowConfig: builder.mutation<WorkflowConfig, CreateWorkflowConfigPayload>({
+            query: (body) => ({
+                url: '/workflow/config',
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['Workflow'],
+        }),
+        getWorkflowConfigByStep: builder.query<WorkflowConfig, string>({
+            query: (step) => `/workflow/config/${step}`,
+            transformResponse: (response: SingleWorkflowConfigResponse) => response.data,
+            providesTags: (result, error, step) => [{ type: 'Workflow', id: step }],
+        }),
+        bulkUpdateWorkflowConfigs: builder.mutation<WorkflowBulkUpdateResponse, BulkUpdateWorkflowPayload>({
+            query: (body) => ({
+                url: '/workflow/config/bulk',
+                method: 'PUT',
+                body,
+            }),
+            invalidatesTags: ['Workflow'],
+        }),
     }),
 });
 
@@ -622,5 +715,9 @@ export const {
     useDeleteEmailTemplateMutation,
     useGetLandingPageSettingsQuery,
     useCreateLandingPageSettingsMutation,
-    useDeleteLandingPageSettingsMutation
+    useDeleteLandingPageSettingsMutation,
+    useGetWorkflowConfigsQuery,
+    useCreateWorkflowConfigMutation,
+    useGetWorkflowConfigByStepQuery,
+    useBulkUpdateWorkflowConfigsMutation
 } = api;

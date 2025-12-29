@@ -69,10 +69,10 @@ export function exportToPDF(
  */
 export function exportJournalistsToCSV(journalists: any[], filename: string = 'journalists.csv') {
     const data = journalists.map(j => ({
-        'Full Name': j.fullname,
-        'Country': j.country,
-        'Passport No': j.passportNo,
-        'Role': j.role,
+        'Full Name': j.user?.fullName || j.fullname || 'N/A',
+        'Country': j.formData?.country || j.country || 'N/A',
+        'Passport No': j.formData?.passport_number || j.passportNo || 'N/A',
+        'Role': j.formData?.occupation || j.role || 'N/A',
         'Status': j.status,
     }));
 
@@ -92,10 +92,10 @@ export function exportJournalistsToPDF(journalists: any[], filename: string = 'j
     ];
 
     const data = journalists.map(j => ({
-        fullname: j.fullname,
-        country: j.country,
-        passportNo: j.passportNo,
-        role: j.role,
+        fullname: j.user?.fullName || j.fullname || 'N/A',
+        country: j.formData?.country || j.country || 'N/A',
+        passportNo: j.formData?.passport_number || j.passportNo || 'N/A',
+        role: j.formData?.occupation || j.role || 'N/A',
         status: j.status,
     }));
 

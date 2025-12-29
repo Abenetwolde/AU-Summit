@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useMemo } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import {
     ReactFlow,
     Controls,
@@ -22,76 +22,65 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
     Save,
-    Play,
     RotateCcw,
     AlertCircle,
     Search,
-    Building2,
-    ShieldCheck,
-    Globe,
-    Newspaper,
-    Briefcase
+    Loader2,
+    RefreshCw,
+    AlertTriangle,
+    Plus,
+    Workflow as WorkflowIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-// --- Types ---
-
-type OrganizationType = 'Media' | 'Embassy' | 'NGO' | 'IO' | 'Gov' | 'Security';
-
-interface Organization {
-    id: string;
-    code: string;
-    name: string;
-    type: OrganizationType;
-}
-
-// --- Mock Data ---
-
-const MOCK_ORGS: Organization[] = [
-    { id: 'ema', code: 'EMA', name: 'Ethiopian Media Authority', type: 'Gov' },
-    { id: 'ics', code: 'ICS', name: 'Immigration & Citizenship Service', type: 'Security' },
-    { id: 'niss', code: 'NISS', name: 'National Intelligence Security Service', type: 'Security' },
-    { id: 'insa', code: 'INSA', name: 'Information Network Security Administrator', type: 'Security' },
-    { id: 'au', code: 'AU', name: 'African Union', type: 'IO' },
-    { id: 'customs', code: 'CUSTOMS', name: 'Custom Commission', type: 'Gov' },
-    { id: 'mofa', code: 'MOFA', name: 'Ministry of Foreign Affairs', type: 'Gov' },
-];
-
-const getOrgStyle = (type: OrganizationType) => {
-    switch (type) {
-        case 'Media': return { border: 'border-l-4 border-l-blue-500', icon: Newspaper, bg: 'bg-blue-50' };
-        case 'Security': return { border: 'border-l-4 border-l-red-500', icon: ShieldCheck, bg: 'bg-red-50' };
-        case 'IO': return { border: 'border-l-4 border-l-purple-500', icon: Globe, bg: 'bg-purple-50' };
-        case 'Gov': return { border: 'border-l-4 border-l-green-500', icon: Building2, bg: 'bg-green-50' };
-        default: return { border: 'border-l-4 border-l-gray-500', icon: Briefcase, bg: 'bg-gray-50' };
-    }
-};
+import {
+    useGetWorkflowConfigsQuery,
+    useBulkUpdateWorkflowConfigsMutation,
+    WorkflowConfig,
+    BulkUpdateWorkflowPayload
+} from '@/store/services/api';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 
 // --- Custom Nodes ---
 
-const OrganizationNode = ({ data, selected }: NodeProps) => {
-    const style = getOrgStyle(data.orgType as OrganizationType);
-    const Icon = style.icon;
+const StepNode = ({ data, selected }: NodeProps) => {
+    const getDependencyTypeColor = (type: string) => {
+        switch (type) {
+            case 'ALL': return 'border-l-blue-500 bg-blue-50';
+            case 'ANY': return 'border-l-green-500 bg-green-50';
+            case 'NONE': return 'border-l-gray-500 bg-gray-50';
+            default: return 'border-l-purple-500 bg-purple-50';
+        }
+    };
+
+    const color = getDependencyTypeColor(data.dependencyType as string);
 
     return (
         <div className={`
             px-4 py-3 rounded-md bg-white border shadow-sm w-[240px] transition-all
-            ${style.border}
+            border-l-4 ${color}
             ${selected ? 'ring-2 ring-primary border-transparent' : 'border-gray-200'}
         `}>
             <Handle type="target" position={Position.Top} className="!w-3 !h-3 !bg-muted-foreground" />
 
             <div className="flex items-start gap-3">
-                <div className={`p-2 rounded-md ${style.bg} shrink-0`}>
-                    <Icon className="h-5 w-5 text-gray-700" />
+                <div className={`p-2 rounded-md shrink-0 ${color}`}>
+                    <WorkflowIcon className="h-5 w-5 text-gray-700" />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                     <div className="font-bold text-sm leading-tight text-gray-900">{data.label as string}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{data.orgType as string}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                        {data.dependencyType as string} {data.dependsOn && (data.dependsOn as string[]).length > 0 ? `(${(data.dependsOn as string[]).length} deps)` : ''}
+                    </div>
                 </div>
             </div>
             {data.description && (
-                <div className="mt-2 text-[10px] text-gray-500 bg-gray-50 p-1.5 rounded border border-gray-100 italic truncate">
+                <div className="mt-2 text-[10px] text-gray-500 bg-gray-50 p-1.5 rounded border border-gray-100 italic line-clamp-2">
                     {data.description as string}
                 </div>
             )}
@@ -116,41 +105,210 @@ const EndNode = ({ data }: NodeProps) => (
 );
 
 const nodeTypes = {
-    organization: OrganizationNode,
+    step: StepNode,
     start: StartNode,
     end: EndNode
 };
 
-// --- Initial State ---
+// --- Helper Functions ---
 
-const initialNodes: Node[] = [
-    { id: 'start', type: 'start', position: { x: 250, y: 0 }, data: { label: 'Start' } },
-    {
-        id: 'node-1',
-        type: 'organization',
-        position: { x: 200, y: 100 },
-        data: { label: 'Ethiopian Media Authority', orgCode: 'EMA', orgType: 'Gov', description: 'Initial eligibility check' }
-    },
-    { id: 'end', type: 'end', position: { x: 250, y: 500 }, data: { label: 'Publish Badge' } },
-];
+const transformApiToNodes = (configs: WorkflowConfig[]): { nodes: Node[], edges: Edge[] } => {
+    const nodes: Node[] = [];
+    const edges: Edge[] = [];
 
-const initialEdges: Edge[] = [
-    { id: 'e-start-1', source: 'start', target: 'node-1', animated: true, type: 'smoothstep' },
-];
+    // Add start node
+    nodes.push({ id: 'start', type: 'start', position: { x: 400, y: 0 }, data: { label: 'Start' } });
+
+    // Sort configs by order
+    const sortedConfigs = [...configs].sort((a, b) => a.order - b.order);
+
+    // Group steps by their dependencies to identify parallel steps
+    const dependencyGroups: Map<string, WorkflowConfig[]> = new Map();
+
+    sortedConfigs.forEach((config) => {
+        // Create a copy of the array before sorting to avoid read-only error
+        const depsKey = [...config.dependsOn].sort().join(',');
+        if (!dependencyGroups.has(depsKey)) {
+            dependencyGroups.set(depsKey, []);
+        }
+        dependencyGroups.get(depsKey)!.push(config);
+    });
+
+    // Calculate positions for each group
+    let currentY = 100;
+    const nodePositions: Map<string, { x: number, y: number }> = new Map();
+
+    dependencyGroups.forEach((group, depsKey) => {
+        const groupSize = group.length;
+        const totalWidth = groupSize * 280; // 240px node + 40px gap
+        const startX = 400 - (totalWidth / 2) + 120; // Center the group
+
+        group.forEach((config, index) => {
+            const x = startX + (index * 280);
+            nodePositions.set(config.step, { x, y: currentY });
+        });
+
+        currentY += 150; // Move to next row
+    });
+
+    // Create nodes from workflow configs
+    sortedConfigs.forEach((config) => {
+        const position = nodePositions.get(config.step) || { x: 400, y: 100 };
+
+        nodes.push({
+            id: config.step,
+            type: 'step',
+            position,
+            data: {
+                label: config.step,
+                step: config.step,
+                dependencyType: config.dependencyType,
+                dependsOn: config.dependsOn,
+                requiredPermission: config.requiredPermission,
+                isActive: config.isActive,
+                order: config.order,
+                description: config.description
+            }
+        });
+    });
+
+    // Add end node
+    nodes.push({
+        id: 'end',
+        type: 'end',
+        position: { x: 400, y: currentY },
+        data: { label: 'Publish Badge' }
+    });
+
+    // Create edges for ONLY immediate consecutive steps based on order
+    // This creates a cleaner flow showing step-by-step progression
+    const createdEdges = new Set<string>();
+
+    // Sort by order to determine sequence
+    const orderedSteps = [...sortedConfigs].sort((a, b) => a.order - b.order);
+
+    // Connect START to first step(s) (lowest order)
+    const firstOrder = orderedSteps[0]?.order || 0;
+    const firstSteps = orderedSteps.filter(s => s.order === firstOrder);
+
+    firstSteps.forEach(step => {
+        const edgeId = `e-start-${step.step}`;
+        if (!createdEdges.has(edgeId)) {
+            edges.push({
+                id: edgeId,
+                source: 'start',
+                target: step.step,
+                animated: true,
+                type: 'smoothstep',
+                markerEnd: { type: MarkerType.ArrowClosed }
+            });
+            createdEdges.add(edgeId);
+        }
+    });
+
+    // Connect each step to the next step(s) in order (immediate next level only)
+    for (let i = 0; i < orderedSteps.length; i++) {
+        const currentStep = orderedSteps[i];
+        const currentOrder = currentStep.order;
+
+        // Find the next order level
+        const nextOrder = orderedSteps.find(s => s.order > currentOrder)?.order;
+
+        if (nextOrder !== undefined) {
+            // Get all steps at the next order level
+            const nextSteps = orderedSteps.filter(s => s.order === nextOrder);
+
+            // Connect current step to all steps at the immediate next level
+            nextSteps.forEach(nextStep => {
+                const edgeId = `e-${currentStep.step}-${nextStep.step}`;
+                if (!createdEdges.has(edgeId)) {
+                    edges.push({
+                        id: edgeId,
+                        source: currentStep.step,
+                        target: nextStep.step,
+                        animated: true,
+                        type: 'smoothstep',
+                        markerEnd: { type: MarkerType.ArrowClosed }
+                    });
+                    createdEdges.add(edgeId);
+                }
+            });
+        } else {
+            // This is a last step, connect to END
+            const edgeId = `e-${currentStep.step}-end`;
+            if (!createdEdges.has(edgeId)) {
+                edges.push({
+                    id: edgeId,
+                    source: currentStep.step,
+                    target: 'end',
+                    animated: true,
+                    type: 'smoothstep',
+                    markerEnd: { type: MarkerType.ArrowClosed }
+                });
+                createdEdges.add(edgeId);
+            }
+        }
+    }
+
+    return { nodes, edges };
+};
+
+const transformNodesToApi = (nodes: Node[], edges: Edge[]): BulkUpdateWorkflowPayload => {
+    const configurations = nodes
+        .filter(n => n.type === 'step' && n.data.step)
+        .map(node => {
+            // Get ONLY direct dependencies from edges
+            const dependencies = edges
+                .filter(e => e.target === node.id)
+                .map(e => {
+                    const sourceNode = nodes.find(n => n.id === e.source);
+                    if (sourceNode?.type === 'start' || sourceNode?.type === 'end') return null;
+                    return e.source;
+                })
+                .filter(Boolean) as string[];
+
+            return {
+                step: node.data.step as string,
+                dependencyType: (node.data.dependencyType as 'ALL' | 'ANY' | 'NONE') || 'ALL',
+                dependsOn: dependencies,
+                requiredPermission: (node.data.requiredPermission as string) || '',
+                isActive: (node.data.isActive as boolean) ?? true,
+                order: (node.data.order as number) || Math.floor(node.position.y / 100),
+                description: (node.data.description as string) || ''
+            };
+        });
+
+    return { configurations };
+};
 
 // --- Main Component ---
 
 export function WorkflowBuilder() {
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-    const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+    const { data: workflowConfigs, isLoading, error, refetch } = useGetWorkflowConfigsQuery();
+    const [bulkUpdate, { isLoading: isSaving }] = useBulkUpdateWorkflowConfigsMutation();
+
+    const [nodes, setNodes, onNodesChange] = useNodesState([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [showCircularWarning, setShowCircularWarning] = useState(false);
+    const [circularDeps, setCircularDeps] = useState<string[]>([]);
     const reactFlowWrapper = useRef<HTMLDivElement>(null);
     const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
 
-    // Filter sidebar organizations
-    const filteredOrgs = MOCK_ORGS.filter(org =>
-        org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        org.code.toLowerCase().includes(searchQuery.toLowerCase())
+    // Initialize nodes and edges from API data
+    useEffect(() => {
+        if (workflowConfigs && workflowConfigs.length > 0) {
+            const { nodes: apiNodes, edges: apiEdges } = transformApiToNodes(workflowConfigs);
+            setNodes(apiNodes);
+            setEdges(apiEdges);
+        }
+    }, [workflowConfigs, setNodes, setEdges]);
+
+    // Filter available steps (from API)
+    const availableSteps = workflowConfigs || [];
+    const filteredSteps = availableSteps.filter(step =>
+        step.step.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        step.description.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     const onConnect = useCallback(
@@ -163,8 +321,8 @@ export function WorkflowBuilder() {
         [setEdges],
     );
 
-    const onDragStart = (event: React.DragEvent, org: Organization) => {
-        event.dataTransfer.setData('application/reactflow', JSON.stringify(org));
+    const onDragStart = (event: React.DragEvent, step: WorkflowConfig) => {
+        event.dataTransfer.setData('application/reactflow', JSON.stringify(step));
         event.dataTransfer.effectAllowed = 'move';
     };
 
@@ -179,12 +337,17 @@ export function WorkflowBuilder() {
 
             if (!reactFlowWrapper.current || !reactFlowInstance) return;
 
-            const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
             const type = event.dataTransfer.getData('application/reactflow');
-
             if (!type) return;
 
-            const org: Organization = JSON.parse(type);
+            const step: WorkflowConfig = JSON.parse(type);
+
+            // Check if step already exists in the workflow
+            const existingNode = nodes.find(n => n.id === step.step);
+            if (existingNode) {
+                toast.error(`Step "${step.step}" is already in the workflow`);
+                return;
+            }
 
             const position = reactFlowInstance.screenToFlowPosition({
                 x: event.clientX,
@@ -192,119 +355,111 @@ export function WorkflowBuilder() {
             });
 
             const newNode: Node = {
-                id: `node-${Date.now()}`,
-                type: 'organization',
+                id: step.step,
+                type: 'step',
                 position,
                 data: {
-                    label: org.name,
-                    orgCode: org.code,
-                    orgType: org.type,
-                    description: 'Verify applicant details'
+                    label: step.step,
+                    step: step.step,
+                    dependencyType: step.dependencyType,
+                    dependsOn: [],
+                    requiredPermission: step.requiredPermission,
+                    isActive: step.isActive,
+                    order: Math.floor(position.y / 100),
+                    description: step.description
                 },
             };
 
             setNodes((nds) => nds.concat(newNode));
+            toast.success(`Added "${step.step}" to workflow`);
         },
-        [reactFlowInstance, setNodes],
+        [reactFlowInstance, setNodes, nodes],
     );
 
-    const handleSave = () => {
-        // Build adjacency list for topological analysis
-        const adjacency: Record<string, string[]> = {};
-        const inDegree: Record<string, number> = {};
+    const handleSave = async () => {
+        try {
+            const payload = transformNodesToApi(nodes, edges);
 
-        nodes.forEach(node => {
-            adjacency[node.id] = [];
-            inDegree[node.id] = 0;
-        });
+            const result = await bulkUpdate(payload).unwrap();
 
-        edges.forEach(edge => {
-            if (adjacency[edge.source]) {
-                adjacency[edge.source].push(edge.target);
+            if (result.data.validation.hasCircularDependencies) {
+                setCircularDeps(result.data.validation.circularDependencies);
+                setShowCircularWarning(true);
+                toast.warning('Workflow saved with circular dependencies detected');
+            } else {
+                toast.success('Workflow saved successfully!');
             }
-            if (inDegree[edge.target] !== undefined) {
-                inDegree[edge.target]++;
-            }
-        });
 
-        // Identify Parallel Groups
-        // Simple heuristic: If multiple nodes share the same parent(s), they might be parallel.
-        // Or if they are on the same 'rank'.
-        // For the requested JSON format, let's look at dependencies.
-
-        const generatedSteps = nodes
-            .filter(n => n.type === 'organization') // Only organization steps count for the payload
-            .map(node => {
-                const dependencies = edges
-                    .filter(e => e.target === node.id)
-                    .map(e => {
-                        const sourceNode = nodes.find(n => n.id === e.source);
-                        // If source is start node, dependsOn is empty
-                        if (sourceNode?.type === 'start') return null;
-                        return sourceNode?.id; // Use raw ID or a mapped Step ID? 
-                        // The user example uses "step-1", "step-2". 
-                        // We will use the node.id as stepId for consistency
-                    })
-                    .filter(Boolean) as string[];
-
-                // Determine parallel group
-                // If this node shares the same exact dependencies as another node, they are parallel
-                let parallelGroupId: string | null = null;
-                const siblings = nodes.filter(other =>
-                    other.id !== node.id &&
-                    other.type === 'organization' &&
-                    isDependencyEqual(other.id, node.id, edges)
-                );
-
-                if (siblings.length > 0) {
-                    const groupIds = [node.id, ...siblings.map(s => s.id)].sort();
-                    parallelGroupId = `group-${groupIds.join('-')}`;
-                    // Hash or simplify this ID in real app
-                    parallelGroupId = `parallel-${groupIds[0]}`;
-                }
-
-                // Determine Order (Topo sort would be better, but Y position is a simple proxy for UI builders)
-                const order = Math.floor(node.position.y / 100) + 1;
-
-                return {
-                    stepId: node.id,
-                    organizationCode: node.data.orgCode,
-                    order: order,
-                    dependsOn: dependencies,
-                    parallelGroupId: parallelGroupId,
-                    description: node.data.description
-                };
-            });
-
-        // Log to console as requested
-        const payload = {
-            workflowId: "accreditation_v1",
-            steps: generatedSteps
-        };
-
-        console.log("Workflow Saved - API Payload:", JSON.stringify(payload, null, 2));
-        toast.success("Workflow saved! Check console for API payload.");
+            // Refetch to get updated data
+            refetch();
+        } catch (err: any) {
+            console.error('Failed to save workflow:', err);
+            toast.error(err?.data?.message || 'Failed to save workflow');
+        }
     };
 
-    const isDependencyEqual = (nodeA: string, nodeB: string, allEdges: Edge[]) => {
-        const depsA = allEdges.filter(e => e.target === nodeA).map(e => e.source).sort().join(',');
-        const depsB = allEdges.filter(e => e.target === nodeB).map(e => e.source).sort().join(',');
-        return depsA === depsB && depsA.length > 0;
+    const handleReset = () => {
+        if (workflowConfigs) {
+            const { nodes: apiNodes, edges: apiEdges } = transformApiToNodes(workflowConfigs);
+            setNodes(apiNodes);
+            setEdges(apiEdges);
+            toast.info('Workflow reset to saved state');
+        }
     };
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+                <div className="text-center">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+                    <p className="text-muted-foreground">Loading workflow configuration...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+                <div className="text-center">
+                    <AlertCircle className="h-8 w-8 mx-auto mb-4 text-destructive" />
+                    <p className="text-destructive font-medium mb-2">Failed to load workflow configuration</p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                        {(error as any)?.data?.message || 'An error occurred'}
+                    </p>
+                    <Button onClick={() => refetch()} variant="outline">
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Retry
+                    </Button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-[calc(100vh-4rem)]">
             <div className="flex justify-between items-center mb-4 px-1">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Workflow Builder</h1>
-                    <p className="text-sm text-muted-foreground">Drag organizations to define the accreditation process flow.</p>
+                    <p className="text-sm text-muted-foreground">Drag workflow steps to define the accreditation process flow.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => { setNodes(initialNodes); setEdges(initialEdges); }}>
+                    <Button variant="outline" size="sm" onClick={() => refetch()}>
+                        <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleReset}>
                         <RotateCcw className="mr-2 h-4 w-4" /> Reset
                     </Button>
-                    <Button size="sm" onClick={handleSave}>
-                        <Save className="mr-2 h-4 w-4" /> Save Workflow
+                    <Button size="sm" onClick={handleSave} disabled={isSaving}>
+                        {isSaving ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
+                            </>
+                        ) : (
+                            <>
+                                <Save className="mr-2 h-4 w-4" /> Save Workflow
+                            </>
+                        )}
                     </Button>
                 </div>
             </div>
@@ -313,11 +468,11 @@ export function WorkflowBuilder() {
                 {/* Sidebar */}
                 <aside className="w-[320px] bg-white border rounded-xl flex flex-col shadow-sm">
                     <div className="p-4 border-b">
-                        <h2 className="font-semibold mb-2">Organizations</h2>
+                        <h2 className="font-semibold mb-2">Available Steps</h2>
                         <div className="relative">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder="Search..."
+                                placeholder="Search steps..."
                                 className="pl-9 bg-gray-50"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -326,39 +481,57 @@ export function WorkflowBuilder() {
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                        {filteredOrgs.map(org => {
-                            const style = getOrgStyle(org.type);
-                            const Icon = style.icon;
+                        {filteredSteps.map(step => {
+                            const isInWorkflow = nodes.some(n => n.id === step.step);
+                            const getDependencyTypeColor = (type: string) => {
+                                switch (type) {
+                                    case 'ALL': return 'bg-blue-50 border-blue-200';
+                                    case 'ANY': return 'bg-green-50 border-green-200';
+                                    case 'NONE': return 'bg-gray-50 border-gray-200';
+                                    default: return 'bg-purple-50 border-purple-200';
+                                }
+                            };
 
                             return (
                                 <Card
-                                    key={org.id}
-                                    className={`p-3 cursor-move hover:shadow-md transition-all border group ${style.bg}`}
-                                    draggable
-                                    onDragStart={(e) => onDragStart(e, org)}
+                                    key={step.id}
+                                    className={`p-3 transition-all border group ${getDependencyTypeColor(step.dependencyType)} ${isInWorkflow
+                                        ? 'opacity-50 cursor-not-allowed'
+                                        : 'cursor-move hover:shadow-md'
+                                        }`}
+                                    draggable={!isInWorkflow}
+                                    onDragStart={(e) => !isInWorkflow && onDragStart(e, step)}
                                 >
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-start gap-3">
                                         <div className="bg-white p-1.5 rounded-md shadow-sm border border-black/5">
-                                            <Icon className="h-4 w-4 text-gray-700" />
+                                            <WorkflowIcon className="h-4 w-4 text-gray-700" />
                                         </div>
-                                        <div>
-                                            <div className="font-medium text-sm group-hover:text-primary transition-colors">{org.name}</div>
-                                            <div className="text-xs text-muted-foreground">{org.type}</div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-medium text-sm group-hover:text-primary transition-colors">
+                                                {step.step}
+                                                {isInWorkflow && <span className="ml-2 text-xs text-muted-foreground">(In workflow)</span>}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                                {step.description}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground mt-1">
+                                                Type: <span className="font-medium">{step.dependencyType}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </Card>
                             );
                         })}
-                        {filteredOrgs.length === 0 && (
+                        {filteredSteps.length === 0 && (
                             <div className="text-center py-8 text-muted-foreground text-sm">
-                                No organizations found.
+                                No steps found.
                             </div>
                         )}
                     </div>
 
                     <div className="p-4 bg-gray-50 border-t text-xs text-muted-foreground">
                         <AlertCircle className="h-4 w-4 inline mr-1 mb-0.5" />
-                        Drag companies onto the canvas. Connect nodes to define sequential or parallel paths.
+                        Drag steps onto the canvas. Connect nodes to define dependencies.
                     </div>
                 </aside>
 
@@ -380,14 +553,41 @@ export function WorkflowBuilder() {
                         <Controls className="bg-white border shadow-sm rounded-md overflow-hidden" />
                         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#cbd5e1" />
                         <Panel position="top-right" className="bg-white/90 p-2 rounded-lg border shadow-sm text-xs font-mono">
-                            Nodes: {nodes.length} | Edges: {edges.length}
+                            Steps: {nodes.filter(n => n.type === 'step').length} | Connections: {edges.length}
                         </Panel>
                     </ReactFlow>
                 </div>
             </div>
+
+            {/* Circular Dependency Warning Dialog */}
+            <Dialog open={showCircularWarning} onOpenChange={setShowCircularWarning}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                            Circular Dependencies Detected
+                        </DialogTitle>
+                        <DialogDescription>
+                            The workflow has been saved, but circular dependencies were detected in the following steps:
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                        <ul className="list-disc list-inside space-y-1">
+                            {circularDeps.map((dep, idx) => (
+                                <li key={idx} className="text-sm text-yellow-800">{dep}</li>
+                            ))}
+                        </ul>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                        Please review and fix these circular dependencies to ensure proper workflow execution.
+                    </p>
+                    <Button onClick={() => setShowCircularWarning(false)}>
+                        Close
+                    </Button>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
 
-// Ensure the default export is present if required by the router, or named used elsewhere
 export default WorkflowBuilder;

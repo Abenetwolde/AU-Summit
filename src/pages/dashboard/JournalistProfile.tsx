@@ -92,7 +92,9 @@ export function JournalistProfile() {
     const organization = "News Org"; // Placeholder or from API if avail
 
     // Authorization
-    const canApprove = user?.role === UserRole.SUPER_ADMIN;
+    const canApprove = user?.role === UserRole.SUPER_ADMIN ||
+        user?.role === UserRole.ICS_OFFICER ||
+        user?.role === UserRole.EMA_OFFICER;
     const isCustoms = user?.role === UserRole.CUSTOMS_OFFICER;
 
     return (

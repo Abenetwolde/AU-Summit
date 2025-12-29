@@ -93,7 +93,7 @@ function CategoryManager({ open, onOpenChange }: { open: boolean, onOpenChange: 
                                 </Button>
                             </div>
                             <div className="border rounded-md">
-                                <Table>
+                                <Table className="min-w-full h-[900px]"  >
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>ID</TableHead>
@@ -353,7 +353,7 @@ export function PermissionManagement() {
                 </div>
             </div>
 
-            <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <Card className="flex-1 flex flex-col min-h-0 h-[1000px] overflow-hidden">
                 <CardHeader className="py-4 border-b bg-gray-50/50 shrink-0">
                     <div className="flex justify-between items-center gap-4">
                         <div className="flex items-center gap-4">

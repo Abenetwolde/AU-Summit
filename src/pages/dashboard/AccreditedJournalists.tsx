@@ -218,7 +218,6 @@ export function AccreditedJournalists() {
                                     <td className="p-4 align-middle font-medium">{application.user.fullName}</td>
                                     <td className="p-4 align-middle">
                                         <span className="flex items-center gap-2 font-bold">
-                                            <span className="text-lg leading-none">{getFlagEmoji(application.formData.country)}</span>
                                             {countryName(application.formData.country)}
                                         </span>
                                     </td>
