@@ -49,11 +49,11 @@ interface Organization {
 
 const MOCK_ORGS: Organization[] = [
     { id: 'ema', code: 'EMA', name: 'Ethiopian Media Authority', type: 'Gov' },
-    { id: 'ics', code: 'ICS', name: 'Immigration & Citizenship', type: 'Security' },
-    { id: 'niss', code: 'NISS', name: 'Natl. Intel & Security', type: 'Security' },
-    { id: 'insa', code: 'INSA', name: 'Info Network Security', type: 'Security' },
+    { id: 'ics', code: 'ICS', name: 'Immigration & Citizenship Service', type: 'Security' },
+    { id: 'niss', code: 'NISS', name: 'National Intelligence Security Service', type: 'Security' },
+    { id: 'insa', code: 'INSA', name: 'Information Network Security Administrator', type: 'Security' },
     { id: 'au', code: 'AU', name: 'African Union', type: 'IO' },
-    { id: 'customs', code: 'CUSTOMS', name: 'Customs Commission', type: 'Gov' },
+    { id: 'customs', code: 'CUSTOMS', name: 'Custom Commission', type: 'Gov' },
     { id: 'mofa', code: 'MOFA', name: 'Ministry of Foreign Affairs', type: 'Gov' },
 ];
 

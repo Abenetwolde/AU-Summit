@@ -174,8 +174,8 @@ export function OrganizationManagement() {
                         <CardContent className="p-6">
                             <div className="flex justify-between items-start mb-4">
                                 <div className="h-12 w-12 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
-                                    {org?.logo ? (
-                                        <img src={getFileUrl(org.logo)} alt={org.name} className="h-full w-full object-cover" />
+                                    {org?.logoUrl ? (
+                                        <img src={getFileUrl(org.logoUrl)} alt={org.name} className="h-full w-full object-cover" />
                                     ) : (
                                         <Building2 className="h-6 w-6 text-gray-400" />
                                     )}

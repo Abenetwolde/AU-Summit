@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email,
             role,
             roleName,
-            gate: 'GATE 1',
+            // gate: 'GATE 1',
             permissions
         };
         setUser(newUser);

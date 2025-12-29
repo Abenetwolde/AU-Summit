@@ -258,7 +258,7 @@ export function DashboardLayout() {
                 <div className="p-6 mt-auto">
                     <div className="mb-6">
                         <p className="text-sm font-medium text-gray-900 uppercase tracking-wider mb-2">
-                            {user?.gate || 'AU DESK - GATE 1'}
+                            {/* {user?.gate || 'AU DESK - GATE 1'} */}
                         </p>
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground">

@@ -94,7 +94,7 @@ export const ACCREDITED_JOURNALISTS: Journalist[] = [
         role: 'Cameraman',
         status: 'Entered',
         arrivalDate: '16Dec2025',
-        departureGate: 'Gate 1',
+        // departureGate: 'Gate 1',
         photoUrl: 'https://t3.ftcdn.net/jpg/02/79/78/48/360_F_279784836_4eKMjfIfDtaICKmaSBAyft2Y43u5V76Q.jpg'
     },
     {

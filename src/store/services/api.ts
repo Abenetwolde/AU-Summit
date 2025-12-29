@@ -271,7 +271,7 @@ export interface UsersResponse {
 }
 
 export const FILE_BASE_URL = 'https://cw761gt5-3000.uks1.devtunnels.ms';
-//172.20.82.12:3000
+
 export const getFileUrl = (path?: string | null): string => {
     if (!path) {
         console.log('[getFileUrl] empty path:', path);
@@ -284,17 +284,30 @@ export const getFileUrl = (path?: string | null): string => {
         return '';
     }
 
+    // 🔁 Replace localhost base URL if present
+    if (/^https?:\/\/localhost:3000/i.test(trimmedPath)) {
+        const replaced = trimmedPath.replace(
+            /^https?:\/\/localhost:3000/i,
+            FILE_BASE_URL
+        );
+        console.log('[getFileUrl] replaced localhost URL:', replaced);
+        return replaced;
+    }
+
+    // ✅ Keep other absolute URLs as-is
     if (/^https?:\/\//i.test(trimmedPath)) {
         console.log('[getFileUrl] absolute URL:', trimmedPath);
         return trimmedPath;
     }
 
+    // ✅ Handle relative paths
     const separator = trimmedPath.startsWith('/') ? '' : '/';
     const finalUrl = `${FILE_BASE_URL}${separator}${trimmedPath}`;
 
     console.log('[getFileUrl] resolved URL:', finalUrl);
     return finalUrl;
 };
+
 
 
 export const api = createApi({
