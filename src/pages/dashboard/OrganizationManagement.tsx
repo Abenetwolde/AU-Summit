@@ -3,24 +3,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Search, Plus, Filter, MoreHorizontal, Building2, Users, ArrowUpRight, Loader2, Edit, Trash } from 'lucide-react';
+import { Search, Plus, Filter, MoreHorizontal, Building2, Users, Loader2, Edit, Trash } from 'lucide-react';
 import { OrganizationUsersModal } from '@/components/modals/OrganizationUsersModal';
 import { toast } from 'sonner';
 import {
     useGetOrganizationsQuery,
     useCreateOrganizationMutation,
     useUpdateOrganizationMutation,
+    useGetUsersQuery,
     Organization,
     getFileUrl
 } from '@/store/services/api';
-
-// Mock users for the user management part which wasn't replaced by API yet
-const MOCK_USERS: any[] = [
-    { id: 1, name: 'Abebe Bikila', email: 'abebe@ema.gov.et', role: 'Admin', status: 'Active' },
-    { id: 2, name: 'Sara Kamil', email: 'sara@ema.gov.et', role: 'Viewer', status: 'Active' },
-];
 
 export function OrganizationManagement() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -30,7 +25,8 @@ export function OrganizationManagement() {
     const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
 
     // API Hooks
-    const { data: organizations = [], isLoading } = useGetOrganizationsQuery();
+    const { data: organizations = [], isLoading: isOrgLoading } = useGetOrganizationsQuery();
+    const { data: users = [], isLoading: isUsersLoading } = useGetUsersQuery();
     const [createOrganization, { isLoading: isCreating }] = useCreateOrganizationMutation();
     const [updateOrganization, { isLoading: isUpdating }] = useUpdateOrganizationMutation();
 
@@ -46,6 +42,20 @@ export function OrganizationManagement() {
     );
 
     const totalOrgs = organizations.length;
+    const totalUsers = users.length;
+
+    // Helper to get user count for an org
+    const getUserCountForOrg = (orgId: number) => {
+        return users.filter(user => user.role?.organizationId === orgId).length;
+    };
+
+    // Helper to filter users for selected org
+    const getUsersForOrg = (orgId: number) => {
+        // The modal expects a specific structure, we'll map API users to it if needed
+        // Assuming OrganizationUsersModal handles the User type from API or similar
+        return users.filter(user => user.role?.organizationId === orgId);
+    };
+
 
     // Handlers
     const handleCreate = async (e: React.FormEvent) => {
@@ -101,7 +111,7 @@ export function OrganizationManagement() {
         setIsUserModalOpen(true);
     };
 
-    if (isLoading) {
+    if (isOrgLoading || isUsersLoading) {
         return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
     }
 
@@ -117,7 +127,7 @@ export function OrganizationManagement() {
                 </Button>
             </div>
 
-            {/* Statistics - Type removed as requested */}
+            {/* Statistics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card className="bg-white border-0 shadow-sm">
                     <CardContent className="p-6 flex items-center gap-4">
@@ -137,7 +147,7 @@ export function OrganizationManagement() {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-gray-500">Total Users</p>
-                            <h3 className="text-2xl font-bold text-gray-900">8</h3>
+                            <h3 className="text-2xl font-bold text-gray-900">{totalUsers}</h3>
                         </div>
                     </CardContent>
                 </Card>
@@ -204,7 +214,7 @@ export function OrganizationManagement() {
 
                             <div className="flex items-center justify-between text-sm text-gray-500 pt-4 border-t">
                                 <span className="flex items-center gap-1">
-                                    <Users className="h-4 w-4" /> 2 Users
+                                    <Users className="h-4 w-4" /> {getUserCountForOrg(org.id)} Users
                                 </span>
                                 <span className="text-xs">Created {new Date(org.createdAt).toLocaleDateString()}</span>
                             </div>
@@ -308,8 +318,13 @@ export function OrganizationManagement() {
                     organization={{
                         id: String(selectedOrg.id),
                         name: selectedOrg.name,
-                        // Assumed mocked users are passed or handled inside modal for now
-                        users: MOCK_USERS
+                        users: getUsersForOrg(selectedOrg.id).map(u => ({
+                            id: u.id,
+                            name: u.fullName,
+                            email: u.email,
+                            role: u.roleName || 'User', // Fallback
+                            status: u.status
+                        }))
                     }}
                 />
             )}

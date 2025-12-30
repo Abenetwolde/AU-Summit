@@ -7,7 +7,7 @@ import { Login } from './pages/auth/Login';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { JournalistList } from './pages/dashboard/JournalistList';
 import { AccreditedJournalists } from './pages/dashboard/AccreditedJournalists';
-import { SuperAdminDashboard } from './pages/dashboard/SuperAdminDashboard';
+// import { SuperAdminDashboard } from './pages/dashboard/SuperAdminDashboard';
 import { JournalistProfile } from './pages/dashboard/JournalistProfile';
 import { BadgeManagement } from './pages/dashboard/BadgeManagement';
 import { BadgeSlipPreview } from './pages/dashboard/BadgeSlipPreview';
@@ -24,6 +24,7 @@ import { Toaster } from 'sonner';
 
 import { useEffect } from 'react';
 import { initEmailJS } from './lib/emailService';
+import SuperAdminDashboard from './pages/dashboard/SuperAdminDashboard';
 
 function App() {
     useEffect(() => {

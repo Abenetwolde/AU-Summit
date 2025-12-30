@@ -196,7 +196,7 @@ export function RegistrationFormBuilder() {
     }
 
     return (
-        <div className="flex flex-col lg:flex-row h-[calc(100vh-140px)] gap-4 p-4 bg-gray-50/50">
+        <div className="flex flex-col lg:flex-row min-h-[calc(100vh-140px)] gap-4 p-4 bg-gray-50/50">
             {/* Left Sidebar - Tools */}
             <div className="w-full lg:w-64 h-auto lg:h-full flex-shrink-0">
                 <Card className="border-none shadow-sm h-full flex flex-col">
@@ -222,8 +222,8 @@ export function RegistrationFormBuilder() {
             </div>
 
             {/* Center - Canvas */}
-            <div className="flex-1 min-w-0 h-full">
-                <Card className="h-full border-none shadow-md overflow-hidden flex flex-col bg-white">
+            <div className="flex-1 min-w-0">
+                <Card className="min-h-full border-none shadow-md overflow-hidden flex flex-col bg-white">
                     <CardHeader className="border-b bg-white z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 gap-4">
                         <div>
                             <CardTitle className="text-xl font-bold font-sans">Accreditation Form</CardTitle>

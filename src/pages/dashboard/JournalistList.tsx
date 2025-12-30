@@ -42,10 +42,16 @@ export function JournalistList() {
 
         const passport = app.formData?.passport_number || '';
         const country = app.formData?.country || '';
+        const countryNameVal = countryName(country);
 
         const matchesSearch = fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             passport.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCountry = selectedCountry ? country === selectedCountry : true;
+
+        // Check if selectedCountry matches either the code or the resolved name
+        const matchesCountry = selectedCountry
+            ? (country === selectedCountry || countryNameVal === selectedCountry || country === countryName(selectedCountry))
+            : true;
+
         return matchesSearch && matchesCountry;
     });
 

@@ -11,21 +11,32 @@ export interface ExportData {
     [key: string]: any;
 }
 
+const generateFilename = (baseName: string, extension: string): string => {
+    const date = new Date().toISOString().split('T')[0];
+    return `${baseName}_${date}.${extension}`;
+};
+
 /**
  * Export data to CSV file
  */
-export function exportToCSV(data: ExportData[], filename: string = 'export.csv') {
+export function exportToCSV(data: ExportData[], baseFilename: string = 'export') {
+    const filename = generateFilename(baseFilename, 'csv');
     const csv = Papa.unparse(data);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
 
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if ((navigator as any).msSaveBlob) { // IE 10+
+        (navigator as any).msSaveBlob(blob, filename);
+    } else {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url); // Clean up
+    }
 }
 
 /**
@@ -34,9 +45,10 @@ export function exportToCSV(data: ExportData[], filename: string = 'export.csv')
 export function exportToPDF(
     data: ExportData[],
     columns: ExportColumn[],
-    filename: string = 'export.pdf',
+    baseFilename: string = 'export',
     title: string = 'Export Data'
 ) {
+    const filename = generateFilename(baseFilename, 'pdf');
     const doc = new jsPDF();
 
     // Add title
@@ -45,11 +57,14 @@ export function exportToPDF(
 
     // Add date
     doc.setFontSize(10);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 22);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
 
     // Prepare table data
     const tableData = data.map(row =>
-        columns.map(col => row[col.key] || '')
+        columns.map(col => {
+            const val = row[col.key];
+            return val !== null && val !== undefined ? String(val) : '';
+        })
     );
 
     // Add table
@@ -67,28 +82,30 @@ export function exportToPDF(
 /**
  * Export journalist list to CSV
  */
-export function exportJournalistsToCSV(journalists: any[], filename: string = 'journalists.csv') {
+export function exportJournalistsToCSV(journalists: any[]) {
     const data = journalists.map(j => ({
         'Full Name': j.user?.fullName || j.fullname || 'N/A',
         'Country': j.formData?.country || j.country || 'N/A',
         'Passport No': j.formData?.passport_number || j.passportNo || 'N/A',
         'Role': j.formData?.occupation || j.role || 'N/A',
-        'Status': j.status,
+        'Status': j.status || 'N/A',
+        'Submission Date': j.createdAt ? new Date(j.createdAt).toLocaleDateString() : 'N/A'
     }));
 
-    exportToCSV(data, filename);
+    exportToCSV(data, 'journalists_list');
 }
 
 /**
  * Export journalist list to PDF
  */
-export function exportJournalistsToPDF(journalists: any[], filename: string = 'journalists.pdf', title: string = 'Journalist List') {
+export function exportJournalistsToPDF(journalists: any[]) {
     const columns: ExportColumn[] = [
         { header: 'Full Name', key: 'fullname' },
         { header: 'Country', key: 'country' },
         { header: 'Passport No', key: 'passportNo' },
         { header: 'Role', key: 'role' },
         { header: 'Status', key: 'status' },
+        { header: 'Date', key: 'date' }
     ];
 
     const data = journalists.map(j => ({
@@ -96,17 +113,19 @@ export function exportJournalistsToPDF(journalists: any[], filename: string = 'j
         country: j.formData?.country || j.country || 'N/A',
         passportNo: j.formData?.passport_number || j.passportNo || 'N/A',
         role: j.formData?.occupation || j.role || 'N/A',
-        status: j.status,
+        status: j.status || 'N/A',
+        date: j.createdAt ? new Date(j.createdAt).toLocaleDateString() : 'N/A'
     }));
 
-    exportToPDF(data, columns, filename, title);
+    exportToPDF(data, columns, 'journalists_list', 'Journalist List');
 }
 
 /**
  * Export journalist detail to PDF
  */
-export function exportJournalistDetailToPDF(journalist: any, filename?: string) {
+export function exportJournalistDetailToPDF(journalist: any) {
     const doc = new jsPDF();
+    const filename = generateFilename(`journalist_${journalist.id || 'profile'}`, 'pdf');
 
     // Title
     doc.setFontSize(18);
@@ -118,13 +137,19 @@ export function exportJournalistDetailToPDF(journalist: any, filename?: string) 
     doc.setFontSize(10);
     let y = 38;
 
+    // Helper to safely get data
+    const getVal = (path: string, fallback = 'N/A') => {
+        return path.split('.').reduce((obj, key) => obj?.[key], journalist) || fallback;
+    };
+
     const personalInfo = [
-        ['Full Name', journalist.fullname],
-        ['Nationality', journalist.country],
-        ['Passport Number', journalist.passportNo],
-        ['Gender', journalist.gender],
-        ['Date of Birth', journalist.dob],
-        ['Contact', journalist.contact],
+        ['Full Name', journalist.user?.fullName || journalist.fullname],
+        ['Nationality', getVal('formData.country', journalist.country)],
+        ['Passport Number', getVal('formData.passport_number', journalist.passportNo)],
+        ['Gender', getVal('formData.gender', 'N/A')],
+        ['Date of Birth', getVal('formData.dob', 'N/A')],
+        ['Contact', getVal('formData.phone', journalist.contact)],
+        ['Email', journalist.user?.email || journalist.email],
     ];
 
     personalInfo.forEach(([label, value]) => {
@@ -141,10 +166,10 @@ export function exportJournalistDetailToPDF(journalist: any, filename?: string) 
     doc.setFontSize(10);
 
     const travelInfo = [
-        ['Organization', 'CNN News'], // Placeholder as it's not in mock but in UI
-        ['Role', journalist.role],
-        ['Accommodation', journalist.accommodation],
-        ['Visa Number', journalist.visaNumber],
+        ['Role', getVal('formData.occupation', journalist.role)],
+        ['Accommodation', getVal('formData.accommodation_details', 'N/A')],
+        ['Arrival Date', getVal('formData.arrival_date', 'N/A')],
+        ['Status', journalist.status],
     ];
 
     travelInfo.forEach(([label, value]) => {
@@ -161,5 +186,5 @@ export function exportJournalistDetailToPDF(journalist: any, filename?: string) 
         doc.internal.pageSize.height - 10
     );
 
-    doc.save(filename || `journalist_${journalist.id}.pdf`);
+    doc.save(filename);
 }

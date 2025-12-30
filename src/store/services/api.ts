@@ -171,11 +171,17 @@ export interface LandingPageSettings {
     description: string;
     mainLogoUrl: string | null;
     footerLogoUrl: string | null;
+    heroBackgroundUrl: string | null;
     deadlineDate: string | null;
     privacyPolicyContent: string;
     contactEmail: string;
     contactLink: string;
     languages: { name: string; code: string; flagEmoji: string }[];
+    gallery: string[];
+    heroSectionConfig: any;
+    processTrackerConfig: any;
+    infoSectionConfig: any;
+    footerConfig: any;
     createdAt: string;
     updatedAt: string;
 }

@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -15,9 +16,9 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 148 78% 38%;
-    /* #14ae5c - HSL: 148, 78%, 38% */
-    --primary-foreground: 210 40% 98%;
+    --primary: 149 100% 30%;
+    /* #009b4d - HSL: 149, 100%, 30% */
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 71 84% 44%;
     /* #add012 - HSL: 71, 84%, 44% */
@@ -34,7 +35,7 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 149 100% 30%;
 
     --radius: 0.5rem;
   }
@@ -49,8 +50,8 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 148 78% 38%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 149 100% 30%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 71 84% 44%;
     --secondary-foreground: 210 40% 98%;
@@ -66,7 +67,7 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 149 100% 30%;
   }
 }
 
@@ -78,5 +79,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    overflow-x: hidden;
+    /* Remove horizontal scrollbar */
   }
 }
