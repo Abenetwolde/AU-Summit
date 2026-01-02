@@ -1091,12 +1091,12 @@ export default function SuperAdminDashboard() {
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${app.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' :
-                            app.status === 'REJECTED' ? 'bg-red-50 text-red-600' :
-                              'bg-amber-50 text-amber-600'
+                              app.status === 'REJECTED' ? 'bg-red-50 text-red-600' :
+                                'bg-amber-50 text-amber-600'
                             }`}>
                             <div className={`h-1.5 w-1.5 rounded-full ${app.status === 'APPROVED' ? 'bg-emerald-500' :
-                              app.status === 'REJECTED' ? 'bg-red-500' :
-                                'bg-amber-500'
+                                app.status === 'REJECTED' ? 'bg-red-500' :
+                                  'bg-amber-500'
                               }`} />
                             {app.status || 'PENDING'}
                           </span>

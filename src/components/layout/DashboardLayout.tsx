@@ -116,11 +116,10 @@ export function DashboardLayout() {
                                 Accredited Journalists
                             </NavLink>
                         )}
-
-                        {/* Invitation Letters */}
-                        {checkPermission('application:view:approved') && (
+                                {/* Workflow Builder - 'workflow:config:view' */}
+                        {checkPermission('workflow:config:view') && (
                             <NavLink
-                                to={`${basePath}/invitations`}
+                                to={`${basePath}/workflow`}
                                 className={({ isActive }) =>
                                     cn(
                                         "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
@@ -130,8 +129,43 @@ export function DashboardLayout() {
                                     )
                                 }
                             >
-                                <Mail className="h-5 w-5" />
-                                Invitation Letters
+                                <GitMerge className="h-5 w-5" />
+                                Workflow Builder
+                            </NavLink>
+                        )}
+     {/* Permissions - 'permission:matrix:view' */}
+                        {checkPermission('permission:matrix:view') && (
+                            <NavLink
+                                to={`${basePath}/permissions`}
+                                className={({ isActive }) =>
+                                    cn(
+                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                        isActive
+                                            ? "bg-[#e6f4ea] text-primary"
+                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                    )
+                                }
+                            >
+                                <ShieldAlert className="h-5 w-5" />
+                                Permissions
+                            </NavLink>
+                        )}
+                
+                  {/* Form Builder - 'form:view:all' */}
+                        {checkPermission('form:view:all') && (
+                            <NavLink
+                                to={`${basePath}/form-builder`}
+                                className={({ isActive }) =>
+                                    cn(
+                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                        isActive
+                                            ? "bg-[#e6f4ea] text-primary"
+                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                    )
+                                }
+                            >
+                                <FileText className="h-5 w-5" />
+                                Form Builder
                             </NavLink>
                         )}
 
@@ -153,42 +187,8 @@ export function DashboardLayout() {
                             </NavLink>
                         )}
 
-                        {/* Email Templates */}
-                        {(user?.role === UserRole.SUPER_ADMIN) && (
-                            <NavLink
-                                to={`${basePath}/email-templates`}
-                                className={({ isActive }) =>
-                                    cn(
-                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                        isActive
-                                            ? "bg-[#e6f4ea] text-primary"
-                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                    )
-                                }
-                            >
-                                <Mail className="h-5 w-5" />
-                                Email Templates
-                            </NavLink>
-                        )}
 
-                        {/* Form Builder - 'form:view:all' */}
-                        {checkPermission('form:view:all') && (
-                            <NavLink
-                                to={`${basePath}/form-builder`}
-                                className={({ isActive }) =>
-                                    cn(
-                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                        isActive
-                                            ? "bg-[#e6f4ea] text-primary"
-                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                    )
-                                }
-                            >
-                                <FileText className="h-5 w-5" />
-                                Form Builder
-                            </NavLink>
-                        )}
-
+      
                         {/* Organizations - 'organization:view:all' */}
                         {checkPermission('organization:view:all') && (
                             <NavLink
@@ -225,10 +225,14 @@ export function DashboardLayout() {
                             </NavLink>
                         )}
 
-                        {/* Workflow Builder - 'workflow:config:view' */}
-                        {checkPermission('workflow:config:view') && (
+                
+
+                   
+
+                        {/* Email Templates */}
+                        {(user?.role === UserRole.SUPER_ADMIN) && (
                             <NavLink
-                                to={`${basePath}/workflow`}
+                                to={`${basePath}/email-templates`}
                                 className={({ isActive }) =>
                                     cn(
                                         "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
@@ -238,29 +242,10 @@ export function DashboardLayout() {
                                     )
                                 }
                             >
-                                <GitMerge className="h-5 w-5" />
-                                Workflow Builder
+                                <Mail className="h-5 w-5" />
+                                Email Templates
                             </NavLink>
                         )}
-
-                        {/* Permissions - 'permission:matrix:view' */}
-                        {checkPermission('permission:matrix:view') && (
-                            <NavLink
-                                to={`${basePath}/permissions`}
-                                className={({ isActive }) =>
-                                    cn(
-                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                        isActive
-                                            ? "bg-[#e6f4ea] text-primary"
-                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                    )
-                                }
-                            >
-                                <ShieldAlert className="h-5 w-5" />
-                                Permissions
-                            </NavLink>
-                        )}
-
                         {/* Badge Templates */}
                         {user?.role === UserRole.SUPER_ADMIN && (
                             <NavLink
@@ -296,7 +281,23 @@ export function DashboardLayout() {
                                 Invitation Templates
                             </NavLink>
                         )}
-
+        {/* Invitation Letters */}
+                        {checkPermission('application:view:approved') && (
+                            <NavLink
+                                to={`${basePath}/invitations`}
+                                className={({ isActive }) =>
+                                    cn(
+                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                        isActive
+                                            ? "bg-[#e6f4ea] text-primary"
+                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                    )
+                                }
+                            >
+                                <Mail className="h-5 w-5" />
+                                Invitation Letters
+                            </NavLink>
+                        )}
                         {/* System Settings */}
                         {user?.role === UserRole.SUPER_ADMIN && (
                             <NavLink
