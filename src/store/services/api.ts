@@ -505,10 +505,8 @@ export interface UsersResponse {
     };
 }
 
-<<<<<<< HEAD
 // export const FILE_BASE_URL = 'https://cw761gt5-3000.uks1.devtunnels.ms';
 export const FILE_BASE_URL = 'http://localhost:3000';
-=======
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -516,7 +514,6 @@ export interface SuperAdminMetric {
     trend: 'up' | 'down';
     label: string;
 }
->>>>>>> 63ab575adcc24b9d998ddc40c4478274356a3c7d
 
 export interface SuperAdminOverview {
     totalApplications: SuperAdminMetric;
@@ -619,7 +616,7 @@ export interface AdminAnalyticsResponse {
 }
 
 // export const FILE_BASE_URL = 'http://localhost:5000';
-export const FILE_BASE_URL = 'https://cw761gt5-3000.uks1.devtunnels.ms';
+// export const FILE_BASE_URL = 'https://cw761gt5-3000.uks1.devtunnels.ms';
 export const getFileUrl = (path?: string | null): string => {
     if (!path) {
         console.log('[getFileUrl] empty path:', path);
@@ -675,7 +672,7 @@ export const api = createApi({
     tagTypes: ['Role', 'Permission', 'Category', 'Application', 'Organization', 'User', 'EmailTemplate', 'LandingPage', 'Workflow', 'Badge', 'Invitation'],
     endpoints: (builder) => ({
         login: builder.mutation<LoginResponse, any>({
-            query: (credentials) => ({
+            query: (credentials: any) => ({
                 url: '/auth/login',
                 method: 'POST',
                 body: credentials,
