@@ -250,6 +250,24 @@ export function DashboardLayout() {
                             </NavLink>
                         )}
 
+                        {/* Badge Center */}
+                        {user?.role === UserRole.SUPER_ADMIN && (
+                            <NavLink
+                                to={`${basePath}/badge-center`}
+                                className={({ isActive }) =>
+                                    cn(
+                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                        isActive
+                                            ? "bg-[#e6f4ea] text-primary"
+                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                    )
+                                }
+                            >
+                                <LayoutDashboard className="h-5 w-5" />
+                                Badge Center
+                            </NavLink>
+                        )}
+
                         {/* Invitation Center */}
                         {checkPermission('application:view:approved') && (
                             <NavLink

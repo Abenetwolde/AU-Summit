@@ -286,6 +286,54 @@ export interface BadgeTemplate {
     updatedAt: string;
 }
 
+// Badge Configurations
+export interface BadgeConfig {
+    id: number;
+    name: string;
+    templateId: number;
+    template?: BadgeTemplate;
+    logoUrl: string | null;
+    headerUrl: string | null;
+    primaryColor: string;
+    secondaryColor: string;
+    qrSize: number;
+    qrX: number;
+    qrY: number;
+    layoutConfig: string | null;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateBadgeConfigPayload {
+    name: string;
+    templateId: number;
+    logoUrl?: string;
+    headerUrl?: string;
+    primaryColor?: string;
+    secondaryColor?: string;
+    qrSize?: number;
+    qrX?: number;
+    qrY?: number;
+    layoutConfig?: string;
+    isActive?: boolean;
+}
+
+export interface BadgeProfile {
+    id: number;
+    userHash: string;
+    applicationId: number;
+    application?: Application;
+    fullName: string;
+    organization: string;
+    title: string;
+    photoUrl: string | null;
+    expiryDate: string | null;
+    metadata: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
 // Invitation Templates
 export interface InvitationTemplate {
     id: number;
@@ -1065,6 +1113,52 @@ export const api = createApi({
             transformResponse: (response: any) => response.data || response,
             providesTags: ['Invitation'],
         }),
+        // Badge Configurations
+        getBadgeConfigs: builder.query<BadgeConfig[], void>({
+            query: () => '/badges/configs',
+            transformResponse: (response: any) => response.data || response,
+            providesTags: ['Badge'],
+        }),
+        getBadgeConfigById: builder.query<BadgeConfig, number>({
+            query: (id) => `/badges/configs/${id}`,
+            transformResponse: (response: any) => response.data || response,
+            providesTags: (result, error, id) => [{ type: 'Badge', id }],
+        }),
+        createBadgeConfig: builder.mutation<BadgeConfig, CreateBadgeConfigPayload>({
+            query: (payload) => ({
+                url: '/badges/configs',
+                method: 'POST',
+                body: payload,
+            }),
+            invalidatesTags: ['Badge'],
+        }),
+        updateBadgeConfig: builder.mutation<BadgeConfig, { id: number; data: Partial<CreateBadgeConfigPayload> }>({
+            query: ({ id, data }) => ({
+                url: `/badges/configs/${id}`,
+                method: 'PUT',
+                body: data,
+            }),
+            invalidatesTags: ['Badge'],
+        }),
+        deleteBadgeConfig: builder.mutation<void, number>({
+            query: (id) => ({
+                url: `/badges/configs/${id}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: ['Badge'],
+        }),
+        getBadgeProfileByHash: builder.query<BadgeProfile, string>({
+            query: (hash) => `/badges/profile/${hash}`,
+            transformResponse: (response: any) => response.data || response,
+        }),
+        bulkGenerateBadges: builder.mutation<Blob, { applicationIds: number[]; configId?: number }>({
+            query: (body) => ({
+                url: '/badges/bulk',
+                method: 'POST',
+                body,
+                responseHandler: (response) => response.blob(),
+            }),
+        }),
     }),
 });
 
@@ -1134,6 +1228,14 @@ export const {
     useDeleteLetterConfigMutation,
     useBulkSendInvitationsMutation,
     useGetSentInvitationLogsQuery,
+    // Badge Config Hooks
+    useGetBadgeConfigsQuery,
+    useGetBadgeConfigByIdQuery,
+    useCreateBadgeConfigMutation,
+    useUpdateBadgeConfigMutation,
+    useDeleteBadgeConfigMutation,
+    useGetBadgeProfileByHashQuery,
+    useBulkGenerateBadgesMutation,
     // Dashboard Hooks
     useGetDashboardFormsQuery,
     useGetDashboardDataQuery,

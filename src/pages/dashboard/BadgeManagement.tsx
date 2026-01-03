@@ -6,7 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CountrySelect } from '@/components/ui/country-select';
 import { getFlagEmoji } from '@/lib/utils';
 import en from 'react-phone-number-input/locale/en';
-import { useGetApprovedApplicationsQuery, FILE_BASE_URL } from '@/store/services/api';
+import { useGetApprovedApplicationsQuery, useBulkGenerateBadgesMutation, FILE_BASE_URL } from '@/store/services/api';
+import { toast } from 'sonner';
 
 export function BadgeManagement() {
     const navigate = useNavigate();
@@ -15,11 +16,12 @@ export function BadgeManagement() {
     const [selectedJournalists, setSelectedJournalists] = useState<number[]>([]);
     const [page, setPage] = useState(1);
 
-    const { data, isLoading } = useGetApprovedApplicationsQuery({ page, limit: 10 });
+    const { data: approvedData, isLoading } = useGetApprovedApplicationsQuery({ page, limit: 10 });
+    const [bulkGenerate] = useBulkGenerateBadgesMutation();
 
     const countryName = (code: string) => en[code as keyof typeof en] || code;
 
-    const filteredData = (data?.applications || []).filter(app => {
+    const filteredData = (approvedData?.applications || []).filter(app => {
         const fullname = app.user?.fullName?.toLowerCase() || '';
         const passport = app.formData?.passport_number?.toLowerCase() || '';
         return (fullname.includes(searchTerm.toLowerCase()) || passport.includes(searchTerm.toLowerCase())) &&
@@ -37,10 +39,25 @@ export function BadgeManagement() {
         window.open(url, '_blank');
     };
 
-    const handlePrintSelected = () => {
-        // For bulk print, we might need a different endpoint or just open multiple tabs (less ideal)
-        // For now, let's just log or implement a sequential open
-        selectedJournalists.forEach(id => handlePrint(id));
+    const handlePrintSelected = async () => {
+        if (selectedJournalists.length === 0) return;
+
+        const toastId = toast.loading(`Generating badges for ${selectedJournalists.length} individuals...`);
+        try {
+            const blob = await bulkGenerate({ applicationIds: selectedJournalists }).unwrap();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Bulk_Badges_${new Date().toISOString().split('T')[0]}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            toast.success('Badges generated successfully', { id: toastId });
+        } catch (err) {
+            console.error('Bulk generation failed:', err);
+            toast.error('Failed to generate bulk badges', { id: toastId });
+        }
     };
 
     if (isLoading) return <div className="p-8 text-center">Loading approved personnel...</div>;
@@ -67,7 +84,7 @@ export function BadgeManagement() {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-gray-600">Total Approved</p>
-                            <p className="text-2xl font-bold text-gray-900">{data?.total || 0}</p>
+                            <p className="text-2xl font-bold text-gray-900">{approvedData?.total || 0}</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -79,7 +96,7 @@ export function BadgeManagement() {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-gray-600">Available to Print</p>
-                            <p className="text-2xl font-bold text-gray-900">{data?.applications?.filter(a => !a.entranceBadgeIssued).length || 0}</p>
+                            <p className="text-2xl font-bold text-gray-900">{approvedData?.applications?.filter(a => !a.entranceBadgeIssued).length || 0}</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -91,7 +108,7 @@ export function BadgeManagement() {
                         </div>
                         <div>
                             <p className="text-sm font-medium text-gray-600">Badges Issued</p>
-                            <p className="text-2xl font-bold text-gray-900">{data?.applications?.filter(a => a.entranceBadgeIssued).length || 0}</p>
+                            <p className="text-2xl font-bold text-gray-900">{approvedData?.applications?.filter(a => a.entranceBadgeIssued).length || 0}</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -250,11 +267,11 @@ export function BadgeManagement() {
                     >
                         Previous
                     </Button>
-                    <span className="text-sm font-medium">Page {page} of {data?.totalPages || 1}</span>
+                    <span className="text-sm font-medium">Page {page} of {approvedData?.totalPages || 1}</span>
                     <Button
                         variant="outline"
                         size="sm"
-                        disabled={page >= (data?.totalPages || 1)}
+                        disabled={page >= (approvedData?.totalPages || 1)}
                         onClick={() => setPage(p => p + 1)}
                     >
                         Next

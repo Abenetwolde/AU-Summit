@@ -7,7 +7,6 @@ import { Login } from './pages/auth/Login';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { JournalistList } from './pages/dashboard/JournalistList';
 import { AccreditedJournalists } from './pages/dashboard/AccreditedJournalists';
-// import { SuperAdminDashboard } from './pages/dashboard/SuperAdminDashboard';
 import { JournalistProfile } from './pages/dashboard/JournalistProfile';
 import { BadgeManagement } from './pages/dashboard/BadgeManagement';
 import { BadgeSlipPreview } from './pages/dashboard/BadgeSlipPreview';
@@ -20,6 +19,8 @@ import { SystemSettings } from './pages/dashboard/SystemSettings';
 import { PermissionManagement } from './pages/dashboard/PermissionManagement';
 import { RoleManagement } from './pages/dashboard/RoleManagement';
 import { InvitationCenter } from './pages/dashboard/invitations/InvitationCenter';
+import { BadgeCenter } from './pages/dashboard/badges/BadgeCenter';
+import { PublicProfile } from './pages/public/PublicProfile';
 import { Toaster } from 'sonner';
 
 import { useEffect } from 'react';
@@ -41,9 +42,9 @@ function App() {
                         <Toaster position="top-right" richColors />
                         <Routes>
                             <Route path="/login" element={<Login />} />
+                            <Route path="/badge-profile/:hash" element={<PublicProfile />} />
 
                             {/* Main Unified Dashboard Route */}
-                            {/* Accessible to all authenticated users with valid roles */}
                             <Route element={<ProtectedRoute allowedRoles={Object.values(UserRole)} />}>
                                 <Route path="/dashboard" element={<DashboardLayout />}>
                                     <Route index element={<Navigate to="admin" replace />} />
@@ -54,7 +55,7 @@ function App() {
                                     <Route path="journalists/:id" element={<JournalistProfile />} />
                                     <Route path="accredited" element={<AccreditedJournalists />} />
 
-                                    {/* Admin Features (Gated by permissions internally or sidebar) */}
+                                    {/* Admin Features */}
                                     <Route path="users" element={<UserManagement />} />
                                     <Route path="email-templates" element={<EmailTemplates />} />
 
@@ -70,6 +71,7 @@ function App() {
                                     <Route path="workflow" element={<WorkflowBuilder />} />
                                     <Route path="permissions" element={<PermissionManagement />} />
                                     <Route path="roles" element={<RoleManagement />} />
+                                    <Route path="badge-center" element={<BadgeCenter />} />
 
                                     {/* AU Admin Specific */}
                                     <Route path="badge-management" element={<BadgeManagement />} />
