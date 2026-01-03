@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import {
     Mail,
     Plus,
-    Pencil,
     Trash2,
     Eye,
     X,
@@ -60,6 +59,7 @@ export function EmailTemplates() {
             emailSubject: '',
             emailContent: '',
             description: '',
+            type: 'APPROVED',
             dynamicVariables: []
         });
         setAttachmentFile(null);
@@ -104,6 +104,7 @@ export function EmailTemplates() {
         formData.append('templateName', editingTemplate.templateName);
         formData.append('emailSubject', editingTemplate.emailSubject);
         formData.append('emailContent', editingTemplate.emailContent);
+        if (editingTemplate.type) formData.append('type', editingTemplate.type);
         if (editingTemplate.description) formData.append('description', editingTemplate.description);
 
         // Handle dynamic variables (extract from content or use explicit list)
@@ -176,9 +177,19 @@ export function EmailTemplates() {
                         <CardHeader className="pb-3 flex flex-row items-start justify-between">
                             <div className="space-y-1">
                                 <CardTitle className="text-lg font-bold text-gray-900">{template.templateName}</CardTitle>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                                    Last Updated: {new Date(template.updatedAt).toLocaleDateString()}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                                        Last Updated: {new Date(template.updatedAt).toLocaleDateString()}
+                                    </p>
+                                    {template.type && (
+                                        <span className={cn(
+                                            "text-[10px] font-black px-2 py-0.5 rounded-full",
+                                            template.type === 'APPROVED' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                                        )}>
+                                            {template.type}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                             <div className="flex flex-col items-end gap-2">
                                 <div className={cn(
@@ -374,18 +385,30 @@ export function EmailTemplates() {
                                         </div>
 
                                         {isPreviewMode ? (
-                                            <div className="min-h-[250px] bg-white border border-gray-200 rounded-xl p-6 shadow-inner text-gray-700 leading-relaxed overflow-y-auto">
+                                            <div className="min-h-[300px] bg-white border border-gray-200 rounded-xl p-6 shadow-inner text-gray-700 leading-relaxed overflow-y-auto">
                                                 {renderPreview(editingTemplate.emailContent || '')}
                                             </div>
                                         ) : (
-                                            <div className="relative">
-                                                <textarea
-                                                    value={editingTemplate.emailContent || ''}
-                                                    onChange={(e) => setEditingTemplate({ ...editingTemplate, emailContent: e.target.value })}
-                                                    placeholder="Type your email content here. Use {{personName}}, {{status}}, etc. for dynamic data."
-                                                    readOnly={isReadOnly}
-                                                    className="w-full min-h-[250px] p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm leading-relaxed"
+                                            <div className="relative group">
+                                                <div
+                                                    contentEditable={!isReadOnly}
+                                                    onBlur={(e) => {
+                                                        const html = e.currentTarget.innerHTML;
+                                                        setEditingTemplate({ ...editingTemplate, emailContent: html });
+                                                    }}
+                                                    dangerouslySetInnerHTML={{ __html: editingTemplate.emailContent || '' }}
+                                                    className={cn(
+                                                        "w-full min-h-[300px] p-6 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm leading-relaxed overflow-y-auto transition-all",
+                                                        !isReadOnly && "hover:border-blue-300 cursor-text shadow-sm"
+                                                    )}
                                                 />
+                                                {!isReadOnly && (
+                                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-md border border-blue-100">
+                                                            VISUAL EDITOR ACTIVE
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>

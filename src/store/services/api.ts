@@ -161,6 +161,7 @@ export interface EmailTemplate {
     emailContent: string;
     dynamicVariables: string[] | string; // API might return stringified JSON or array
     attachmentUrl: string | null;
+    type: 'APPROVED' | 'REJECTED' | null;
     isDefault: boolean;
     createdAt: string;
     updatedAt: string;
