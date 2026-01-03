@@ -299,6 +299,45 @@ export interface InvitationTemplate {
     updatedAt: string;
 }
 
+export interface LetterConfig {
+    id: number;
+    name: string;
+    description?: string;
+    templateId: number;
+    template?: InvitationTemplate;
+    logoUrl?: string;
+    headerText?: string;
+    paragraphs: string[];
+    footerText?: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateLetterConfigPayload {
+    name: string;
+    description?: string;
+    templateId: number;
+    logoUrl?: string;
+    headerText?: string;
+    paragraphs: string[];
+    footerText?: string;
+    isActive?: boolean;
+}
+
+export interface SentInvitationLog {
+    id: number;
+    userId: number;
+    user?: User;
+    configId: number;
+    config?: LetterConfig;
+    recipientEmail: string;
+    status: 'pending' | 'sent' | 'failed';
+    sentAt?: string;
+    errorMessage?: string;
+    createdAt: string;
+}
+
 export interface CreateInvitationTemplatePayload {
     name: string;
     description?: string;
@@ -948,6 +987,11 @@ export const api = createApi({
             transformResponse: (response: any) => response.data || response,
             providesTags: ['Invitation'],
         }),
+        getInvitationTemplateById: builder.query<InvitationTemplate, number>({
+            query: (id) => `/invitations/templates/${id}`,
+            transformResponse: (response: any) => response.data || response,
+            providesTags: (result, error, id) => [{ type: 'Invitation', id }],
+        }),
         createInvitationTemplate: builder.mutation<InvitationTemplate, CreateInvitationTemplatePayload>({
             query: (payload) => ({
                 url: '/invitations/templates',
@@ -970,6 +1014,56 @@ export const api = createApi({
                 method: 'DELETE',
             }),
             invalidatesTags: ['Invitation'],
+        }),
+
+        // LetterConfig Endpoints
+        getLetterConfigs: builder.query<LetterConfig[], void>({
+            query: () => '/invitations/configs',
+            transformResponse: (response: any) => response.data || response,
+            providesTags: ['Invitation'],
+        }),
+        getLetterConfigById: builder.query<LetterConfig, number>({
+            query: (id) => `/invitations/configs/${id}`,
+            transformResponse: (response: any) => response.data || response,
+            providesTags: (result, error, id) => [{ type: 'Invitation', id }],
+        }),
+        createLetterConfig: builder.mutation<LetterConfig, CreateLetterConfigPayload>({
+            query: (payload) => ({
+                url: '/invitations/configs',
+                method: 'POST',
+                body: payload,
+            }),
+            invalidatesTags: ['Invitation'],
+        }),
+        updateLetterConfig: builder.mutation<LetterConfig, { id: number; data: Partial<CreateLetterConfigPayload> }>({
+            query: ({ id, data }) => ({
+                url: `/invitations/configs/${id}`,
+                method: 'PUT',
+                body: data,
+            }),
+            invalidatesTags: ['Invitation'],
+        }),
+        deleteLetterConfig: builder.mutation<void, number>({
+            query: (id) => ({
+                url: `/invitations/configs/${id}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: ['Invitation'],
+        }),
+
+        // Bulk Sending
+        bulkSendInvitations: builder.mutation<any, { configId: number; users: any[] }>({
+            query: (payload) => ({
+                url: '/invitations/bulk-send',
+                method: 'POST',
+                body: payload,
+            }),
+            invalidatesTags: ['Invitation'],
+        }),
+        getSentInvitationLogs: builder.query<SentInvitationLog[], void>({
+            query: () => '/invitations/sent-logs', // You might need to add this route to backend if not exists
+            transformResponse: (response: any) => response.data || response,
+            providesTags: ['Invitation'],
         }),
     }),
 });
@@ -1031,6 +1125,15 @@ export const {
     useCreateInvitationTemplateMutation,
     useUpdateInvitationTemplateMutation,
     useDeleteInvitationTemplateMutation,
+    useGetInvitationTemplateByIdQuery,
+    // LetterConfig Hooks
+    useGetLetterConfigsQuery,
+    useGetLetterConfigByIdQuery,
+    useCreateLetterConfigMutation,
+    useUpdateLetterConfigMutation,
+    useDeleteLetterConfigMutation,
+    useBulkSendInvitationsMutation,
+    useGetSentInvitationLogsQuery,
     // Dashboard Hooks
     useGetDashboardFormsQuery,
     useGetDashboardDataQuery,

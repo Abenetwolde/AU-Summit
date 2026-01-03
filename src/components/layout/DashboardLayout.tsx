@@ -1,15 +1,9 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth, UserRole } from '@/auth/context';
 import { cn } from '@/lib/utils';
-import { LogOut, User, LayoutDashboard, BadgeCheck, Users, Mail, MailOpen, FileText, Settings, Building2, GitMerge, ShieldAlert, Shield } from 'lucide-react';
+import { LogOut, User, LayoutDashboard, BadgeCheck, Users, Mail, FileText, Settings, Building2, GitMerge, ShieldAlert, Shield } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import emmpaLogo from '@/assests/emmpa.png';
-import icsLogo from '@/assests/ics.png';
-import nissLogo from '@/assests/niss.png';
-import insaLogo from '@/assests/insa.png';
-import customsLogo from '@/assests/customs.png';
-import auLogo from '@/assests/au.png';
 
 export function DashboardLayout() {
     const { user, logout, checkPermission } = useAuth();
@@ -26,14 +20,6 @@ export function DashboardLayout() {
 
     const basePath = getBasePath();
 
-    const getLogo = () => {
-        if (user?.role === UserRole.ICS_OFFICER) return icsLogo;
-        if (user?.role === UserRole.NISS_OFFICER) return nissLogo;
-        if (user?.role === UserRole.INSA_OFFICER) return insaLogo;
-        if (user?.role === UserRole.CUSTOMS_OFFICER) return customsLogo;
-        if (user?.role === UserRole.AU_ADMIN) return auLogo;
-        return emmpaLogo;
-    };
 
     const getTitle = () => {
         if (user?.roleName) return user.roleName;
@@ -264,24 +250,7 @@ export function DashboardLayout() {
                             </NavLink>
                         )}
 
-                        {/* Invitation Templates */}
-                        {user?.role === UserRole.SUPER_ADMIN && (
-                            <NavLink
-                                to={`${basePath}/invitation-templates`}
-                                className={({ isActive }) =>
-                                    cn(
-                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                        isActive
-                                            ? "bg-[#e6f4ea] text-primary"
-                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                    )
-                                }
-                            >
-                                <MailOpen className="h-5 w-5" />
-                                Invitation Templates
-                            </NavLink>
-                        )}
-                        {/* Invitation Letters */}
+                        {/* Invitation Center */}
                         {checkPermission('application:view:approved') && (
                             <NavLink
                                 to={`${basePath}/invitations`}
@@ -295,7 +264,7 @@ export function DashboardLayout() {
                                 }
                             >
                                 <Mail className="h-5 w-5" />
-                                Invitation Letters
+                                Invitation Center
                             </NavLink>
                         )}
                         {/* System Settings */}

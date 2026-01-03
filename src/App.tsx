@@ -13,22 +13,20 @@ import { BadgeManagement } from './pages/dashboard/BadgeManagement';
 import { BadgeSlipPreview } from './pages/dashboard/BadgeSlipPreview';
 import { UserManagement } from './pages/dashboard/UserManagement';
 import { EmailTemplates } from './pages/dashboard/EmailTemplates';
-// import { RegistrationFormBuilder } from './pages/dashboard/RegistrationFormBuilder'; // Removed
 import FormList from './pages/dashboard/FormList';
 import { FormEditor } from './pages/dashboard/FormEditor';
 import { BadgeTemplates } from './pages/dashboard/BadgeTemplates';
 import { SystemSettings } from './pages/dashboard/SystemSettings';
-import { OrganizationManagement } from './pages/dashboard/OrganizationManagement';
-import { WorkflowBuilder } from './pages/dashboard/WorkflowBuilder';
 import { PermissionManagement } from './pages/dashboard/PermissionManagement';
 import { RoleManagement } from './pages/dashboard/RoleManagement';
-import { InvitationTemplates } from './pages/dashboard/InvitationTemplates';
-import { InvitationManagement } from './pages/dashboard/InvitationManagement';
+import { InvitationCenter } from './pages/dashboard/invitations/InvitationCenter';
 import { Toaster } from 'sonner';
 
 import { useEffect } from 'react';
 import { initEmailJS } from './lib/emailService';
 import SuperAdminDashboard from './pages/dashboard/SuperAdminDashboard';
+import { OrganizationManagement } from './pages/dashboard/OrganizationManagement';
+import { WorkflowBuilder } from './pages/dashboard/WorkflowBuilder';
 
 function App() {
     useEffect(() => {
@@ -68,8 +66,7 @@ function App() {
                                     <Route path="badge-templates" element={<BadgeTemplates />} />
                                     <Route path="settings" element={<SystemSettings />} />
                                     <Route path="organizations" element={<OrganizationManagement />} />
-                                    <Route path="invitation-templates" element={<InvitationTemplates />} />
-                                    <Route path="invitations" element={<InvitationManagement />} />
+                                    <Route path="invitations" element={<InvitationCenter />} />
                                     <Route path="workflow" element={<WorkflowBuilder />} />
                                     <Route path="permissions" element={<PermissionManagement />} />
                                     <Route path="roles" element={<RoleManagement />} />
