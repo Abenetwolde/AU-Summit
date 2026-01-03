@@ -9,6 +9,7 @@ import { Save, Plus, Trash2, Eye, EyeOff, Loader2, Upload, GripVertical, Image a
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import {
     useGetLandingPageSettingsQuery,
     useCreateLandingPageSettingsMutation,
@@ -32,7 +33,7 @@ interface SystemSettingsForm {
     contactEmail: string;
     contactLink: string;
     languages: Language[];
-
+    heroBackgroundUrls: string[];
 }
 
 const DEFAULT_SETTINGS: SystemSettingsForm = {
@@ -47,6 +48,7 @@ const DEFAULT_SETTINGS: SystemSettingsForm = {
         { code: 'en', name: 'English', flagEmoji: '🇺🇸', enabled: true },
         { code: 'fr', name: 'Français', flagEmoji: '🇫🇷', enabled: true },
     ],
+    heroBackgroundUrls: [],
 };
 
 export function SystemSettings() {
@@ -61,7 +63,7 @@ export function SystemSettings() {
     // File inputs state
     const [mainLogo, setMainLogo] = useState<File | null>(null);
     const [footerLogo, setFooterLogo] = useState<File | null>(null);
-    const [heroBackground, setHeroBackground] = useState<File | null>(null);
+    const [newHeroFiles, setNewHeroFiles] = useState<File[]>([]);
 
     // Sync API data to local state
     useEffect(() => {
@@ -77,9 +79,7 @@ export function SystemSettings() {
                 languages: apiSettings.languages && apiSettings.languages.length > 0
                     ? apiSettings.languages.map(l => ({ ...l, enabled: true }))
                     : DEFAULT_SETTINGS.languages,
-                languages: apiSettings.languages && apiSettings.languages.length > 0
-                    ? apiSettings.languages.map(l => ({ ...l, enabled: true }))
-                    : DEFAULT_SETTINGS.languages,
+                heroBackgroundUrls: apiSettings.heroBackgroundUrls || [],
             });
         }
     }, [apiSettings]);
@@ -108,7 +108,16 @@ export function SystemSettings() {
 
         if (mainLogo) formData.append('mainLogo', mainLogo);
         if (footerLogo) formData.append('footerLogo', footerLogo);
-        if (heroBackground) formData.append('heroBackgroundUrl', heroBackground);
+
+        // Handle Hero Background Gallery
+        // Filter out temporary blob URLs (they represent new files)
+        const existingUrls = settings.heroBackgroundUrls.filter(url => !url.startsWith('blob:'));
+        formData.append('heroBackgroundUrls', JSON.stringify(existingUrls));
+
+        // Append new files
+        newHeroFiles.forEach(file => {
+            formData.append('heroBackgroundUrl', file);
+        });
 
         // Append Languages as JSON string
         formData.append('languages', JSON.stringify(settings.languages));
@@ -119,7 +128,7 @@ export function SystemSettings() {
             toast.success("Settings saved successfully");
             setMainLogo(null);
             setFooterLogo(null);
-            setHeroBackground(null);
+            setNewHeroFiles([]);
         } catch (error: any) {
             console.error(error);
             toast.error("Failed to save settings: " + (error?.data?.message || error.message));
@@ -216,7 +225,7 @@ export function SystemSettings() {
                             <CardDescription>Upload organization logos and backgrounds.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                 <div className="space-y-2">
                                     <Label>Main Logo</Label>
                                     <div
@@ -270,32 +279,90 @@ export function SystemSettings() {
                                     </div>
                                     <p className="text-xs text-center text-muted-foreground">Footer / Partner Logo</p>
                                 </div>
+                            </div>
 
-                                <div className="space-y-2">
-                                    <Label>Hero Background</Label>
-                                    <div
-                                        className="border-2 border-dashed border-gray-200 rounded-lg p-6 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 transition-colors cursor-pointer relative overflow-hidden h-40"
-                                        onClick={() => document.getElementById('heroBgInput')?.click()}
-                                    >
-                                        {heroBackground ? (
-                                            <div className="text-center">
-                                                <div className="mx-auto h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center mb-2">
-                                                    <Upload className="h-6 w-6 text-blue-600" />
-                                                </div>
-                                                <p className="text-xs text-gray-500 truncate max-w-[150px]">{heroBackground.name}</p>
-                                            </div>
-                                        ) : apiSettings?.heroBackgroundUrl ? (
+                            <Separator />
+
+                            <div className="space-y-4 pt-4">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-base font-bold">Hero Background Gallery</Label>
+                                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100">
+                                        {settings.heroBackgroundUrls?.length || 0} / 5 Images
+                                    </Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Upload up to 5 high-quality images for the hero section background.
+                                </p>
+
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
+                                    {/* Existing Images */}
+                                    {settings.heroBackgroundUrls?.map((url, index) => (
+                                        <div key={index} className="group relative aspect-video rounded-xl overflow-hidden border bg-slate-100 shadow-sm hover:shadow-md transition-all">
                                             <img
-                                                src={getFileUrl(apiSettings.heroBackgroundUrl)}
-                                                alt="Hero Background"
-                                                className="h-full w-full object-cover rounded-md"
+                                                src={url}
+                                                alt={`Hero ${index + 1}`}
+                                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
                                             />
-                                        ) : (
-                                            <ImageIcon className="h-8 w-8 text-gray-300" />
-                                        )}
-                                        <Input id="heroBgInput" type="file" className="hidden" accept="image/*,video/*" onChange={(e) => setHeroBackground(e.target.files?.[0] || null)} />
-                                    </div>
-                                    <p className="text-xs text-center text-muted-foreground">Main Banner Image/Video</p>
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                <Button
+                                                    variant="destructive"
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-full shadow-lg"
+                                                    onClick={() => {
+                                                        setSettings(prev => ({
+                                                            ...prev,
+                                                            heroBackgroundUrls: prev.heroBackgroundUrls.filter((_, i) => i !== index)
+                                                        }));
+                                                    }}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                            <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-md rounded text-[10px] text-white font-bold">
+                                                #{index + 1}
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {/* Dropzone for New Images */}
+                                    {(settings.heroBackgroundUrls?.length || 0) < 5 && (
+                                        <div
+                                            onClick={() => document.getElementById('heroGalleryInput')?.click()}
+                                            className="aspect-video rounded-xl border-2 border-dashed border-slate-200 hover:border-primary/50 hover:bg-primary/5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all group"
+                                        >
+                                            <div className="h-8 w-8 rounded-full bg-slate-100 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                                                <Plus className="h-4 w-4 text-slate-400 group-hover:text-primary" />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Add Image</span>
+                                            <Input
+                                                id="heroGalleryInput"
+                                                type="file"
+                                                multiple
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const files = Array.from(e.target.files || []);
+                                                    const remaining = 5 - (settings.heroBackgroundUrls?.length || 0);
+                                                    const toAdd = files.slice(0, remaining);
+
+                                                    if (files.length > remaining) {
+                                                        toast.warning(`You can only add ${remaining} more images.`);
+                                                    }
+
+                                                    // Store actual files in state if needed, or just handle URLs for now
+                                                    // For simplicity, we'll store them in a temporary 'newHeroFiles' state
+                                                    setNewHeroFiles(prev => [...prev, ...toAdd]);
+
+                                                    // Create temporary preview URLs
+                                                    const newPreviews = toAdd.map(f => URL.createObjectURL(f));
+                                                    setSettings(prev => ({
+                                                        ...prev,
+                                                        heroBackgroundUrls: [...(prev.heroBackgroundUrls || []), ...newPreviews]
+                                                    }));
+                                                }}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </CardContent>

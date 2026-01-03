@@ -174,6 +174,7 @@ export interface LandingPageSettings {
     mainLogoUrl: string | null;
     footerLogoUrl: string | null;
     heroBackgroundUrl: string | null;
+    heroBackgroundUrls: string[];
     deadlineDate: string | null;
     privacyPolicyContent: string;
     contactEmail: string;
