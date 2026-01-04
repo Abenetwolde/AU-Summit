@@ -7,26 +7,26 @@ import { Login } from './pages/auth/Login';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { JournalistList } from './pages/dashboard/JournalistList';
 import { AccreditedJournalists } from './pages/dashboard/AccreditedJournalists';
-// import { SuperAdminDashboard } from './pages/dashboard/SuperAdminDashboard';
 import { JournalistProfile } from './pages/dashboard/JournalistProfile';
 import { BadgeManagement } from './pages/dashboard/BadgeManagement';
 import { BadgeSlipPreview } from './pages/dashboard/BadgeSlipPreview';
 import { UserManagement } from './pages/dashboard/UserManagement';
 import { EmailTemplates } from './pages/dashboard/EmailTemplates';
-import { RegistrationFormBuilder } from './pages/dashboard/RegistrationFormBuilder';
-import { BadgeTemplates } from './pages/dashboard/BadgeTemplates';
+import FormList from './pages/dashboard/FormList';
+import { FormEditor } from './pages/dashboard/FormEditor';
 import { SystemSettings } from './pages/dashboard/SystemSettings';
-import { OrganizationManagement } from './pages/dashboard/OrganizationManagement';
-import { WorkflowBuilder } from './pages/dashboard/WorkflowBuilder';
 import { PermissionManagement } from './pages/dashboard/PermissionManagement';
 import { RoleManagement } from './pages/dashboard/RoleManagement';
-import { InvitationTemplates } from './pages/dashboard/InvitationTemplates';
-import { InvitationManagement } from './pages/dashboard/InvitationManagement';
+import { InvitationCenter } from './pages/dashboard/invitations/InvitationCenter';
+import { BadgeCenter } from './pages/dashboard/badges/BadgeCenter';
+import { PublicProfile } from './pages/public/PublicProfile';
 import { Toaster } from 'sonner';
 
 import { useEffect } from 'react';
 import { initEmailJS } from './lib/emailService';
-import DashboardIndex from './pages/dashboard/DashboardIndex';
+import SuperAdminDashboard from './pages/dashboard/SuperAdminDashboard';
+import { OrganizationManagement } from './pages/dashboard/OrganizationManagement';
+import { WorkflowBuilder } from './pages/dashboard/WorkflowBuilder';
 
 function App() {
     useEffect(() => {
@@ -41,9 +41,9 @@ function App() {
                         <Toaster position="top-right" richColors />
                         <Routes>
                             <Route path="/login" element={<Login />} />
+                            <Route path="/badge-profile/:hash" element={<PublicProfile />} />
 
                             {/* Main Unified Dashboard Route */}
-                            {/* Accessible to all authenticated users with valid roles */}
                             <Route element={<ProtectedRoute allowedRoles={Object.values(UserRole)} />}>
                                 <Route path="/dashboard" element={<DashboardLayout />}>
                                     <Route index element={<Navigate to="admin" replace />} />
@@ -54,18 +54,22 @@ function App() {
                                     <Route path="journalists/:id" element={<JournalistProfile />} />
                                     <Route path="accredited" element={<AccreditedJournalists />} />
 
-                                    {/* Admin Features (Gated by permissions internally or sidebar) */}
+                                    {/* Admin Features */}
                                     <Route path="users" element={<UserManagement />} />
                                     <Route path="email-templates" element={<EmailTemplates />} />
-                                    <Route path="form-builder" element={<RegistrationFormBuilder />} />
-                                    <Route path="badge-templates" element={<BadgeTemplates />} />
+
+                                    {/* Form Builder Routes */}
+                                    <Route path="forms" element={<FormList />} />
+                                    <Route path="forms/builder" element={<FormEditor />} />
+                                    <Route path="forms/builder/:id" element={<FormEditor />} />
+
                                     <Route path="settings" element={<SystemSettings />} />
                                     <Route path="organizations" element={<OrganizationManagement />} />
-                                    <Route path="invitation-templates" element={<InvitationTemplates />} />
-                                    <Route path="invitations" element={<InvitationManagement />} />
+                                    <Route path="invitations" element={<InvitationCenter />} />
                                     <Route path="workflow" element={<WorkflowBuilder />} />
                                     <Route path="permissions" element={<PermissionManagement />} />
                                     <Route path="roles" element={<RoleManagement />} />
+                                    <Route path="badge-center" element={<BadgeCenter />} />
 
                                     {/* AU Admin Specific */}
                                     <Route path="badge-management" element={<BadgeManagement />} />

@@ -161,6 +161,8 @@ export interface EmailTemplate {
     emailContent: string;
     dynamicVariables: string[] | string; // API might return stringified JSON or array
     attachmentUrl: string | null;
+    type: 'APPROVED' | 'REJECTED' | null;
+    isDefault: boolean;
     createdAt: string;
     updatedAt: string;
 }
@@ -172,6 +174,7 @@ export interface LandingPageSettings {
     mainLogoUrl: string | null;
     footerLogoUrl: string | null;
     heroBackgroundUrl: string | null;
+    heroBackgroundUrls: string[];
     deadlineDate: string | null;
     privacyPolicyContent: string;
     contactEmail: string;
@@ -285,6 +288,54 @@ export interface BadgeTemplate {
     updatedAt: string;
 }
 
+// Badge Configurations
+export interface BadgeConfig {
+    id: number;
+    name: string;
+    templateId: number;
+    template?: BadgeTemplate;
+    logoUrl: string | null;
+    headerUrl: string | null;
+    primaryColor: string;
+    secondaryColor: string;
+    qrSize: number;
+    qrX: number;
+    qrY: number;
+    layoutConfig: string | null;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateBadgeConfigPayload {
+    name: string;
+    templateId: number;
+    logoUrl?: string;
+    headerUrl?: string;
+    primaryColor?: string;
+    secondaryColor?: string;
+    qrSize?: number;
+    qrX?: number;
+    qrY?: number;
+    layoutConfig?: string;
+    isActive?: boolean;
+}
+
+export interface BadgeProfile {
+    id: number;
+    userHash: string;
+    applicationId: number;
+    application?: Application;
+    fullName: string;
+    organization: string;
+    title: string;
+    photoUrl: string | null;
+    expiryDate: string | null;
+    metadata: string | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
 // Invitation Templates
 export interface InvitationTemplate {
     id: number;
@@ -296,6 +347,45 @@ export interface InvitationTemplate {
     isDefault: boolean;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface LetterConfig {
+    id: number;
+    name: string;
+    description?: string;
+    templateId: number;
+    template?: InvitationTemplate;
+    logoUrl?: string;
+    headerText?: string;
+    paragraphs: string[];
+    footerText?: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateLetterConfigPayload {
+    name: string;
+    description?: string;
+    templateId: number;
+    logoUrl?: string;
+    headerText?: string;
+    paragraphs: string[];
+    footerText?: string;
+    isActive?: boolean;
+}
+
+export interface SentInvitationLog {
+    id: number;
+    userId: number;
+    user?: User;
+    configId: number;
+    config?: LetterConfig;
+    recipientEmail: string;
+    status: 'pending' | 'sent' | 'failed';
+    sentAt?: string;
+    errorMessage?: string;
+    createdAt: string;
 }
 
 export interface CreateInvitationTemplatePayload {
@@ -898,6 +988,22 @@ export const api = createApi({
                 body,
             }),
         }),
+        getFormById: builder.query<any, string>({
+            query: (id) => `/forms/${id}`,
+        }),
+        updateForm: builder.mutation<any, { id: number; data: any }>({
+            query: ({ id, data }) => ({
+                url: `/forms/${id}`,
+                method: 'PUT',
+                body: data,
+            }),
+        }),
+        deleteForm: builder.mutation<void, number>({
+            query: (id) => ({
+                url: `/forms/${id}`,
+                method: 'DELETE',
+            }),
+        }),
         // Email Templates
         getEmailTemplates: builder.query<EmailTemplatesResponse['data'], { page?: number; limit?: number } | void>({
             query: (params) => {
@@ -926,6 +1032,13 @@ export const api = createApi({
                 url: `/email-templates/${id}`,
                 method: 'PUT',
                 body: data,
+            }),
+            invalidatesTags: ['EmailTemplate'],
+        }),
+        setDefaultEmailTemplate: builder.mutation<EmailTemplate, number>({
+            query: (id) => ({
+                url: `/email-templates/${id}/default`,
+                method: 'PATCH',
             }),
             invalidatesTags: ['EmailTemplate'],
         }),
@@ -1051,6 +1164,11 @@ export const api = createApi({
             transformResponse: (response: any) => response.data || response,
             providesTags: ['Invitation'],
         }),
+        getInvitationTemplateById: builder.query<InvitationTemplate, number>({
+            query: (id) => `/invitations/templates/${id}`,
+            transformResponse: (response: any) => response.data || response,
+            providesTags: (result, error, id) => [{ type: 'Invitation', id }],
+        }),
         createInvitationTemplate: builder.mutation<InvitationTemplate, CreateInvitationTemplatePayload>({
             query: (payload) => ({
                 url: '/invitations/templates',
@@ -1074,30 +1192,101 @@ export const api = createApi({
             }),
             invalidatesTags: ['Invitation'],
         }),
-        // Super Admin Dashboard Endpoints
-        getSuperAdminOverview: builder.query<SuperAdminOverview, void>({
-            query: () => '/super-admin/overview',
-            transformResponse: (response: SuperAdminOverviewResponse) => response.data,
+
+        // LetterConfig Endpoints
+        getLetterConfigs: builder.query<LetterConfig[], void>({
+            query: () => '/invitations/configs',
+            transformResponse: (response: any) => response.data || response,
+            providesTags: ['Invitation'],
         }),
-        getSuperAdminCharts: builder.query<SuperAdminCharts, void>({
-            query: () => '/super-admin/charts',
-            transformResponse: (response: SuperAdminChartsResponse) => response.data,
+        getLetterConfigById: builder.query<LetterConfig, number>({
+            query: (id) => `/invitations/configs/${id}`,
+            transformResponse: (response: any) => response.data || response,
+            providesTags: (result, error, id) => [{ type: 'Invitation', id }],
         }),
-        getSuperAdminStakeholders: builder.query<SuperAdminStakeholder[], void>({
-            query: () => '/super-admin/stakeholders',
-            transformResponse: (response: SuperAdminStakeholdersResponse) => response.data,
+        createLetterConfig: builder.mutation<LetterConfig, CreateLetterConfigPayload>({
+            query: (payload) => ({
+                url: '/invitations/configs',
+                method: 'POST',
+                body: payload,
+            }),
+            invalidatesTags: ['Invitation'],
         }),
-        getSuperAdminStakeholderStatus: builder.query<SuperAdminStakeholderStatus, void>({
-            query: () => '/super-admin/stakeholder-status',
-            transformResponse: (response: SuperAdminStakeholderStatusResponse) => response.data,
+        updateLetterConfig: builder.mutation<LetterConfig, { id: number; data: Partial<CreateLetterConfigPayload> }>({
+            query: ({ id, data }) => ({
+                url: `/invitations/configs/${id}`,
+                method: 'PUT',
+                body: data,
+            }),
+            invalidatesTags: ['Invitation'],
         }),
-        getSuperAdminPerformance: builder.query<SuperAdminPerformance[], void>({
-            query: () => '/super-admin/performance',
-            transformResponse: (response: SuperAdminPerformanceResponse) => response.data,
+        deleteLetterConfig: builder.mutation<void, number>({
+            query: (id) => ({
+                url: `/invitations/configs/${id}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: ['Invitation'],
         }),
-        getAdminAnalytics: builder.query<AdminAnalyticsData, void>({
-            query: () => '/admins/analytics',
-            transformResponse: (response: AdminAnalyticsResponse) => response.data,
+
+        // Bulk Sending
+        bulkSendInvitations: builder.mutation<any, { configId: number; users: any[] }>({
+            query: (payload) => ({
+                url: '/invitations/bulk-send',
+                method: 'POST',
+                body: payload,
+            }),
+            invalidatesTags: ['Invitation'],
+        }),
+        getSentInvitationLogs: builder.query<SentInvitationLog[], void>({
+            query: () => '/invitations/sent-logs', // You might need to add this route to backend if not exists
+            transformResponse: (response: any) => response.data || response,
+            providesTags: ['Invitation'],
+        }),
+        // Badge Configurations
+        getBadgeConfigs: builder.query<BadgeConfig[], void>({
+            query: () => '/badges/configs',
+            transformResponse: (response: any) => response.data || response,
+            providesTags: ['Badge'],
+        }),
+        getBadgeConfigById: builder.query<BadgeConfig, number>({
+            query: (id) => `/badges/configs/${id}`,
+            transformResponse: (response: any) => response.data || response,
+            providesTags: (result, error, id) => [{ type: 'Badge', id }],
+        }),
+        createBadgeConfig: builder.mutation<BadgeConfig, CreateBadgeConfigPayload>({
+            query: (payload) => ({
+                url: '/badges/configs',
+                method: 'POST',
+                body: payload,
+            }),
+            invalidatesTags: ['Badge'],
+        }),
+        updateBadgeConfig: builder.mutation<BadgeConfig, { id: number; data: Partial<CreateBadgeConfigPayload> }>({
+            query: ({ id, data }) => ({
+                url: `/badges/configs/${id}`,
+                method: 'PUT',
+                body: data,
+            }),
+            invalidatesTags: ['Badge'],
+        }),
+        deleteBadgeConfig: builder.mutation<void, number>({
+            query: (id) => ({
+                url: `/badges/configs/${id}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: ['Badge'],
+        }),
+        getBadgeProfileByHash: builder.query<BadgeProfile, string>({
+            query: (hash) => `/badges/profile/${hash}`,
+            transformResponse: (response: any) => response.data || response,
+        }),
+        bulkGenerateBadges: builder.mutation<Blob, { applicationIds: number[]; configId?: number }>({
+            query: (body) => ({
+                url: '/badges/bulk',
+                method: 'POST',
+                body,
+                responseHandler: (response) => response.blob(),
+            }),
         }),
     }),
 });
@@ -1129,12 +1318,12 @@ export const {
     useCreateUserMutation,
     useUpdateUserMutation,
     useGetFormFieldTemplatesQuery,
-    useCreateFormMutation,
     useGetEmailTemplatesQuery,
     useGetEmailTemplateByIdQuery,
     useCreateEmailTemplateMutation,
     useUpdateEmailTemplateMutation,
     useDeleteEmailTemplateMutation,
+    useSetDefaultEmailTemplateMutation,
     useGetLandingPageSettingsQuery,
     useCreateLandingPageSettingsMutation,
     useDeleteLandingPageSettingsMutation,
@@ -1147,6 +1336,10 @@ export const {
     useBulkUpdateWorkflowStepsMutation,
     // Forms
     useGetFormsQuery,
+    useGetFormByIdQuery,
+    useUpdateFormMutation,
+    useDeleteFormMutation,
+    useCreateFormMutation,
     // Badge Templates
     useGetBadgeTemplatesQuery,
     useCreateBadgeTemplateMutation,
@@ -1157,6 +1350,23 @@ export const {
     useCreateInvitationTemplateMutation,
     useUpdateInvitationTemplateMutation,
     useDeleteInvitationTemplateMutation,
+    useGetInvitationTemplateByIdQuery,
+    // LetterConfig Hooks
+    useGetLetterConfigsQuery,
+    useGetLetterConfigByIdQuery,
+    useCreateLetterConfigMutation,
+    useUpdateLetterConfigMutation,
+    useDeleteLetterConfigMutation,
+    useBulkSendInvitationsMutation,
+    useGetSentInvitationLogsQuery,
+    // Badge Config Hooks
+    useGetBadgeConfigsQuery,
+    useGetBadgeConfigByIdQuery,
+    useCreateBadgeConfigMutation,
+    useUpdateBadgeConfigMutation,
+    useDeleteBadgeConfigMutation,
+    useGetBadgeProfileByHashQuery,
+    useBulkGenerateBadgesMutation,
     // Dashboard Hooks
     useGetDashboardFormsQuery,
     useGetDashboardDataQuery,

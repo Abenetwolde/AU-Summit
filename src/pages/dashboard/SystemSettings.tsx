@@ -9,6 +9,7 @@ import { Save, Plus, Trash2, Eye, EyeOff, Loader2, Upload, GripVertical, Image a
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import {
     useGetLandingPageSettingsQuery,
     useCreateLandingPageSettingsMutation,
@@ -32,10 +33,7 @@ interface SystemSettingsForm {
     contactEmail: string;
     contactLink: string;
     languages: Language[];
-    heroSectionConfig: string;
-    processTrackerConfig: string;
-    infoSectionConfig: string;
-    footerConfig: string;
+    heroBackgroundUrls: string[];
 }
 
 const DEFAULT_SETTINGS: SystemSettingsForm = {
@@ -50,10 +48,7 @@ const DEFAULT_SETTINGS: SystemSettingsForm = {
         { code: 'en', name: 'English', flagEmoji: '🇺🇸', enabled: true },
         { code: 'fr', name: 'Français', flagEmoji: '🇫🇷', enabled: true },
     ],
-    heroSectionConfig: "{}",
-    processTrackerConfig: "{}",
-    infoSectionConfig: "{}",
-    footerConfig: "{}"
+    heroBackgroundUrls: [],
 };
 
 export function SystemSettings() {
@@ -68,11 +63,7 @@ export function SystemSettings() {
     // File inputs state
     const [mainLogo, setMainLogo] = useState<File | null>(null);
     const [footerLogo, setFooterLogo] = useState<File | null>(null);
-    const [heroBackground, setHeroBackground] = useState<File | null>(null);
-    const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
-
-    // Preview URLs for new uploads
-    const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
+    const [newHeroFiles, setNewHeroFiles] = useState<File[]>([]);
 
     // Sync API data to local state
     useEffect(() => {
@@ -88,33 +79,12 @@ export function SystemSettings() {
                 languages: apiSettings.languages && apiSettings.languages.length > 0
                     ? apiSettings.languages.map(l => ({ ...l, enabled: true }))
                     : DEFAULT_SETTINGS.languages,
-                heroSectionConfig: JSON.stringify(apiSettings.heroSectionConfig || {}, null, 2),
-                processTrackerConfig: JSON.stringify(apiSettings.processTrackerConfig || {}, null, 2),
-                infoSectionConfig: JSON.stringify(apiSettings.infoSectionConfig || {}, null, 2),
-                footerConfig: JSON.stringify(apiSettings.footerConfig || {}, null, 2),
+                heroBackgroundUrls: apiSettings.heroBackgroundUrls || [],
             });
         }
     }, [apiSettings]);
 
-    const handleGallerySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const newFiles = Array.from(e.target.files);
-            setGalleryFiles(prev => [...prev, ...newFiles]);
 
-            // Create previews
-            const newPreviews = newFiles.map(file => URL.createObjectURL(file));
-            setGalleryPreviews(prev => [...prev, ...newPreviews]);
-        }
-    };
-
-    const removeGalleryFile = (index: number) => {
-        setGalleryFiles(prev => prev.filter((_, i) => i !== index));
-        setGalleryPreviews(prev => {
-            // Revoke URL to avoid memory leak
-            URL.revokeObjectURL(prev[index]);
-            return prev.filter((_, i) => i !== index);
-        });
-    };
 
     const handleSave = async () => {
         const formData = new FormData();
@@ -134,56 +104,31 @@ export function SystemSettings() {
             .map(({ enabled, ...rest }) => rest);
         // formData.append('languages', JSON.stringify(enabledLangs));
 
-        // Append configs (parsing to ensure validity or sending as JSON string if API expects string)
-        // Adjusting based on requirement "JSON objects" likely means parsing string back to obj before sending, 
-        // OR the API handles stringified JSON. The type in API I set to 'any', but multipart/form-data sends strings.
-        // I will send valid JSON strings.
-        try {
-            JSON.parse(settings.heroSectionConfig);
-            formData.append('heroSectionConfig', settings.heroSectionConfig);
 
-            JSON.parse(settings.processTrackerConfig);
-            formData.append('processTrackerConfig', settings.processTrackerConfig);
-
-            JSON.parse(settings.infoSectionConfig);
-            formData.append('infoSectionConfig', settings.infoSectionConfig);
-
-            JSON.parse(settings.footerConfig);
-        } catch (e) {
-            toast.error("Invalid JSON in Advanced Configuration tabs");
-            return;
-        }
 
         if (mainLogo) formData.append('mainLogo', mainLogo);
         if (footerLogo) formData.append('footerLogo', footerLogo);
-        if (heroBackground) formData.append('heroBackgroundUrl', heroBackground);
+
+        // Handle Hero Background Gallery
+        // Filter out temporary blob URLs (they represent new files)
+        const existingUrls = settings.heroBackgroundUrls.filter(url => !url.startsWith('blob:'));
+        formData.append('heroBackgroundUrls', JSON.stringify(existingUrls));
+
+        // Append new files
+        newHeroFiles.forEach(file => {
+            formData.append('heroBackgroundUrl', file);
+        });
 
         // Append Languages as JSON string
         formData.append('languages', JSON.stringify(settings.languages));
 
-        // Append Gallery:
-        // 1. Existing URLs as JSON string (backend likely parses this to keep/reorder)
-        formData.append('gallery', JSON.stringify(settings.gallery || []));
-
-        // 2. New Files (backend adds these)
-        galleryFiles.forEach(file => {
-            formData.append('gallery', file);
-        });
-
-        // Configs -> ensure they are strings
-        formData.append('heroSectionConfig', typeof settings.heroSectionConfig === 'string' ? settings.heroSectionConfig : JSON.stringify(settings.heroSectionConfig));
-        formData.append('processTrackerConfig', typeof settings.processTrackerConfig === 'string' ? settings.processTrackerConfig : JSON.stringify(settings.processTrackerConfig));
-        formData.append('infoSectionConfig', typeof settings.infoSectionConfig === 'string' ? settings.infoSectionConfig : JSON.stringify(settings.infoSectionConfig));
-        formData.append('footerConfig', typeof settings.footerConfig === 'string' ? settings.footerConfig : JSON.stringify(settings.footerConfig));
         formData.append('privacyPolicyContent', settings.privacyPolicyContent);
         try {
             await createSettings(formData).unwrap();
             toast.success("Settings saved successfully");
             setMainLogo(null);
             setFooterLogo(null);
-            setHeroBackground(null);
-            setGalleryFiles([]);
-            setGalleryPreviews([]);
+            setNewHeroFiles([]);
         } catch (error: any) {
             console.error(error);
             toast.error("Failed to save settings: " + (error?.data?.message || error.message));
@@ -221,7 +166,7 @@ export function SystemSettings() {
     }
 
     return (
-        <div className="space-y-6 max-w-6xl mx-auto pb-10">
+        <div className="space-y-6 w-full pb-10">
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">System Settings</h1>
@@ -241,8 +186,6 @@ export function SystemSettings() {
                     <TabsTrigger value="languages">Languages</TabsTrigger>
                     <TabsTrigger value="compliance">Compliance</TabsTrigger>
                     <TabsTrigger value="contact">Contact</TabsTrigger>
-                    <TabsTrigger value="gallery">Gallery</TabsTrigger>
-                    <TabsTrigger value="advanced">Advanced</TabsTrigger>
                 </TabsList>
 
                 {/* General Settings */}
@@ -282,7 +225,7 @@ export function SystemSettings() {
                             <CardDescription>Upload organization logos and backgrounds.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                 <div className="space-y-2">
                                     <Label>Main Logo</Label>
                                     <div
@@ -336,32 +279,90 @@ export function SystemSettings() {
                                     </div>
                                     <p className="text-xs text-center text-muted-foreground">Footer / Partner Logo</p>
                                 </div>
+                            </div>
 
-                                <div className="space-y-2">
-                                    <Label>Hero Background</Label>
-                                    <div
-                                        className="border-2 border-dashed border-gray-200 rounded-lg p-6 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 transition-colors cursor-pointer relative overflow-hidden h-40"
-                                        onClick={() => document.getElementById('heroBgInput')?.click()}
-                                    >
-                                        {heroBackground ? (
-                                            <div className="text-center">
-                                                <div className="mx-auto h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center mb-2">
-                                                    <Upload className="h-6 w-6 text-blue-600" />
-                                                </div>
-                                                <p className="text-xs text-gray-500 truncate max-w-[150px]">{heroBackground.name}</p>
-                                            </div>
-                                        ) : apiSettings?.heroBackgroundUrl ? (
+                            <Separator />
+
+                            <div className="space-y-4 pt-4">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-base font-bold">Hero Background Gallery</Label>
+                                    <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100">
+                                        {settings.heroBackgroundUrls?.length || 0} / 5 Images
+                                    </Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Upload up to 5 high-quality images for the hero section background.
+                                </p>
+
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
+                                    {/* Existing Images */}
+                                    {settings.heroBackgroundUrls?.map((url, index) => (
+                                        <div key={index} className="group relative aspect-video rounded-xl overflow-hidden border bg-slate-100 shadow-sm hover:shadow-md transition-all">
                                             <img
-                                                src={getFileUrl(apiSettings.heroBackgroundUrl)}
-                                                alt="Hero Background"
-                                                className="h-full w-full object-cover rounded-md"
+                                                src={url}
+                                                alt={`Hero ${index + 1}`}
+                                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
                                             />
-                                        ) : (
-                                            <ImageIcon className="h-8 w-8 text-gray-300" />
-                                        )}
-                                        <Input id="heroBgInput" type="file" className="hidden" accept="image/*,video/*" onChange={(e) => setHeroBackground(e.target.files?.[0] || null)} />
-                                    </div>
-                                    <p className="text-xs text-center text-muted-foreground">Main Banner Image/Video</p>
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                <Button
+                                                    variant="destructive"
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-full shadow-lg"
+                                                    onClick={() => {
+                                                        setSettings(prev => ({
+                                                            ...prev,
+                                                            heroBackgroundUrls: prev.heroBackgroundUrls.filter((_, i) => i !== index)
+                                                        }));
+                                                    }}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                            <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-md rounded text-[10px] text-white font-bold">
+                                                #{index + 1}
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {/* Dropzone for New Images */}
+                                    {(settings.heroBackgroundUrls?.length || 0) < 5 && (
+                                        <div
+                                            onClick={() => document.getElementById('heroGalleryInput')?.click()}
+                                            className="aspect-video rounded-xl border-2 border-dashed border-slate-200 hover:border-primary/50 hover:bg-primary/5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all group"
+                                        >
+                                            <div className="h-8 w-8 rounded-full bg-slate-100 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                                                <Plus className="h-4 w-4 text-slate-400 group-hover:text-primary" />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Add Image</span>
+                                            <Input
+                                                id="heroGalleryInput"
+                                                type="file"
+                                                multiple
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const files = Array.from(e.target.files || []);
+                                                    const remaining = 5 - (settings.heroBackgroundUrls?.length || 0);
+                                                    const toAdd = files.slice(0, remaining);
+
+                                                    if (files.length > remaining) {
+                                                        toast.warning(`You can only add ${remaining} more images.`);
+                                                    }
+
+                                                    // Store actual files in state if needed, or just handle URLs for now
+                                                    // For simplicity, we'll store them in a temporary 'newHeroFiles' state
+                                                    setNewHeroFiles(prev => [...prev, ...toAdd]);
+
+                                                    // Create temporary preview URLs
+                                                    const newPreviews = toAdd.map(f => URL.createObjectURL(f));
+                                                    setSettings(prev => ({
+                                                        ...prev,
+                                                        heroBackgroundUrls: [...(prev.heroBackgroundUrls || []), ...newPreviews]
+                                                    }));
+                                                }}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </CardContent>
@@ -504,116 +505,7 @@ export function SystemSettings() {
                     </Card>
                 </TabsContent>
 
-                {/* Gallery */}
-                <TabsContent value="gallery" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Media Gallery</CardTitle>
-                            <CardDescription>Images and videos displayed in the landing page gallery section.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            {/* Existing Gallery (Mocked for now as API response structure for existing gallery is array of strings, need to render them) */}
-                            {apiSettings?.gallery && apiSettings.gallery.length > 0 && (
-                                <div className="space-y-2">
-                                    <Label>Current Gallery</Label>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {apiSettings.gallery.map((url, i) => (
-                                            <div key={i} className="relative aspect-video rounded-lg overflow-hidden border bg-gray-100 group">
-                                                <img src={getFileUrl(url)} alt={`Gallery ${i}`} className="w-full h-full object-cover" />
-                                                {/* Delete functionality for existing would require separate endpoint or logic, skipping for now */}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
 
-                            <div className="space-y-2">
-                                <Label>Upload New Media</Label>
-                                <div
-                                    className="border-2 border-dashed border-gray-200 rounded-lg p-8 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 transition-colors cursor-pointer"
-                                    onClick={() => document.getElementById('galleryInput')?.click()}
-                                >
-                                    <ImageIcon className="h-10 w-10 text-gray-300" />
-                                    <span className="text-sm text-gray-500 font-medium">Click to upload multiple images/videos</span>
-                                    <Input id="galleryInput" type="file" multiple className="hidden" accept="image/*,video/*" onChange={handleGallerySelect} />
-                                </div>
-                            </div>
-
-                            {/* Previews of new files */}
-                            {galleryPreviews.length > 0 && (
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in">
-                                    {galleryPreviews.map((url, i) => (
-                                        <div key={i} className="relative aspect-video rounded-lg overflow-hidden border bg-gray-100 group">
-                                            <img src={url} alt="Preview" className="w-full h-full object-cover" />
-                                            <button
-                                                onClick={() => removeGalleryFile(i)}
-                                                className="absolute top-2 right-2 p-1 bg-red-500/80 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <Trash2 className="w-3 h-3" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                {/* Advanced */}
-                <TabsContent value="advanced" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Advanced Configuration</CardTitle>
-                            <CardDescription>Raw JSON configurations for dynamic sections.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <FileJson className="w-4 h-4 text-blue-500" />
-                                    <Label>Hero Section Config</Label>
-                                </div>
-                                <Textarea
-                                    value={settings.heroSectionConfig}
-                                    onChange={(e) => setSettings({ ...settings, heroSectionConfig: e.target.value })}
-                                    className="font-mono text-xs h-40"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <FileJson className="w-4 h-4 text-blue-500" />
-                                    <Label>Process Tracker Config</Label>
-                                </div>
-                                <Textarea
-                                    value={settings.processTrackerConfig}
-                                    onChange={(e) => setSettings({ ...settings, processTrackerConfig: e.target.value })}
-                                    className="font-mono text-xs h-40"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <FileJson className="w-4 h-4 text-blue-500" />
-                                    <Label>Info Section Config</Label>
-                                </div>
-                                <Textarea
-                                    value={settings.infoSectionConfig}
-                                    onChange={(e) => setSettings({ ...settings, infoSectionConfig: e.target.value })}
-                                    className="font-mono text-xs h-40"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <FileJson className="w-4 h-4 text-blue-500" />
-                                    <Label>Footer Config</Label>
-                                </div>
-                                <Textarea
-                                    value={settings.footerConfig}
-                                    onChange={(e) => setSettings({ ...settings, footerConfig: e.target.value })}
-                                    className="font-mono text-xs h-40"
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
 
             </Tabs>
         </div>
