@@ -9,6 +9,13 @@ import en from 'react-phone-number-input/locale/en';
 import { exportJournalistsToCSV, exportJournalistsToPDF } from '@/lib/export-utils';
 import { useGetApplicationsQuery, useGetWorkflowApplicationsQuery } from '@/store/services/api';
 
+// Type for workflow step info
+interface WorkflowStepInfo {
+    key: string;
+    name: string;
+    displayOrder: number;
+}
+
 export function JournalistList() {
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
@@ -43,14 +50,66 @@ export function JournalistList() {
 
     const basePath = getBasePath();
 
-    // Map API data to match the structure needed for filtering/display or use directly
-    // If API fails or is empty, can fallback to mock if desired, but user said "if there is replace with the api data"
+    // Helper function to get approval status by key
+    const getApprovalStatus = (app: any, key: string): string => {
+        if (!app.approvals || !Array.isArray(app.approvals)) {
+            return 'PENDING'; // Fallback status
+        }
+        
+        const approval = app.approvals.find((a: any) => 
+            a.workflowStep && a.workflowStep.key === key
+        );
+        
+        return approval?.status || 'PENDING';
+    };
+
+    // Helper function to get workflow step info (key, name, displayOrder)
+    const getWorkflowStepInfo = (): WorkflowStepInfo[] => {
+        if (!apiData?.applications || apiData.applications.length === 0) {
+            // Return default steps if no data
+            return [
+                { key: 'immigration', name: 'Immigration Check', displayOrder: 50 },
+                { key: 'equipment', name: 'Equipment Verification', displayOrder: 10 },
+                { key: 'drone', name: 'Drone Clearance', displayOrder: 20 }
+            ];
+        }
+        
+        // Collect unique workflow steps from all applications
+        const stepMap = new Map<string, WorkflowStepInfo>();
+        
+        apiData.applications.forEach((app: any) => {
+            if (app.approvals && Array.isArray(app.approvals)) {
+                app.approvals.forEach((approval: any) => {
+                    if (approval.workflowStep) {
+                        const { key, name, displayOrder } = approval.workflowStep;
+                        if (key && name) {
+                            // Only add if not already in map or if this has a higher displayOrder
+                            if (!stepMap.has(key) || (stepMap.get(key)?.displayOrder || 0) < (displayOrder || 0)) {
+                                stepMap.set(key, {
+                                    key,
+                                    name,
+                                    displayOrder: displayOrder || 0
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+        });
+        
+        // Convert to array and sort by displayOrder
+        const steps = Array.from(stepMap.values());
+        return steps.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+    };
+
+    // Get workflow step info for dynamic column rendering
+    const workflowStepInfo = getWorkflowStepInfo();
 
     const applications = apiData?.applications || [];
     const displayData = applications.length > 0 ? applications : [];
 
     // Filter Logic
-    const filteredData = displayData.filter(app => {
+    const filteredData = displayData.filter((app: any) => {
         const fullName = app.formData?.first_name
             ? `${app.formData.first_name} ${app.formData.last_name || ''}`
             : app.user?.fullName || 'Unknown';
@@ -70,27 +129,43 @@ export function JournalistList() {
         return matchesSearch && matchesCountry;
     });
 
-    // Use Mock as fallback if API is empty just for demo (User instruction: "if the api data is not conatin what the hard coded data just keep the hard coede")
-    // But for the main list, if we have API connection, we should rely on it. I'll stick to API data primarily.
-    // If API returns 0 items, table will be empty.
-
     const getStatusColor = (status: string) => {
         const s = status?.toUpperCase();
         switch (s) {
-            case 'APPROVED': return 'bg-green-100 text-green-700';
-            case 'PENDING': return 'bg-orange-100 text-orange-700';
-            case 'REJECTED': return 'bg-red-100 text-red-700';
-            default: return 'bg-gray-100 text-gray-700';
+            case 'APPROVED':
+            case 'VERIFIED':
+                return 'bg-green-100 text-green-700 border-green-200';
+            case 'PENDING':
+            case 'IN_REVIEW':
+                return 'bg-orange-100 text-orange-700 border-orange-200';
+            case 'REJECTED':
+                return 'bg-red-100 text-red-700 border-red-200';
+            case 'NOT_APPLICABLE':
+                return 'bg-gray-100 text-gray-700 border-gray-200';
+            case 'EXITED':
+                return 'bg-purple-100 text-purple-700 border-purple-200';
+            default:
+                return 'bg-gray-100 text-gray-700 border-gray-200';
         }
     };
 
     const getStatusDot = (status: string) => {
         const s = status?.toUpperCase();
         switch (s) {
-            case 'APPROVED': return 'bg-green-500';
-            case 'PENDING': return 'bg-orange-500';
-            case 'REJECTED': return 'bg-red-500';
-            default: return 'bg-gray-500';
+            case 'APPROVED':
+            case 'VERIFIED':
+                return 'bg-green-500';
+            case 'PENDING':
+            case 'IN_REVIEW':
+                return 'bg-orange-500';
+            case 'REJECTED':
+                return 'bg-red-500';
+            case 'NOT_APPLICABLE':
+                return 'bg-gray-500';
+            case 'EXITED':
+                return 'bg-purple-500';
+            default:
+                return 'bg-gray-500';
         }
     };
 
@@ -169,14 +244,25 @@ export function JournalistList() {
                                 <th className="h-12 px-4 text-left align-middle font-medium text-gray-500 uppercase text-xs tracking-wider hidden sm:table-cell">COUNTRY</th>
                                 <th className="h-12 px-4 text-left align-middle font-medium text-gray-500 uppercase text-xs tracking-wider">PASSPORT NO</th>
                                 <th className="h-12 px-4 text-left align-middle font-medium text-gray-500 uppercase text-xs tracking-wider hidden md:table-cell">SUBMISSION DATE</th>
+                                
+                                {/* EMA Status - Using application.status */}
                                 <th className="h-12 px-4 text-center align-middle font-medium text-gray-500 uppercase text-xs tracking-wider">EMA STATUS</th>
-                                <th className="h-12 px-4 text-center align-middle font-medium text-gray-500 uppercase text-xs tracking-wider hidden xl:table-cell">IMMIGRATION</th>
-                                <th className="h-12 px-4 text-center align-middle font-medium text-gray-500 uppercase text-xs tracking-wider hidden xl:table-cell">CUSTOMS</th>
+                                
+                                {/* Dynamic workflow step columns using workflowStep.name */}
+                                {workflowStepInfo.map((step) => (
+                                    <th 
+                                        key={step.key}
+                                        className="h-12 px-4 text-center align-middle font-medium text-gray-500 uppercase text-xs tracking-wider hidden xl:table-cell"
+                                    >
+                                        {step.name.toUpperCase()}
+                                    </th>
+                                ))}
+                                
                                 <th className="h-12 px-4 text-left align-middle font-medium text-gray-500 uppercase text-xs tracking-wider">ACTION</th>
                             </tr>
                         </thead>
                         <tbody className="[&_tr:last-child]:border-0">
-                            {filteredData.map((app, index) => {
+                            {filteredData.map((app: any, index: number) => {
                                 // Data mapping
                                 const fullName = app.formData?.first_name
                                     ? `${app.formData.first_name} ${app.formData.last_name || ''}`
@@ -186,10 +272,8 @@ export function JournalistList() {
                                 const passport = app.formData?.passport_number || 'N/A';
                                 const submissionDate = app.createdAt ? new Date(app.createdAt).toLocaleDateString('en-GB') : 'N/A';
 
-                                // Status mapping (Using API fields)
+                                // EMA Status - using application.status
                                 const emaStatus = app.status || 'PENDING';
-                                const immStatus = app.immigrationStatus || 'PENDING';
-                                const custStatus = app.equipmentStatus || 'PENDING'; // Assuming equipment is Customs relevance if not explicit
 
                                 return (
                                     <tr key={app.id} className="border-b transition-colors hover:bg-muted/50">
@@ -207,6 +291,7 @@ export function JournalistList() {
                                         <td className="p-4 align-middle font-bold text-gray-600 hidden md:table-cell">
                                             <span className="text-blue-400 mr-2">📅</span> {submissionDate}
                                         </td>
+                                        
                                         {/* EMA Status */}
                                         <td className="p-4 align-middle text-center">
                                             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${getStatusColor(emaStatus)} border`}>
@@ -214,21 +299,23 @@ export function JournalistList() {
                                                 {emaStatus}
                                             </span>
                                         </td>
-                                        {/* Immigration Status */}
-                                        <td className="p-4 align-middle text-center hidden xl:table-cell">
-                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${getStatusColor(immStatus)} border`}>
-                                                <span className={`h-1.5 w-1.5 rounded-full ${getStatusDot(immStatus)}`} />
-                                                {immStatus}
-                                            </span>
-                                        </td>
-                                        {/* Customs Status */}
-                                        <td className="p-4 align-middle text-center hidden xl:table-cell">
-                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${getStatusColor(custStatus)} border`}>
-                                                <span className={`h-1.5 w-1.5 rounded-full ${getStatusDot(custStatus)}`} />
-                                                {custStatus}
-                                            </span>
-                                        </td>
-
+                                        
+                                        {/* Dynamic workflow step status columns */}
+                                        {workflowStepInfo.map((step) => {
+                                            const stepStatus = getApprovalStatus(app, step.key);
+                                            return (
+                                                <td 
+                                                    key={step.key} 
+                                                    className="p-4 align-middle text-center hidden xl:table-cell"
+                                                >
+                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${getStatusColor(stepStatus)} border`}>
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${getStatusDot(stepStatus)}`} />
+                                                        {stepStatus}
+                                                    </span>
+                                                </td>
+                                            );
+                                        })}
+                                        
                                         <td className="p-4 align-middle">
                                             {checkPermission('application:view:by-id') && (
                                                 <Button variant="outline" size="sm" className="hidden lg:flex h-8 text-blue-500 border-blue-200 hover:bg-blue-50 hover:text-blue-700 font-bold" onClick={() => navigate(`${basePath}/journalists/${app.id}`, { state: { application: app } })}>
@@ -237,11 +324,11 @@ export function JournalistList() {
                                             )}
                                         </td>
                                     </tr>
-                                )
+                                );
                             })}
                             {displayData.length === 0 && (
                                 <tr>
-                                    <td colSpan={9} className="p-8 text-center text-muted-foreground">
+                                    <td colSpan={5 + workflowStepInfo.length} className="p-8 text-center text-muted-foreground">
                                         No applications found.
                                     </td>
                                 </tr>
@@ -249,7 +336,7 @@ export function JournalistList() {
                         </tbody>
                     </table>
                 </div>
-                {/* Pagination (Static for now, but wired to display) */}
+                {/* Pagination */}
                 <div className="p-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
                     <span className="text-sm text-gray-500">Page {apiData?.currentPage || 1} of {apiData?.totalPages || 1}</span>
                     <div className="flex items-center gap-2">
