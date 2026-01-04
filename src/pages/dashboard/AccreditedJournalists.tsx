@@ -16,6 +16,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { useAuth, UserRole } from '@/auth/context';
+import en from 'react-phone-number-input/locale/en';
+import { exportJournalistsToCSV, exportJournalistsToPDF } from '@/lib/export-utils';
 
 export function AccreditedJournalists() {
     const [searchTerm, setSearchTerm] = useState('');

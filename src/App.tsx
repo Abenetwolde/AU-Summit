@@ -24,7 +24,7 @@ import { Toaster } from 'sonner';
 
 import { useEffect } from 'react';
 import { initEmailJS } from './lib/emailService';
-import SuperAdminDashboard from './pages/dashboard/SuperAdminDashboard';
+import DashboardIndex from './pages/dashboard/DashboardIndex';
 import { OrganizationManagement } from './pages/dashboard/OrganizationManagement';
 import { WorkflowBuilder } from './pages/dashboard/WorkflowBuilder';
 
