@@ -816,9 +816,10 @@ export const getFileUrl = (path?: string | null): string => {
         return trimmedPath;
     }
 
-    // ✅ Handle relative paths
-    const separator = trimmedPath.startsWith('/') ? '' : '/';
-    const finalUrl = `${FILE_BASE_URL}${separator}${trimmedPath}`;
+    // ✅ Handle relative paths (normalize backslashes to forward slashes for URLs)
+    const normalizedPath = trimmedPath.replace(/\\/g, '/');
+    const separator = normalizedPath.startsWith('/') ? '' : '/';
+    const finalUrl = `${FILE_BASE_URL}${separator}${normalizedPath}`;
 
     console.log('[getFileUrl] resolved URL:', finalUrl);
     return finalUrl;

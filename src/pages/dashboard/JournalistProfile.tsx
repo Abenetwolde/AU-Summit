@@ -10,10 +10,11 @@ import { SystemCheckSuccess } from '@/components/SystemCheckSuccess';
 import { exportJournalistDetailToPDF } from '@/lib/export-utils';
 import { useAuth, UserRole } from '@/auth/context';
 import { MOCK_JOURNALISTS } from '@/data/mock';
-import { 
-    useApproveWorkflowStepMutation, 
+import {
+    useApproveWorkflowStepMutation,
     Equipment as EquipmentType,
-    useUpdateEquipmentStatusMutation 
+    useUpdateEquipmentStatusMutation,
+    getFileUrl
 } from '@/store/services/api';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,16 +35,16 @@ export function JournalistProfile() {
     const location = useLocation();
     const { user, checkPermission } = useAuth();
     console.log(user);
-    
+
     // Workflow Mutation
     const [approveWorkflow, { isLoading: isStatusUpdating }] = useApproveWorkflowStepMutation();
     // Equipment status mutation
     const [updateEquipmentStatus, { isLoading: isEquipmentUpdating }] = useUpdateEquipmentStatusMutation();
-    
+
     const [application, setApplication] = useState<any>(null);
     const [notes, setNotes] = useState('');
     const [showSystemCheck, setShowSystemCheck] = useState(false);
-    
+
     // Equipment approval states
     const [selectedEquipment, setSelectedEquipment] = useState<EquipmentType | null>(null);
     const [showEquipmentDialog, setShowEquipmentDialog] = useState(false);
@@ -143,17 +144,17 @@ export function JournalistProfile() {
             }).unwrap();
 
             toast.success(`Equipment ${status.toLowerCase()} successfully`);
-            
+
             // Update the equipment list in state
             if (application && application.equipment) {
-                const updatedEquipment = application.equipment.map((item: EquipmentType) => 
-                    item.id === equipmentId 
+                const updatedEquipment = application.equipment.map((item: EquipmentType) =>
+                    item.id === equipmentId
                         ? { ...item, status, rejectionReason: payload.rejectionReason }
                         : item
                 );
                 setApplication({ ...application, equipment: updatedEquipment });
             }
-            
+
             // Reset and close dialog
             setSelectedEquipment(null);
             setShowEquipmentDialog(false);
@@ -185,7 +186,16 @@ export function JournalistProfile() {
 
     const roleTitle = formData.occupation || 'Journalist';
     const country = formData.country || 'ET';
-    const photoUrl = "https://tse4.mm.bing.net/th/id/OIP.YjAp0OwzYdsFmoWOeoK57AHaEg?pid=Api&P=0&h=220";
+
+    // Passport Photo Handling
+    const passportPhotos = Array.isArray(formData.passport_photo)
+        ? formData.passport_photo
+        : (formData.passport_photo ? [formData.passport_photo] : []);
+
+    const photoUrl = passportPhotos.length > 0
+        ? getFileUrl(passportPhotos[0])
+        : "https://tse4.mm.bing.net/th/id/OIP.YjAp0OwzYdsFmoWOeoK57AHaEg?pid=Api&P=0&h=220";
+
     const organization = "News Org"; // Placeholder or from API if avail
 
     // Authorization
@@ -316,6 +326,32 @@ export function JournalistProfile() {
                                     <div><p className="text-xs font-bold text-gray-400 uppercase">ISSUING COUNTRY</p><p className="text-sm font-bold text-gray-900 mt-1">{countryName(country)}</p></div>
                                     <div><p className="text-xs font-bold text-gray-400 uppercase">ISSUE DATE</p><p className="text-sm font-bold text-gray-900 mt-1">{formData.passport_issue_date || 'N/A'}</p></div>
                                     <div><p className="text-xs font-bold text-gray-400 uppercase">EXPIRY DATE</p><p className="text-sm font-bold text-gray-900 mt-1">{formData.passport_expiry_date || 'N/A'}</p></div>
+
+                                    {passportPhotos.length > 0 && (
+                                        <div className="col-span-1 sm:col-span-2 lg:col-span-4 mt-4">
+                                            <p className="text-xs font-bold text-gray-400 uppercase mb-3">PASSPORT PHOTOS</p>
+                                            <div className="flex flex-wrap gap-4">
+                                                {passportPhotos.map((photo: string, idx: number) => (
+                                                    <a
+                                                        key={idx}
+                                                        href={getFileUrl(photo)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="group relative h-32 w-32 rounded-lg overflow-hidden border bg-gray-50 flex-shrink-0"
+                                                    >
+                                                        <img
+                                                            src={getFileUrl(photo)}
+                                                            alt={`Passport ${idx + 1}`}
+                                                            className="h-full w-full object-cover transition-transform group-hover:scale-110"
+                                                        />
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                            <Download className="h-5 w-5 text-white" />
+                                                        </div>
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         </TabsContent>
@@ -401,14 +437,14 @@ export function JournalistProfile() {
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    
+
                                                     {item.rejectionReason && item.status === 'REJECTED' && (
                                                         <div className="mt-2 pt-2 border-t">
                                                             <p className="text-xs font-bold text-gray-400 uppercase">REJECTION REASON</p>
                                                             <p className="text-sm text-red-600">{item.rejectionReason}</p>
                                                         </div>
                                                     )}
-                                                    
+
                                                     {/* Equipment Approval Buttons */}
                                                     {canUpdateEquipment && item.status !== 'APPROVED' && (
                                                         <div className="mt-4 pt-4 border-t flex gap-2">
@@ -541,7 +577,7 @@ export function JournalistProfile() {
                             )}
                         </DialogDescription>
                     </DialogHeader>
-                    
+
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="equipment-notes">Notes (Optional)</Label>
@@ -553,7 +589,7 @@ export function JournalistProfile() {
                                 className="min-h-[80px]"
                             />
                         </div>
-                        
+
                         {equipmentStatus === EquipmentStatus.REJECTED && (
                             <div className="space-y-2">
                                 <Label htmlFor="rejection-reason" className="text-red-600">
@@ -571,7 +607,7 @@ export function JournalistProfile() {
                             </div>
                         )}
                     </div>
-                    
+
                     <DialogFooter>
                         <Button
                             variant="outline"
@@ -588,8 +624,8 @@ export function JournalistProfile() {
                             onClick={() => selectedEquipment && handleEquipmentApproval(selectedEquipment.id, equipmentStatus)}
                             disabled={isEquipmentUpdating || (equipmentStatus === EquipmentStatus.REJECTED && !rejectionReason.trim())}
                             className={
-                                equipmentStatus === EquipmentStatus.APPROVED 
-                                    ? 'bg-[#009b4d] hover:bg-[#007a3d]' 
+                                equipmentStatus === EquipmentStatus.APPROVED
+                                    ? 'bg-[#009b4d] hover:bg-[#007a3d]'
                                     : 'bg-red-600 hover:bg-red-700'
                             }
                         >
