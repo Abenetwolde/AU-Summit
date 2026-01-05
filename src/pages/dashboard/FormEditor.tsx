@@ -44,6 +44,9 @@ import {
     useUpdateFormMutation
 } from '@/store/services/api';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import {
     DndContext,
     closestCenter,
@@ -496,6 +499,93 @@ export function FormEditor() {
                                 <label className="text-xs font-bold text-gray-600 uppercase">Field Name</label>
                                 <Input value={selectedField.fieldName} onChange={(e) => updateField(selectedField.id, { fieldName: e.target.value })} className={cn(isKeyDuplicate && "border-red-500")} />
                             </div>
+
+                            <Separator className="my-4" />
+
+                            <div className="space-y-4">
+                                <CardTitle className="text-xs font-bold uppercase text-gray-400">Validation</CardTitle>
+
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="required" className="text-xs font-medium">Required Field</Label>
+                                    <Switch
+                                        id="required"
+                                        checked={selectedField.required}
+                                        onCheckedChange={(checked) => updateField(selectedField.id, { required: checked })}
+                                    />
+                                </div>
+
+                                {['text', 'textarea', 'email'].includes(selectedField.type) && (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs text-gray-500">Min Length</Label>
+                                            <Input
+                                                type="number"
+                                                value={selectedField.validation?.minLength || ''}
+                                                onChange={(e) => updateValidation(selectedField.id, 'minLength', parseInt(e.target.value) || undefined)}
+                                                placeholder="e.g. 5"
+                                                className="h-8 text-xs"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs text-gray-500">Max Length</Label>
+                                            <Input
+                                                type="number"
+                                                value={selectedField.validation?.maxLength || ''}
+                                                onChange={(e) => updateValidation(selectedField.id, 'maxLength', parseInt(e.target.value) || undefined)}
+                                                placeholder="e.g. 100"
+                                                className="h-8 text-xs"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs text-gray-500">Pattern (Regex)</Label>
+                                            <Input
+                                                value={selectedField.validation?.pattern || ''}
+                                                onChange={(e) => updateValidation(selectedField.id, 'pattern', e.target.value)}
+                                                placeholder="^[A-Z]+$"
+                                                className="h-8 text-xs"
+                                            />
+                                        </div>
+                                    </>
+                                )}
+
+                                {selectedField.type === 'number' && (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs text-gray-500">Min Value</Label>
+                                            <Input
+                                                type="number"
+                                                value={selectedField.validation?.minValue || ''}
+                                                onChange={(e) => updateValidation(selectedField.id, 'minValue', parseInt(e.target.value) || undefined)}
+                                                placeholder="0"
+                                                className="h-8 text-xs"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs text-gray-500">Max Value</Label>
+                                            <Input
+                                                type="number"
+                                                value={selectedField.validation?.maxValue || ''}
+                                                onChange={(e) => updateValidation(selectedField.id, 'maxValue', parseInt(e.target.value) || undefined)}
+                                                placeholder="100"
+                                                className="h-8 text-xs"
+                                            />
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-gray-500">Custom Error Message</Label>
+                                    <Input
+                                        value={selectedField.validation?.errorMessage || ''}
+                                        onChange={(e) => updateValidation(selectedField.id, 'errorMessage', e.target.value)}
+                                        placeholder="This field is required..."
+                                        className="h-8 text-xs"
+                                    />
+                                </div>
+                            </div>
+
+                            <Separator className="my-4" />
+
                             <Button variant="ghost" className="w-full text-red-600 hover:bg-red-50 gap-2" onClick={() => removeField(selectedField.id)}>
                                 <Trash2 className="h-4 w-4" /> Delete Field
                             </Button>
