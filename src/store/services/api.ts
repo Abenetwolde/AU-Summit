@@ -596,6 +596,73 @@ export interface UsersResponse {
 }
 
 
+// API Management Types
+export enum IntegrationTrigger {
+    APPLICATION_CREATED = 'APPLICATION_CREATED',
+    STATUS_CHANGED = 'STATUS_CHANGED',
+    IMMIGRATION_VERIFIED = 'IMMIGRATION_VERIFIED',
+    EQUIPMENT_VERIFIED = 'EQUIPMENT_VERIFIED',
+    DRONE_VERIFIED = 'DRONE_VERIFIED',
+    FINAL_APPROVAL = 'FINAL_APPROVAL'
+}
+
+export enum HttpMethod {
+    GET = 'GET',
+    POST = 'POST',
+    PUT = 'PUT',
+    PATCH = 'PATCH',
+    DELETE = 'DELETE'
+}
+
+export interface ApiProvider {
+    id: number;
+    name: string;
+    baseUrl: string;
+    headers?: any;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface IntegrationConfig {
+    id: number;
+    providerId: number;
+    triggerEvent: IntegrationTrigger;
+    endpoint: string;
+    method: HttpMethod;
+    requestMapping?: any;
+    responseMapping?: any;
+    isActive: boolean;
+    order: number;
+    provider?: ApiProvider;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface ApiProvidersResponse {
+    success: boolean;
+    message: string;
+    data: ApiProvider[];
+}
+
+export interface IntegrationsResponse {
+    success: boolean;
+    message: string;
+    data: IntegrationConfig[];
+}
+
+export interface SingleApiProviderResponse {
+    success: boolean;
+    message: string;
+    data: ApiProvider;
+}
+
+export interface SingleIntegrationResponse {
+    success: boolean;
+    message: string;
+    data: IntegrationConfig;
+}
+
 export enum EquipmentStatus {
     PENDING = 'PENDING',
     APPROVED = 'APPROVED',
@@ -897,6 +964,69 @@ export const api = createApi({
             invalidatesTags: ['Permission'],
         }),
         // Applications
+        getApplicationsByForm: builder.query<ApplicationsResponse, { formId: number, page?: number, limit?: number }>({
+            query: ({ formId, page = 1, limit = 10 }) => `/applications/form/${formId}?page=${page}&limit=${limit}`,
+            providesTags: ['Application'],
+        }),
+
+        // API Management Endpoints
+        getApiProviders: builder.query<ApiProvider[], void>({
+            query: () => '/api-management/providers',
+            transformResponse: (response: ApiProvidersResponse) => response.data,
+            providesTags: ['ApiProvider' as any],
+        }),
+        createApiProvider: builder.mutation<ApiProvider, Partial<ApiProvider>>({
+            query: (body) => ({
+                url: '/api-management/providers',
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['ApiProvider' as any],
+        }),
+        updateApiProvider: builder.mutation<ApiProvider, { id: number, data: Partial<ApiProvider> }>({
+            query: ({ id, data }) => ({
+                url: `/api-management/providers/${id}`,
+                method: 'PUT',
+                body: data,
+            }),
+            invalidatesTags: ['ApiProvider' as any],
+        }),
+        deleteApiProvider: builder.mutation<void, number>({
+            query: (id) => ({
+                url: `/api-management/providers/${id}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: ['ApiProvider' as any, 'Integration' as any],
+        }),
+
+        getIntegrations: builder.query<IntegrationConfig[], void>({
+            query: () => '/api-management/integrations',
+            transformResponse: (response: IntegrationsResponse) => response.data,
+            providesTags: ['Integration' as any],
+        }),
+        createIntegration: builder.mutation<IntegrationConfig, Partial<IntegrationConfig>>({
+            query: (body) => ({
+                url: '/api-management/integrations',
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['Integration' as any],
+        }),
+        updateIntegration: builder.mutation<IntegrationConfig, { id: number, data: Partial<IntegrationConfig> }>({
+            query: ({ id, data }) => ({
+                url: `/api-management/integrations/${id}`,
+                method: 'PUT',
+                body: data,
+            }),
+            invalidatesTags: ['Integration' as any],
+        }),
+        deleteIntegration: builder.mutation<void, number>({
+            query: (id) => ({
+                url: `/api-management/integrations/${id}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: ['Integration' as any],
+        }),
         getApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number } | void>({
             query: (params) => {
                 const page = params && 'page' in params ? params.page : 1;
@@ -1437,4 +1567,14 @@ export const {
     useGetSuperAdminStakeholderStatusQuery,
     useGetSuperAdminPerformanceQuery,
     useGetAdminAnalyticsQuery,
+
+    // API Management Hooks
+    useGetApiProvidersQuery,
+    useCreateApiProviderMutation,
+    useUpdateApiProviderMutation,
+    useDeleteApiProviderMutation,
+    useGetIntegrationsQuery,
+    useCreateIntegrationMutation,
+    useUpdateIntegrationMutation,
+    useDeleteIntegrationMutation,
 } = api;

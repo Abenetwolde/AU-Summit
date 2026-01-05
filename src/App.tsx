@@ -19,6 +19,7 @@ import { PermissionManagement } from './pages/dashboard/PermissionManagement';
 import { RoleManagement } from './pages/dashboard/RoleManagement';
 import { InvitationCenter } from './pages/dashboard/invitations/InvitationCenter';
 import { BadgeCenter } from './pages/dashboard/badges/BadgeCenter';
+import ApiManagement from './pages/dashboard/ApiManagement';
 import { PublicProfile } from './pages/public/PublicProfile';
 import { Toaster } from 'sonner';
 
@@ -70,6 +71,7 @@ function App() {
                                     <Route path="permissions" element={<PermissionManagement />} />
                                     <Route path="roles" element={<RoleManagement />} />
                                     <Route path="badge-center" element={<BadgeCenter />} />
+                                    <Route path="api-management" element={<ApiManagement />} />
 
                                     {/* AU Admin Specific */}
                                     <Route path="badge-management" element={<BadgeManagement />} />

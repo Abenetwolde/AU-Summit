@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth, UserRole } from '@/auth/context';
 import { cn } from '@/lib/utils';
-import { LogOut, User, LayoutDashboard, BadgeCheck, Users, Mail, FileText, Settings, Building2, GitMerge, ShieldAlert, Shield, Menu, X } from 'lucide-react';
+import { LogOut, User, LayoutDashboard, BadgeCheck, Users, Mail, FileText, Settings, Building2, GitMerge, ShieldAlert, Shield, Menu, X, Activity } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import emmpaLogo from '@/assests/emmpa.png';
@@ -337,6 +337,24 @@ export function DashboardLayout() {
                             >
                                 <Settings className="h-5 w-5" />
                                 System Settings
+                            </NavLink>
+                        )}
+
+                        {/* API Management */}
+                        {user?.role === UserRole.SUPER_ADMIN && (
+                            <NavLink
+                                to={`${basePath}/api-management`}
+                                className={({ isActive }) =>
+                                    cn(
+                                        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                        isActive
+                                            ? "bg-[#e6f4ea] text-primary"
+                                            : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                    )
+                                }
+                            >
+                                <Activity className="h-5 w-5" />
+                                API Management
                             </NavLink>
                         )}
                     </nav>
