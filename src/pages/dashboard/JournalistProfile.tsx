@@ -202,13 +202,19 @@ export function JournalistProfile() {
     const roleTitle = formData.occupation || 'Journalist';
     const country = formData.country || 'ET';
 
-    // Passport Photo Handling
-    const passportPhotos = Array.isArray(formData.passport_photo)
-        ? formData.passport_photo
-        : (formData.passport_photo ? [formData.passport_photo] : []);
+    // Photo/Document Handling
+    const getFiles = (field: any) => {
+        if (!field) return [];
+        return Array.isArray(field) ? field : [field];
+    };
 
-    const photoUrl = passportPhotos.length > 0
-        ? getFileUrl(passportPhotos[0])
+    const profilePhotos = getFiles(formData.profile_photo || formData.passport_photo);
+    const pressCards = getFiles(formData.press_card_copy);
+    const assignmentLetters = getFiles(formData.assignment_letter);
+    const passportScans = getFiles(formData.passport_scan);
+
+    const photoUrl = profilePhotos.length > 0
+        ? getFileUrl(profilePhotos[0])
         : "https://tse4.mm.bing.net/th/id/OIP.YjAp0OwzYdsFmoWOeoK57AHaEg?pid=Api&P=0&h=220";
 
     const organization = "News Org"; // Placeholder or from API if avail
@@ -295,6 +301,9 @@ export function JournalistProfile() {
                                 <TabsTrigger value="arrival" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
                                     <Plane className="h-4 w-4" /> Arrival Info
                                 </TabsTrigger>
+                                <TabsTrigger value="documents" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
+                                    <FileText className="h-4 w-4" /> Documents
+                                </TabsTrigger>
                                 <TabsTrigger value="equipment" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
                                     <Briefcase className="h-4 w-4" /> Equipment
                                 </TabsTrigger>
@@ -350,23 +359,24 @@ export function JournalistProfile() {
                                     <div><p className="text-xs font-bold text-gray-400 uppercase">ISSUE DATE</p><p className="text-sm font-bold text-gray-900 mt-1">{formData.passport_issue_date || 'N/A'}</p></div>
                                     <div><p className="text-xs font-bold text-gray-400 uppercase">EXPIRY DATE</p><p className="text-sm font-bold text-gray-900 mt-1">{formData.passport_expiry_date || 'N/A'}</p></div>
 
-                                    {passportPhotos.length > 0 && (
+                                    {passportScans.length > 0 && (
                                         <div className="col-span-1 sm:col-span-2 lg:col-span-4 mt-4">
-                                            <p className="text-xs font-bold text-gray-400 uppercase mb-3">PASSPORT PHOTOS</p>
+                                            <p className="text-xs font-bold text-gray-400 uppercase mb-3">PASSPORT SCANS</p>
                                             <div className="flex flex-wrap gap-4">
-                                                {passportPhotos.map((photo: string, idx: number) => (
+                                                {passportScans.map((file: string, idx: number) => (
                                                     <a
                                                         key={idx}
-                                                        href={getFileUrl(photo)}
+                                                        href={getFileUrl(file)}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="group relative h-32 w-32 rounded-lg overflow-hidden border bg-gray-50 flex-shrink-0"
+                                                        className="group relative h-32 w-48 rounded-lg overflow-hidden border bg-gray-50 flex-shrink-0"
                                                     >
-                                                        <img
-                                                            src={getFileUrl(photo)}
-                                                            alt={`Passport ${idx + 1}`}
-                                                            className="h-full w-full object-cover transition-transform group-hover:scale-110"
-                                                        />
+                                                        <div className="h-full w-full flex flex-col items-center justify-center p-2">
+                                                            <FileText className="h-8 w-8 text-gray-400 mb-2" />
+                                                            <span className="text-[10px] text-gray-500 truncate w-full text-center px-2">
+                                                                Passport Scan {idx + 1}
+                                                            </span>
+                                                        </div>
                                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                             <Download className="h-5 w-5 text-white" />
                                                         </div>
@@ -374,6 +384,75 @@ export function JournalistProfile() {
                                                 ))}
                                             </div>
                                         </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* Documents Content */}
+                        <TabsContent value="documents">
+                            <Card className="bg-white border-0 shadow-sm">
+                                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                    <CardTitle className="text-lg font-bold">Uploaded Documents</CardTitle>
+                                    <FileText className="h-5 w-5 text-purple-600" />
+                                </CardHeader>
+                                <CardContent className="space-y-6 pt-4">
+                                    {pressCards.length > 0 && (
+                                        <div>
+                                            <p className="text-xs font-bold text-gray-400 uppercase mb-3">PRESS CARD / MEDIA ID</p>
+                                            <div className="flex flex-wrap gap-4">
+                                                {pressCards.map((file: string, idx: number) => (
+                                                    <a
+                                                        key={idx}
+                                                        href={getFileUrl(file)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="group relative h-32 w-48 rounded-lg overflow-hidden border bg-gray-50 flex-shrink-0"
+                                                    >
+                                                        <div className="h-full w-full flex flex-col items-center justify-center p-2">
+                                                            <FileText className="h-8 w-8 text-blue-400 mb-2" />
+                                                            <span className="text-[10px] text-gray-500 truncate w-full text-center px-2">
+                                                                Press Card {idx + 1}
+                                                            </span>
+                                                        </div>
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                            <Download className="h-5 w-5 text-white" />
+                                                        </div>
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {assignmentLetters.length > 0 && (
+                                        <div>
+                                            <p className="text-xs font-bold text-gray-400 uppercase mb-3">ASSIGNMENT LETTER / MEDIA LICENSE</p>
+                                            <div className="flex flex-wrap gap-4">
+                                                {assignmentLetters.map((file: string, idx: number) => (
+                                                    <a
+                                                        key={idx}
+                                                        href={getFileUrl(file)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="group relative h-32 w-48 rounded-lg overflow-hidden border bg-gray-50 flex-shrink-0"
+                                                    >
+                                                        <div className="h-full w-full flex flex-col items-center justify-center p-2">
+                                                            <FileText className="h-8 w-8 text-green-400 mb-2" />
+                                                            <span className="text-[10px] text-gray-500 truncate w-full text-center px-2">
+                                                                Assignment Letter {idx + 1}
+                                                            </span>
+                                                        </div>
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                            <Download className="h-5 w-5 text-white" />
+                                                        </div>
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {pressCards.length === 0 && assignmentLetters.length === 0 && (
+                                        <p className="text-sm text-gray-500 italic">No additional documents uploaded.</p>
                                     )}
                                 </CardContent>
                             </Card>
