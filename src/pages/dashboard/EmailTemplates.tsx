@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,7 @@ export function EmailTemplates() {
     const [editingTemplate, setEditingTemplate] = useState<Partial<EmailTemplate>>({});
     const [isPreviewMode, setIsPreviewMode] = useState(false);
     const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
 
     const { user } = useAuth();
     // Assuming NISS_OFFICER is read-only based on previous context, or use permission system if available
@@ -95,7 +96,10 @@ export function EmailTemplates() {
     };
 
     const handleSave = async () => {
-        if (!editingTemplate.templateName || !editingTemplate.emailSubject || !editingTemplate.emailContent) {
+        // Use ref content if available for latest edits, otherwise state
+        const currentContent = contentRef.current ? contentRef.current.innerHTML : (editingTemplate.emailContent || '');
+
+        if (!editingTemplate.templateName || !editingTemplate.emailSubject || !currentContent) {
             toast.error('Please fill in all required fields');
             return;
         }
@@ -103,7 +107,10 @@ export function EmailTemplates() {
         const formData = new FormData();
         formData.append('templateName', editingTemplate.templateName);
         formData.append('emailSubject', editingTemplate.emailSubject);
-        formData.append('emailContent', editingTemplate.emailContent);
+
+        // Use ref content if available for latest edits, otherwise state
+        const finalContent = contentRef.current ? contentRef.current.innerHTML : (editingTemplate.emailContent || '');
+        formData.append('emailContent', finalContent);
         if (editingTemplate.type) formData.append('type', editingTemplate.type);
         if (editingTemplate.description) formData.append('description', editingTemplate.description);
 
@@ -391,6 +398,7 @@ export function EmailTemplates() {
                                         ) : (
                                             <div className="relative group">
                                                 <div
+                                                    ref={contentRef}
                                                     contentEditable={!isReadOnly}
                                                     onBlur={(e) => {
                                                         const html = e.currentTarget.innerHTML;
