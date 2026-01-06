@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useEffect, DragEvent, useMemo } from 'react';
+import { useCallback, useState, useRef, useEffect, DragEvent } from 'react';
 import {
     ReactFlow,
     Controls,
@@ -15,7 +15,6 @@ import {
     NodeProps,
     Node,
     MarkerType,
-    OnEdgesDelete,
     ReactFlowProvider,
     useReactFlow,
     EdgeProps,
@@ -57,7 +56,6 @@ import {
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
@@ -80,7 +78,7 @@ const StepNode = ({ data, selected }: NodeProps) => {
         }
     };
 
-    const color = getDependencyTypeColor(data.dependencyType as string);
+    // const color = getDependencyTypeColor(data.dependencyType as string); // Unused
     const customStyle = data.color ? { borderLeftColor: data.color as string } : {};
 
     return (
@@ -205,6 +203,7 @@ const transformApiToNodes = (steps: WorkflowStep[], onEdit: (step: WorkflowStep)
                     description: step.description,
                     color: step.color,
                     formId: step.formId,
+                    emailStep: step.emailStep,
                     originalStep: step,
                     onEdit: () => onEdit(step)
                 }
@@ -279,7 +278,8 @@ const transformNodesToApi = (nodes: Node[], edges: Edge[], allStepsOriginal: Wor
             // Nodes on similar Y (+/- 20px) share same order.
             displayOrder: Math.floor(node.position.y / 100) * 10 || 10,
             dependsOn: dependsOn,
-            dependencyType: dependencyType
+            dependencyType: dependencyType,
+            emailStep: node.data.emailStep as boolean
         };
     });
 
@@ -305,15 +305,15 @@ export function WorkflowBuilder() {
 function WorkflowBuilderContent() {
     const { data: workflowSteps, isLoading: isStepsLoading, refetch } = useGetWorkflowStepsQuery();
     const [createStep, { isLoading: isCreating }] = useCreateWorkflowStepMutation();
-    const [updateStep, { isLoading: isUpdating }] = useUpdateWorkflowStepMutation();
-    const [deleteStep, { isLoading: isDeleting }] = useDeleteWorkflowStepMutation();
+    const [updateStep] = useUpdateWorkflowStepMutation();
+    const [deleteStep] = useDeleteWorkflowStepMutation();
     const [bulkUpdate, { isLoading: isSaving }] = useBulkUpdateWorkflowStepsMutation();
 
     const { data: roles } = useGetRolesQuery();
     const { data: forms } = useGetFormsQuery();
 
-    const [nodes, setNodes, onNodesChange] = useNodesState([]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     const { screenToFlowPosition } = useReactFlow();
 
     // Ref to track latest nodes for callbacks
@@ -425,7 +425,8 @@ function WorkflowBuilderContent() {
                 icon: '',
                 color: currentStep.color || '#3b82f6',
                 dependencyType: 'NONE', // Default
-                dependsOn: []
+                dependsOn: [],
+                emailStep: currentStep.emailStep // Include emailStep in create
             }).unwrap();
 
             toast.success("Step created in Sidebar");
@@ -476,6 +477,7 @@ function WorkflowBuilderContent() {
                     formId: currentStep.formId,
                     color: currentStep.color,
                     dependencyType: currentStep.dependencyType as any,
+                    emailStep: currentStep.emailStep // Include emailStep in update
                 }
             }).unwrap();
 
@@ -642,6 +644,7 @@ function WorkflowBuilderContent() {
                                 <TableHead>Role</TableHead>
                                 <TableHead className="w-[150px]">Dep. Type</TableHead>
                                 <TableHead>Depends On</TableHead>
+                                <TableHead>Email Trigger</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
@@ -655,13 +658,33 @@ function WorkflowBuilderContent() {
                                 const displayOrder = currentNode ? (currentNode.data.displayOrder as number) : step.displayOrder;
                                 const depType = currentNode ? (currentNode.data.dependencyType as string) : step.dependencyType;
                                 const dependsOn = currentNode ? (currentNode.data.dependsOn as string[]) : step.dependsOn;
+                                const emailStep = currentNode ? (currentNode.data.emailStep as boolean) : (step as any).emailStep;
 
                                 const updateNodeData = (newData: any) => {
                                     if (!isPlaced) {
                                         toast.error("Place the step on the canvas first to edit its flow logic.");
                                         return;
                                     }
-                                    setNodes(nds => nds.map(n => n.id === step.key ? { ...n, data: { ...n.data, ...newData } } : n));
+                                    setNodes(nds => nds.map(n => {
+                                        // Handle specific logic for emailStep exclusivity
+                                        if ('emailStep' in newData && newData.emailStep === true) {
+                                            // If setting this to true, unset others with same formId
+                                            const currentFormId = step.formId;
+                                            // If we are looking at a different node
+                                            if (n.id !== step.key) {
+                                                // Check if it shares scope (same formId or both global)
+                                                const nodeFormId = n.data.formId;
+                                                if (nodeFormId === currentFormId) {
+                                                    return { ...n, data: { ...n.data, emailStep: false } };
+                                                }
+                                            }
+                                        }
+
+                                        if (n.id === step.key) {
+                                            return { ...n, data: { ...n.data, ...newData } };
+                                        }
+                                        return n;
+                                    }));
                                 };
 
                                 return (
@@ -748,6 +771,14 @@ function WorkflowBuilderContent() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
+                                            <div className="flex items-center justify-center">
+                                                <Checkbox
+                                                    checked={!!emailStep}
+                                                    onCheckedChange={(checked) => updateNodeData({ emailStep: !!checked })}
+                                                />
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
                                             {isPlaced ? <Badge className="bg-emerald-500 h-5 text-[9px]">Active</Badge> : <Badge variant="secondary" className="text-slate-500 h-5 text-[9px]">Unused</Badge>}
                                         </TableCell>
                                         <TableCell className="text-right">
@@ -797,6 +828,24 @@ function WorkflowBuilderContent() {
                             <div className="flex gap-2">
                                 <Input type="color" className="w-12 p-0 border-0" value={currentStep.color || '#3b82f6'} onChange={e => setCurrentStep({ ...currentStep, color: e.target.value })} />
                                 <Input value={currentStep.color || ''} onChange={e => setCurrentStep({ ...currentStep, color: e.target.value })} />
+                            </div>
+                        </div>
+                        <div className="flex items-center space-x-2 border p-3 rounded-md bg-slate-50">
+                            <Checkbox
+                                id="create-email-step"
+                                checked={!!currentStep.emailStep}
+                                onCheckedChange={(c) => setCurrentStep({ ...currentStep, emailStep: !!c })}
+                            />
+                            <div className="grid gap-1.5 leading-none">
+                                <label
+                                    htmlFor="create-email-step"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                    Send Email Trigger
+                                </label>
+                                <p className="text-[0.8rem] text-muted-foreground">
+                                    If checked, this step will trigger the approval email. (Only one step per form)
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -857,7 +906,7 @@ function WorkflowBuilderContent() {
                         <div className="space-y-2">
                             <Label>Depends On</Label>
                             <div className="flex flex-wrap gap-2 mb-2 p-2 border rounded-md bg-slate-50 min-h-[40px]">
-                                {currentStep.dependsOn?.length ? (
+                                {currentStep.dependsOn && currentStep.dependsOn.length > 0 ? (
                                     currentStep.dependsOn.map(depKey => (
                                         <Badge key={depKey} variant="secondary" className="flex items-center gap-1">
                                             {depKey}
@@ -915,6 +964,24 @@ function WorkflowBuilderContent() {
                                 />
                             </div>
                         </div>
+                        <div className="flex items-center space-x-2 border p-3 rounded-md bg-slate-50 mt-4">
+                            <Checkbox
+                                id="edit-email-step"
+                                checked={!!currentStep.emailStep}
+                                onCheckedChange={(c) => setCurrentStep({ ...currentStep, emailStep: !!c })}
+                            />
+                            <div className="grid gap-1.5 leading-none">
+                                <label
+                                    htmlFor="edit-email-step"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                    Send Email Trigger
+                                </label>
+                                <p className="text-[0.8rem] text-muted-foreground">
+                                    If checked, this step will trigger the approval email.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                     <DialogFooter className="flex justify-between">
                         <Button variant="destructive" size="sm" onClick={handleDelete}><Trash2 className="w-4 h-4 mr-2" /> Delete</Button>
@@ -922,7 +989,7 @@ function WorkflowBuilderContent() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     );
 }
 

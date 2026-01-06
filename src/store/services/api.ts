@@ -223,6 +223,7 @@ export interface WorkflowStep {
     color: string | null; // Hex color code
     dependencyType: 'ALL' | 'ANY' | 'NONE';
     dependsOn: string[]; // Array of step KEYs that this step depends on
+    emailStep: boolean; // Controls if this step triggers the email
     createdAt: string;
     updatedAt: string;
 }
@@ -238,6 +239,7 @@ export interface CreateWorkflowStepPayload {
     color: string | null;
     dependencyType: 'ALL' | 'ANY' | 'NONE';
     dependsOn: string[];
+    emailStep?: boolean;
 }
 
 export interface UpdateWorkflowStepPayload {
@@ -252,6 +254,7 @@ export interface UpdateWorkflowStepPayload {
     color?: string | null;
     dependencyType?: 'ALL' | 'ANY' | 'NONE';
     dependsOn?: string[];
+    emailStep?: boolean;
 }
 
 export interface BulkUpdateWorkflowStepsPayload {
