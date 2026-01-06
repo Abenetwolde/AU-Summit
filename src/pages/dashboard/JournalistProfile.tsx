@@ -203,6 +203,14 @@ export function JournalistProfile() {
     const isCustoms = user?.role === UserRole.CUSTOMS_OFFICER;
     const canUpdateEquipment = checkPermission('verification:equipment:single:update');
 
+    // Role Match Logic
+    const approvals = application.applicationApprovals || application.approvals || [];
+    const currentStepApproval = approvals.find((a: any) => a.workflowStep?.key === user?.workflowStepKey);
+    const requiredRole = currentStepApproval?.workflowStep?.requiredRole;
+    // Disable if a required role is defined and it strictly doesn't match the user's role
+    // (Bypass for Super Admin if desired, though existing canApprove does that partially)
+    const isRoleMismatch = requiredRole && user?.role !== requiredRole;
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -513,16 +521,16 @@ export function JournalistProfile() {
                                     <Button
                                         className="flex-1 bg-[#009b4d] hover:bg-[#007a3d] font-bold shadow-md"
                                         onClick={() => handleDecision('APPROVED')}
-                                        disabled={isStatusUpdating || application.status === 'APPROVED'}
+                                        disabled={isStatusUpdating || currentStepApproval?.status === 'APPROVED' || !!isRoleMismatch}
                                     >
                                         {isStatusUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-                                        {application.status === 'APPROVED' ? 'Approved' : 'Approve'}
+                                        {currentStepApproval?.status === 'APPROVED' ? 'Approved' : 'Approve'}
                                     </Button>
                                     <Button
                                         variant="outline"
                                         className="flex-1 bg-red-50 text-red-600 border-red-200 hover:bg-red-100 font-bold shadow-sm"
                                         onClick={() => handleDecision('REJECTED')}
-                                        disabled={isStatusUpdating || application.status === 'APPROVED'}
+                                        disabled={isStatusUpdating || currentStepApproval?.status === 'APPROVED' || !!isRoleMismatch}
                                     >
                                         <X className="h-4 w-4 mr-2" /> Reject
                                     </Button>
