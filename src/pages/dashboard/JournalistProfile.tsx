@@ -98,13 +98,11 @@ export function JournalistProfile() {
 
         // Ensure we have a workflow key
         const stepKey = user?.workflowStepKey;
-        console.log(stepKey);
-        if (!stepKey) {
-            toast.error("You don't have a workflow key assigned to your role.");
-            return;
-        }
+        console.log('User Workflow Key:', stepKey);
 
-        const effectiveStepKey = stepKey || 'super_admin'; // Fallback for super admin if needed, or handle specifically
+        // Use user's key if available, otherwise fallback to the relevant step we found, then 'super_admin'
+        const effectiveStepKey = stepKey || (relevantStep as any)?.key || 'super_admin';
+        console.log('Effective Step Key:', effectiveStepKey);
 
         try {
             await approveWorkflow({
@@ -226,12 +224,29 @@ export function JournalistProfile() {
     const canUpdateEquipment = checkPermission('verification:equipment:single:update');
 
     // Role Match Logic
+    const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN || user?.roleName === 'SUPER_ADMIN';
     const approvals = application.applicationApprovals || application.approvals || [];
-    const currentStepApproval = approvals.find((a: any) => a.workflowStep?.key === user?.workflowStepKey);
-    const requiredRole = currentStepApproval?.workflowStep?.requiredRole;
-    // Disable if a required role is defined and it strictly doesn't match the user's role
-    // (Bypass for Super Admin if desired, though existing canApprove does that partially)
-    const isRoleMismatch = requiredRole && user?.role !== requiredRole;
+
+    // Find the relevant step for the current user
+    const currentStepApproval = approvals.find((a: any) => {
+        const step = a.workflowStep || a.approvalWorkflowStep;
+        if (!step) return false;
+
+        // Match by user's specific workflow key
+        if (user?.workflowStepKey && step.key === user.workflowStepKey) return true;
+
+        // Or match by required role
+        if (step.requiredRole && (step.requiredRole === user?.role || step.requiredRole === user?.roleName)) return true;
+
+        return false;
+    });
+
+    const relevantStep = currentStepApproval?.workflowStep || currentStepApproval?.approvalWorkflowStep;
+    const requiredRole = relevantStep?.requiredRole;
+
+    // Authorization logic
+    // Disable if strictly a role mismatch and NOT a super admin
+    const isRoleMismatch = !isSuperAdmin && !!requiredRole && (user?.role !== requiredRole && user?.roleName !== requiredRole);
 
     return (
         <div className="space-y-6">
@@ -492,7 +507,12 @@ export function JournalistProfile() {
                                     <Button
                                         className="flex-1 bg-[#009b4d] hover:bg-[#007a3d] font-bold shadow-md"
                                         onClick={() => handleDecision('APPROVED')}
-                                        disabled={isStatusUpdating || currentStepApproval?.status === 'APPROVED' || !!isRoleMismatch}
+                                        disabled={
+                                            isStatusUpdating ||
+                                            currentStepApproval?.status === 'APPROVED' ||
+                                            !!isRoleMismatch ||
+                                            (!isSuperAdmin && !currentStepApproval)
+                                        }
                                     >
                                         {isStatusUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
                                         {currentStepApproval?.status === 'APPROVED' ? 'Approved' : 'Approve'}
@@ -501,14 +521,19 @@ export function JournalistProfile() {
                                         variant="outline"
                                         className="flex-1 bg-red-50 text-red-600 border-red-200 hover:bg-red-100 font-bold shadow-sm"
                                         onClick={() => handleDecision('REJECTED')}
-                                        disabled={isStatusUpdating || currentStepApproval?.status === 'APPROVED' || !!isRoleMismatch}
+                                        disabled={
+                                            isStatusUpdating ||
+                                            currentStepApproval?.status === 'APPROVED' ||
+                                            !!isRoleMismatch ||
+                                            (!isSuperAdmin && !currentStepApproval)
+                                        }
                                     >
                                         <X className="h-4 w-4 mr-2" /> Reject
                                     </Button>
                                 </div>
-                                {user?.workflowStepKey && (
+                                {(user?.workflowStepKey || relevantStep?.key) && (
                                     <p className="text-[10px] text-center text-gray-500">
-                                        Acting as: <span className="font-bold uppercase">{user.workflowStepKey}</span>
+                                        Acting as: <span className="font-bold uppercase">{user?.workflowStepKey || relevantStep?.key}</span>
                                     </p>
                                 )}
                             </div>
