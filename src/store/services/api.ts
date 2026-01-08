@@ -152,6 +152,11 @@ export interface User {
     updatedAt: string;
     role?: Role;
     roleName?: string;
+    embassyId?: number;
+    embassy?: {
+        id: number;
+        name: string;
+    };
 }
 
 export interface FormFieldTemplate {

@@ -41,13 +41,14 @@ export function UserManagement() {
         (u.roleName && u.roleName.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
-    const handleCreateUser = async (userData: { fullName: string; email: string; password: string; roleId: string }) => {
+    const handleCreateUser = async (userData: { fullName: string; email: string; password: string; roleId: string; embassyId?: string }) => {
         try {
             await createUser({
                 fullName: userData.fullName,
                 email: userData.email,
                 password: userData.password,
                 roleId: Number(userData.roleId),
+                embassyId: userData.embassyId ? Number(userData.embassyId) : undefined,
                 status: 'ACTIVE'
             }).unwrap();
             toast.success("User created successfully");
@@ -151,6 +152,7 @@ export function UserManagement() {
                                         <th className="text-left py-3 px-4 text-xs font-bold text-gray-600 uppercase">Name</th>
                                         <th className="text-left py-3 px-4 text-xs font-bold text-gray-600 uppercase">Email</th>
                                         <th className="text-left py-3 px-4 text-xs font-bold text-gray-600 uppercase">Role</th>
+                                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-600 uppercase">Embassy</th>
                                         <th className="text-left py-3 px-4 text-xs font-bold text-gray-600 uppercase">Status</th>
                                         {!isReadOnly && <th className="text-right py-3 px-4 text-xs font-bold text-gray-600 uppercase">Actions</th>}
                                     </tr>
@@ -164,6 +166,9 @@ export function UserManagement() {
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(u.roleName)}`}>
                                                     {u.roleName || u.role?.name || 'N/A'}
                                                 </span>
+                                            </td>
+                                            <td className="py-3 px-4 text-sm text-gray-600">
+                                                {u.embassy?.name || '-'}
                                             </td>
                                             <td className="py-3 px-4">
                                                 <span className={`text-xs px-2 py-1 rounded-full ${u.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>

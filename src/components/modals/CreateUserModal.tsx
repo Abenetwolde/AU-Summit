@@ -17,12 +17,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Role } from '@/store/services/api';
+import { Role, useGetEmbassiesQuery } from '@/store/services/api';
 
 interface CreateUserModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onConfirm: (userData: { fullName: string; email: string; password: string; roleId: string }) => void;
+    onConfirm: (userData: { fullName: string; email: string; password: string; roleId: string; embassyId?: string }) => void;
     roles: Role[];
     isLoading?: boolean;
 }
@@ -33,7 +33,13 @@ export function CreateUserModal({ open, onOpenChange, onConfirm, roles, isLoadin
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [roleId, setRoleId] = useState('');
+    const [embassyId, setEmbassyId] = useState('');
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+    const { data: embassies = [] } = useGetEmbassiesQuery();
+
+    const selectedRole = roles.find(r => String(r.id) === roleId);
+    const isEmbassyOfficer = selectedRole?.name === 'EMBASSY_OFFICER';
 
     const validate = () => {
         const newErrors: { [key: string]: string } = {};
@@ -45,6 +51,7 @@ export function CreateUserModal({ open, onOpenChange, onConfirm, roles, isLoadin
         else if (password.length < 8) newErrors.password = 'Password must be at least 8 characters';
         if (password !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
         if (!roleId) newErrors.role = 'Role is required';
+        if (isEmbassyOfficer && !embassyId) newErrors.embassy = 'Embassy is required for this role';
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -52,13 +59,14 @@ export function CreateUserModal({ open, onOpenChange, onConfirm, roles, isLoadin
 
     const handleConfirm = () => {
         if (validate()) {
-            onConfirm({ fullName: name, email, password, roleId });
+            onConfirm({ fullName: name, email, password, roleId, embassyId: isEmbassyOfficer ? embassyId : undefined });
             // Reset form
             setName('');
             setEmail('');
             setPassword('');
             setConfirmPassword('');
             setRoleId('');
+            setEmbassyId('');
             setErrors({});
         }
     };
@@ -135,6 +143,23 @@ export function CreateUserModal({ open, onOpenChange, onConfirm, roles, isLoadin
                         </Select>
                         {errors.role && <p className="text-xs text-red-600">{errors.role}</p>}
                     </div>
+
+                    {isEmbassyOfficer && (
+                        <div className="space-y-2">
+                            <Label htmlFor="embassy">Linked Embassy *</Label>
+                            <Select value={embassyId} onValueChange={setEmbassyId}>
+                                <SelectTrigger id="embassy">
+                                    <SelectValue placeholder="Select an embassy" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {embassies?.length > 0 ? embassies.map(e => (
+                                        <SelectItem key={e.id} value={String(e.id)}>{e.name}</SelectItem>
+                                    )) : <SelectItem value="none" disabled>No embassies found</SelectItem>}
+                                </SelectContent>
+                            </Select>
+                            {errors.embassy && <p className="text-xs text-red-600">{errors.embassy}</p>}
+                        </div>
+                    )}
                 </div>
 
                 <DialogFooter>
