@@ -1171,9 +1171,12 @@ export const api = createApi({
             invalidatesTags: ['Organization'],
         }),
         // Users
-        getUsers: builder.query<User[], void>({
-            query: () => '/users',
-            transformResponse: (response: UsersResponse) => response.data.users,
+        getUsers: builder.query<{ users: User[]; total: number; currentPage: number; totalPages: number }, { page?: number; limit?: number; search?: string; roleId?: number; status?: 'ACTIVE' | 'INACTIVE' } | void>({
+            query: (params) => ({
+                url: '/users',
+                params: params || {},
+            }),
+            transformResponse: (response: UsersResponse) => response.data,
             providesTags: ['User'],
         }),
         createUser: builder.mutation<User, Partial<User>>({
