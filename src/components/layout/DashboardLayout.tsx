@@ -122,24 +122,20 @@ export function DashboardLayout() {
                         )}
 
                         {/* Economist/Journalist List */}
-                        {
-                            checkPermission('application:view:approved') && (
-                                <NavLink
-                                    to={`${basePath}/journalists`}
-                                    className={({ isActive }) =>
-                                        cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                            isActive
-                                                ? "bg-[#e6f4ea] text-primary"
-                                                : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                        )
-                                    }
-                                >
-                                    <Users className="h-5 w-5" />
-                                    List of journalists
-                                </NavLink >
-                            )
-                        }
+                        <NavLink
+                            to={`${basePath}/journalists`}
+                            className={({ isActive }) =>
+                                cn(
+                                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                                    isActive
+                                        ? "bg-[#e6f4ea] text-primary"
+                                        : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+                                )
+                            }
+                        >
+                            <Users className="h-5 w-5" />
+                            List of journalists
+                        </NavLink >
 
                         {/* Accredited Journalists - 'application:view:approved' */}
                         {
@@ -327,7 +323,7 @@ export function DashboardLayout() {
 
                         {/* Badge Center */}
                         {
-                            user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.AU_OFFICER && (
+                            user?.role === UserRole.SUPER_ADMIN && (
                                 <NavLink
                                     to={`${basePath}/badge-center`}
                                     className={({ isActive }) =>
