@@ -26,7 +26,8 @@ export function OrganizationManagement() {
 
     // API Hooks
     const { data: organizations = [], isLoading: isOrgLoading } = useGetOrganizationsQuery();
-    const { data: users = [], isLoading: isUsersLoading } = useGetUsersQuery();
+    const { data: usersData, isLoading: isUsersLoading } = useGetUsersQuery();
+    const users = usersData?.users ?? [];
     const [createOrganization, { isLoading: isCreating }] = useCreateOrganizationMutation();
     const [updateOrganization, { isLoading: isUpdating }] = useUpdateOrganizationMutation();
 
