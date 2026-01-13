@@ -55,18 +55,38 @@ function App() {
                                     {/* Consolidated Pages */}
                                     <Route path="admin" element={<DashboardIndex />} />
                                     <Route path="journalists" element={<JournalistList />} />
-                                    <Route path="journalists/:id" element={<JournalistProfile />} />
-                                    <Route path="accredited" element={<AccreditedJournalists />} />
+
+                                    <Route element={<ProtectedRoute requiredPermission="application:view:by-id" />}>
+                                        <Route path="journalists/:id" element={<JournalistProfile />} />
+                                    </Route>
+
+                                    <Route element={<ProtectedRoute requiredPermission="application:view:approved" />}>
+                                        <Route path="accredited" element={<AccreditedJournalists />} />
+                                        <Route path="invitations" element={<InvitationCenter />} />
+                                    </Route>
 
                                     {/* Admin Features */}
-                                    <Route path="users" element={<UserManagement />} />
-                                    <Route path="email-templates" element={<EmailTemplates />} />
+                                    <Route element={<ProtectedRoute requiredPermission="user:view:all" />}>
+                                        <Route path="users" element={<UserManagement />} />
+                                    </Route>
+
+                                    <Route element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]} />}>
+                                        <Route path="email-templates" element={<EmailTemplates />} />
+                                        <Route path="settings" element={<SystemSettings />} />
+                                        <Route path="badge-center" element={<BadgeCenter />} />
+                                        <Route path="api-management" element={<ApiManagement />} />
+                                    </Route>
 
                                     {/* Form Builder Routes */}
-                                    <Route path="forms" element={<FormList />} />
-                                    <Route path="forms/builder" element={<FormEditor />} />
-                                    <Route path="forms/builder/:id" element={<FormEditor />} />
+                                    <Route element={<ProtectedRoute requiredPermission="form:view:all" />}>
+                                        <Route path="forms" element={<FormList />} />
+                                    </Route>
+                                    <Route element={<ProtectedRoute requiredPermission="form:create" />}>
+                                        <Route path="forms/builder" element={<FormEditor />} />
+                                        <Route path="forms/builder/:id" element={<FormEditor />} />
+                                    </Route>
 
+<<<<<<< HEAD
                                     <Route path="settings" element={<SystemSettings />} />
                                     <Route path="organizations" element={<OrganizationManagement />} />
                                     <Route path="invitations" element={<InvitationCenter />} />
@@ -76,10 +96,29 @@ function App() {
                                     <Route path="badge-center" element={<BadgeCenter />} />
                                     <Route path="api-management" element={<ApiManagement />} />
                                     <Route path="embassies" element={<EmbassyManagement />} />
+=======
+                                    <Route element={<ProtectedRoute requiredPermission="organization:view:all" />}>
+                                        <Route path="organizations" element={<OrganizationManagement />} />
+                                    </Route>
+
+                                    <Route element={<ProtectedRoute requiredPermission="workflow:config:view" />}>
+                                        <Route path="workflow" element={<WorkflowBuilder />} />
+                                    </Route>
+
+                                    <Route element={<ProtectedRoute requiredPermission="permission:matrix:view" />}>
+                                        <Route path="permissions" element={<PermissionManagement />} />
+                                    </Route>
+
+                                    <Route element={<ProtectedRoute requiredPermission="role:view:all" />}>
+                                        <Route path="roles" element={<RoleManagement />} />
+                                    </Route>
+>>>>>>> 3ca927b2 (new update)
 
                                     {/* AU Admin Specific */}
-                                    <Route path="badge-management" element={<BadgeManagement />} />
-                                    <Route path="badge-slip/:id" element={<BadgeSlipPreview />} />
+                                    <Route element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.AU_ADMIN]} />}>
+                                        <Route path="badge-management" element={<BadgeManagement />} />
+                                        <Route path="badge-slip/:id" element={<BadgeSlipPreview />} />
+                                    </Route>
                                 </Route>
                             </Route>
 

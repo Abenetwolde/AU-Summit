@@ -8,8 +8,8 @@ import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
 
 export function Login() {
-    const [email, setEmail] = useState('admin@ausmc.org');
-    const [password, setPassword] = useState('admin@123');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const { login } = useAuth();
     const navigate = useNavigate();
@@ -54,12 +54,7 @@ export function Login() {
         }
 
         // --- Explicit Mock Overrides for Dev/Testing (Only if matching exactly) ---
-        if (email === 'admin@ausmc.org' && password === 'admin@123') {
-            // Fallback for this specific super admin credential if API fails (local dev safety)
-            login(email, UserRole.SUPER_ADMIN, [], "Super Admin (Mock)");
-            navigate('/dashboard/admin');
-            return;
-        }
+
 
         // Strict failure if no match
         toast.error("Incorrect email or password");

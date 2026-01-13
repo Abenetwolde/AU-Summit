@@ -708,8 +708,8 @@ export interface UpdateEquipmentStatusPayload {
     notes?: string;
 }
 
-export const FILE_BASE_URL = 'https://cw761gt5-3000.uks1.devtunnels.ms';
-// export const FILE_BASE_URL = 'http://localhost:3000';
+// export const FILE_BASE_URL = 'https://cw761gt5-3000.uks1.devtunnels.ms';
+export const FILE_BASE_URL = 'http://localhost:5000';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;

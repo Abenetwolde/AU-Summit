@@ -302,7 +302,7 @@ export function PermissionManagement() {
         <div className="space-y-6 w-full max-w-full p-6 flex flex-col h-screen" >
             <div className="flex justify-between items-center shrink-0">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Access Control Matrix</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">Access Control Matrixx</h1>
                     <p className="text-muted-foreground">Manage system resources and permissions via API.</p>
                 </div>
                 <div className="flex gap-2">
