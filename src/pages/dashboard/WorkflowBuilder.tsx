@@ -81,6 +81,8 @@ interface StepNodeData extends Record<string, unknown> {
     color?: string;
     formId?: number | null;
     emailStep?: boolean;
+    targetAudience: 'ALL' | 'LOCAL' | 'INTERNATIONAL';
+    isExitStep: boolean;
     onEdit?: () => void;
 }
 
@@ -143,6 +145,9 @@ const StepNode = ({ data: rawData, selected }: NodeProps) => {
                     )}
                 </div>
                 {!!data.formId && <Badge className="h-4 px-1 text-[9px] bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-0">Form</Badge>}
+                <Badge variant="secondary" className={cn("h-4 px-1 text-[8px] border-0", data.isExitStep ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700")}>
+                    {data.isExitStep ? 'Exit' : 'Entry'}
+                </Badge>
             </div>
 
             <Handle type="source" position={Position.Bottom} className="!w-4 !h-2 !rounded-sm !bg-slate-400 !-bottom-1.5 transition-colors hover:!bg-blue-500" />
@@ -221,6 +226,8 @@ const transformApiToNodes = (steps: WorkflowStep[], onEdit: (step: WorkflowStep)
                     color: step.color,
                     formId: step.formId,
                     emailStep: step.emailStep,
+                    targetAudience: step.targetAudience,
+                    isExitStep: step.isExitStep,
                     originalStep: step,
                     onEdit: () => onEdit(step)
                 }
@@ -343,6 +350,26 @@ function WorkflowBuilderContent() {
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [currentStep, setCurrentStep] = useState<Partial<WorkflowStep>>({});
 
+    // Filter State
+    const [selectedFormId, setSelectedFormId] = useState<number | null>(null);
+    const [selectedAudience, setSelectedAudience] = useState<'LOCAL' | 'INTERNATIONAL'>('INTERNATIONAL');
+    const [selectedPhase, setSelectedPhase] = useState<'ENTRY' | 'EXIT'>('ENTRY');
+
+    const filteredSteps = workflowSteps?.filter(step => {
+        // Filter by Form
+        if (selectedFormId !== null && step.formId !== null && step.formId !== selectedFormId) return false;
+        // Global steps (formId: null) are shown across all form filters
+
+        // Filter by Audience
+        if (step.targetAudience !== selectedAudience) return false;
+
+        // Filter by Phase
+        const isExit = selectedPhase === 'EXIT';
+        if (step.isExitStep !== isExit) return false;
+
+        return true;
+    });
+
     const handleEditClick = useCallback((step: WorkflowStep) => {
         // If the step is on the canvas, use the latest node data (which might have unsaved changes)
         // Otherwise use the API step data.
@@ -362,12 +389,18 @@ function WorkflowBuilderContent() {
 
     // Load Data
     useEffect(() => {
-        if (workflowSteps) {
-            const { nodes: apiNodes, edges: apiEdges } = transformApiToNodes(workflowSteps, handleEditClick);
+        if (forms && forms.length > 0 && selectedFormId === null) {
+            setSelectedFormId(forms[0].form_id);
+        }
+    }, [forms]);
+
+    useEffect(() => {
+        if (filteredSteps) {
+            const { nodes: apiNodes, edges: apiEdges } = transformApiToNodes(filteredSteps, handleEditClick);
             setNodes(apiNodes);
             setEdges(apiEdges);
         }
-    }, [workflowSteps, setNodes, setEdges, handleEditClick]);
+    }, [filteredSteps, setNodes, setEdges, handleEditClick]);
 
     const onConnect = useCallback(
         (params: Connection) => setEdges((eds) => addEdge({
@@ -439,7 +472,9 @@ function WorkflowBuilderContent() {
                 color: currentStep.color || '#3b82f6',
                 dependencyType: 'NONE', // Default
                 dependsOn: [],
-                emailStep: currentStep.emailStep // Include emailStep in create
+                emailStep: currentStep.emailStep,
+                targetAudience: currentStep.targetAudience || 'ALL',
+                isExitStep: currentStep.isExitStep || false
             }).unwrap();
 
             toast.success("Step created in Sidebar");
@@ -490,7 +525,9 @@ function WorkflowBuilderContent() {
                     formId: currentStep.formId,
                     color: currentStep.color,
                     dependencyType: currentStep.dependencyType as any,
-                    emailStep: currentStep.emailStep // Include emailStep in update
+                    emailStep: currentStep.emailStep,
+                    targetAudience: currentStep.targetAudience,
+                    isExitStep: currentStep.isExitStep
                 }
             }).unwrap();
 
@@ -542,40 +579,80 @@ function WorkflowBuilderContent() {
     if (isStepsLoading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-slate-400" /></div>;
 
     return (
-        <div className="flex flex-col">
-            <div className="flex justify-between items-center mb-4 px-1 border-b pb-3">
-                <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-                        {isSidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
-                    </Button>
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Workflow Builder</h1>
-                        <p className="text-sm text-muted-foreground">Drag steps from sidebar. Connect steps to define logic.</p>
-                    </div>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => refetch()}>
-                        <RefreshCw className="mr-2 h-4 w-4" /> Reset
-                    </Button>
-                    <Button size="sm" onClick={handleSaveFlow} disabled={isSaving} className="bg-slate-800 text-white">
-                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Save Flow
-                    </Button>
+        <div className="flex flex-col gap-6 p-1">
+            <div className="flex items-center justify-between mb-2">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight">Workflow Builder</h1>
+                    <p className="text-sm text-muted-foreground">Manage and visualize accreditation and exit workflows.</p>
                 </div>
             </div>
 
-            <div className="flex-1 flex overflow-hidden bg-slate-50 rounded-xl border shadow-sm relative">
+            <div className="flex flex-col gap-4 p-4 bg-white border rounded-xl shadow-sm">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="flex flex-col gap-1.5 min-w-[200px]">
+                            <Label className="text-[10px] uppercase text-slate-500 font-bold px-1">Filter by Form</Label>
+                            <Select value={selectedFormId?.toString() || ''} onValueChange={v => setSelectedFormId(Number(v))}>
+                                <SelectTrigger className="h-9 bg-slate-50">
+                                    <SelectValue placeholder="Select Form" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {forms?.map(f => <SelectItem key={f.form_id} value={f.form_id.toString()}>{f.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5 min-w-[150px]">
+                            <Label className="text-[10px] uppercase text-slate-500 font-bold px-1">Audience</Label>
+                            <Select value={selectedAudience} onValueChange={v => setSelectedAudience(v as any)}>
+                                <SelectTrigger className="h-9 bg-slate-50">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="LOCAL">Local Only</SelectItem>
+                                    <SelectItem value="INTERNATIONAL">International Only</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5 min-w-[150px]">
+                            <Label className="text-[10px] uppercase text-slate-500 font-bold px-1">Phase</Label>
+                            <Select value={selectedPhase} onValueChange={v => setSelectedPhase(v as any)}>
+                                <SelectTrigger className="h-9 bg-slate-50">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ENTRY">Accreditation (Entry)</SelectItem>
+                                    <SelectItem value="EXIT">Exited Workflow</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-2 self-end">
+                        <Button variant="outline" size="sm" onClick={() => refetch()} className="h-9 border-slate-200">
+                            <RefreshCw className="mr-2 h-4 w-4" /> Reset
+                        </Button>
+                        <Button size="sm" onClick={handleSaveFlow} disabled={isSaving} className="h-9 bg-slate-800 text-white hover:bg-slate-700">
+                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            Save Flow
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex-1 flex overflow-hidden bg-slate-50 rounded-xl border shadow-sm relative min-h-[600px]">
                 {/* Sidebar */}
                 <div className={cn("bg-white border-r flex flex-col transition-all duration-300 relative z-10", isSidebarOpen ? "w-80" : "w-0 overflow-hidden")}>
                     <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
                         <span className="font-semibold text-xs uppercase tracking-wider text-slate-500">Unplaced Steps</span>
-                        <Button size="sm" onClick={() => { setCurrentStep({ color: '#3b82f6', isActive: true }); setIsCreateOpen(true); }} className="h-7 text-xs">
+                        <Button size="sm" onClick={() => { setCurrentStep({ color: '#3b82f6', isActive: true, targetAudience: 'ALL', isExitStep: selectedPhase === 'EXIT' }); setIsCreateOpen(true); }} className="h-7 text-xs">
                             <Plus className="mr-1 h-3 w-3" /> New
                         </Button>
                     </div>
                     <ScrollArea className="p-3 bg-slate-50/30 h-[400px] ">
                         <div className="space-y-2 ">
-                            {workflowSteps?.map(step => {
+                            {filteredSteps?.map(step => {
                                 const isPlaced = nodes.some(n => n.id === step.key);
                                 return (
                                     <div
@@ -655,6 +732,8 @@ function WorkflowBuilderContent() {
                                 <TableHead className="w-[80px]">Order</TableHead>
                                 <TableHead>Step Name</TableHead>
                                 <TableHead>Role</TableHead>
+                                <TableHead>Audience</TableHead>
+                                <TableHead>Phase</TableHead>
                                 <TableHead className="w-[150px]">Dep. Type</TableHead>
                                 <TableHead>Depends On</TableHead>
                                 <TableHead>Email Trigger</TableHead>
@@ -663,7 +742,7 @@ function WorkflowBuilderContent() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {workflowSteps?.map(step => {
+                            {filteredSteps?.map(step => {
                                 const isPlaced = nodes.some(n => n.id === step.key);
                                 const currentNode = nodes.find(n => n.id === step.key);
 
@@ -715,6 +794,14 @@ function WorkflowBuilderContent() {
                                             <div className="text-[10px] text-muted-foreground font-mono">{step.key}</div>
                                         </TableCell>
                                         <TableCell><Badge variant="outline" className="text-[10px]">{step.requiredRole}</Badge></TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-700 bg-blue-50">{step.targetAudience}</Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className={cn("text-[10px] border-purple-200 text-purple-700 bg-purple-50")}>
+                                                {step.isExitStep ? 'Exit' : 'Entry'}
+                                            </Badge>
+                                        </TableCell>
                                         <TableCell>
                                             <Select
                                                 value={depType}
@@ -852,13 +939,33 @@ function WorkflowBuilderContent() {
                             <div className="grid gap-1.5 leading-none">
                                 <label
                                     htmlFor="create-email-step"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    className="text-sm font-medium leading-none"
                                 >
                                     Send Email Trigger
                                 </label>
-                                <p className="text-[0.8rem] text-muted-foreground">
-                                    If checked, this step will trigger the approval email. (Only one step per form)
-                                </p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Target Audience</Label>
+                                <Select value={currentStep.targetAudience} onValueChange={v => setCurrentStep({ ...currentStep, targetAudience: v as any })}>
+                                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="LOCAL">Local Only</SelectItem>
+                                        <SelectItem value="INTERNATIONAL">International Only</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Phase</Label>
+                                <Select value={currentStep.isExitStep ? "true" : "false"} onValueChange={v => setCurrentStep({ ...currentStep, isExitStep: v === "true" })}>
+                                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="false">Accreditation (Entry)</SelectItem>
+                                        <SelectItem value="true">Exit Workflow (Exit)</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                     </div>
@@ -977,6 +1084,29 @@ function WorkflowBuilderContent() {
                                 />
                             </div>
                         </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Target Audience</Label>
+                                <Select value={currentStep.targetAudience} onValueChange={v => setCurrentStep({ ...currentStep, targetAudience: v as any })}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="LOCAL">Local Only</SelectItem>
+                                        <SelectItem value="INTERNATIONAL">International Only</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Phase</Label>
+                                <Select value={currentStep.isExitStep ? "true" : "false"} onValueChange={v => setCurrentStep({ ...currentStep, isExitStep: v === "true" })}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="false">Accreditation (Entry)</SelectItem>
+                                        <SelectItem value="true">Exit Workflow (Exit)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
                         <div className="flex items-center space-x-2 border p-3 rounded-md bg-slate-50 mt-4">
                             <Checkbox
                                 id="edit-email-step"
@@ -986,13 +1116,10 @@ function WorkflowBuilderContent() {
                             <div className="grid gap-1.5 leading-none">
                                 <label
                                     htmlFor="edit-email-step"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    className="text-sm font-medium leading-none"
                                 >
                                     Send Email Trigger
                                 </label>
-                                <p className="text-[0.8rem] text-muted-foreground">
-                                    If checked, this step will trigger the approval email.
-                                </p>
                             </div>
                         </div>
                     </div>

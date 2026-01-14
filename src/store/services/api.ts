@@ -252,6 +252,8 @@ export interface WorkflowStep {
     dependencyType: 'ALL' | 'ANY' | 'NONE';
     dependsOn: string[]; // Array of step KEYs that this step depends on
     emailStep: boolean; // Controls if this step triggers the email
+    targetAudience: 'LOCAL' | 'INTERNATIONAL';
+    isExitStep: boolean;
     createdAt: string;
     updatedAt: string;
 }
@@ -268,6 +270,8 @@ export interface CreateWorkflowStepPayload {
     dependencyType: 'ALL' | 'ANY' | 'NONE';
     dependsOn: string[];
     emailStep?: boolean;
+    targetAudience?: 'LOCAL' | 'INTERNATIONAL';
+    isExitStep?: boolean;
 }
 
 export interface UpdateWorkflowStepPayload {
@@ -283,6 +287,8 @@ export interface UpdateWorkflowStepPayload {
     dependencyType?: 'ALL' | 'ANY' | 'NONE';
     dependsOn?: string[];
     emailStep?: boolean;
+    targetAudience?: 'LOCAL' | 'INTERNATIONAL';
+    isExitStep?: boolean;
 }
 
 export interface BulkUpdateWorkflowStepsPayload {
