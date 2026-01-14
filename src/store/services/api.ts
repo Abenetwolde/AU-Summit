@@ -1123,11 +1123,11 @@ export const api = createApi({
             }),
             invalidatesTags: ['Application'],
         }),
-        approveWorkflowStep: builder.mutation<void, { applicationId: number, stepKey: string, status: 'APPROVED' | 'REJECTED', notes?: string }>({
-            query: ({ applicationId, stepKey, ...body }) => ({
+        approveWorkflowStep: builder.mutation<void, { applicationId: number, stepKey: string, stepId?: number, status: 'APPROVED' | 'REJECTED', notes?: string }>({
+            query: ({ applicationId, stepKey, stepId, ...body }) => ({
                 url: `/applications/${applicationId}/approve/${stepKey}`,
                 method: 'PUT',
-                body,
+                body: { ...body, stepId }, // Explicitly include stepId in the body
             }),
             invalidatesTags: ['Application'],
         }),

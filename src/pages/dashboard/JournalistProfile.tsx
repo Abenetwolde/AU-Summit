@@ -103,35 +103,56 @@ export function JournalistProfile() {
         const stepKey = user?.workflowStepKey;
         console.log('User Workflow Key:', stepKey);
 
-        // Use user's key if available, otherwise find the step ID in their authorized list
-        let effectiveStepKey = user?.workflowStepKey;
+        // Determine effective Step ID to modify
+        let effectiveStepId: number | undefined;
 
-        // If no direct key, check authorized IDs against available approvals
-        if (!effectiveStepKey && userActionableApproval) {
-            effectiveStepKey = userActionableApproval.workflowStep?.key || userActionableApproval.approvalWorkflowStep?.key;
+        if (userActionableApproval) {
+            // Priority: Use the specific approval record found for this form & user
+            const step = userActionableApproval.workflowStep || userActionableApproval.approvalWorkflowStep;
+            effectiveStepId = step?.id;
         }
 
-        // Fallback for super admin
-        if (!effectiveStepKey && isSuperAdmin) {
-            effectiveStepKey = 'super_admin';
+        console.log('Effective Step ID:', effectiveStepId);
+
+        if (!effectiveStepId && isSuperAdmin) {
+            // Fallback for Super Admin: Find the first PENDING approval to act on
+            const approvalsList = application.applicationApprovals || application.approvals || [];
+            const pendingStep = approvalsList.find((a: any) => a.status === 'PENDING');
+
+            if (pendingStep) {
+                const step = pendingStep.workflowStep || pendingStep.approvalWorkflowStep;
+                effectiveStepId = step?.id;
+            } else if (approvalsList.length > 0) {
+                // If no pending steps (e.g., all approved), act on the last one (e.g. to Revoke)
+                const lastStep = approvalsList[approvalsList.length - 1];
+                const step = lastStep.workflowStep || lastStep.approvalWorkflowStep;
+                effectiveStepId = step?.id;
+            }
         }
 
-        console.log('Effective Step Key:', effectiveStepKey);
+        console.log('Effective Step ID (Final):', effectiveStepId);
+
+        if (!effectiveStepId) {
+            toast.error("No actionable workflow step found. Please verify the workflow configuration.");
+            return;
+        }
 
         try {
             await approveWorkflow({
                 applicationId: Number(application.id),
-                stepKey: effectiveStepKey,
+                stepKey: 'legacy_fallback', // Backend ignores this as stepId takes precedence
+                stepId: effectiveStepId, // NEW: Sending explicit ID
                 status: status as any,
                 notes
             }).unwrap();
 
             toast.success(`Application ${status.toLowerCase()} successfully`);
 
-            // Optimistic Update: Update the specific approval in the list
+            // Optimistic Update: Update the specific approval in the list by ID
             const updatedApprovals = (application.applicationApprovals || application.approvals || []).map((app: any) => {
-                const stepKey = app.workflowStep?.key || app.approvalWorkflowStep?.key;
-                if (stepKey === effectiveStepKey) {
+                const step = app.workflowStep || app.approvalWorkflowStep;
+                // Match by ID if we have it
+                if (step && step.id === effectiveStepId) {
                     return { ...app, status };
                 }
                 return app;
@@ -139,9 +160,9 @@ export function JournalistProfile() {
 
             setApplication({
                 ...application,
-                applicationApprovals: updatedApprovals,
                 approvals: updatedApprovals,
-                status: status === 'APPROVED' ? application.status : 'REJECTED' // Don't flip global to APPROVED immediately unless logic dictates, but definitely flip REJECTED
+                applicationApprovals: updatedApprovals,
+                status: status === 'APPROVED' ? application.status : 'REJECTED'
             });
             setNotes('');
         } catch (err: any) {
@@ -251,10 +272,15 @@ export function JournalistProfile() {
     const isCustoms = user?.role === UserRole.CUSTOMS_OFFICER;
     const canUpdateEquipment = checkPermission('verification:equipment:single:update');
 
-    // Find the relevant approval record for the current user based on authorized IDs
+    // Find the relevant approval record for the current user based on authorized IDs AND Form ID
     const userActionableApproval = approvals.find((a: any) => {
-        const stepId = a.workflowStepId || a.approvalWorkflowStepId;
-        return user?.authorizedWorkflowStepIds?.includes(stepId);
+        const step = a.workflowStep || a.approvalWorkflowStep;
+        if (!step) return false;
+
+        // Strict check: User must be authorized for this specific step ID
+        // AND validation that the authorized step belongs to the same form as the application
+        // (This assumes user.authorizedWorkflowSteps contains the correct formId map)
+        return user?.authorizedWorkflowSteps?.some(s => s.id === step.id && s.formId === application.formId);
     });
 
     // Determine current user's approval status for this application

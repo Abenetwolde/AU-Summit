@@ -42,7 +42,8 @@ export function Login() {
                 }
 
                 // Call context login to set state
-                login(user.email, roleEnum, user.permissions, user.fullName, user.roleName, String(user.id), user.workflowStepKey, user.organization, user.authorizedWorkflowStepIds);
+                const apiUser = user as any;
+                login(apiUser.email, roleEnum, apiUser.permissions, apiUser.fullName, apiUser.roleName, String(apiUser.id), apiUser.workflowStepKey, apiUser.organization, apiUser.authorizedWorkflowSteps);
 
                 // Always navigate to the unified dashboard
                 navigate('/dashboard/admin');
