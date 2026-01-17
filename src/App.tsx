@@ -33,6 +33,7 @@ import { WorkflowBuilder } from './pages/dashboard/WorkflowBuilder';
 import EmbassyManagement from './pages/dashboard/EmbassyManagement';
 import { EntryWorkflowDashboard } from './pages/dashboard/EntryWorkflowDashboard';
 import { ExitWorkflowDashboard } from './pages/dashboard/ExitWorkflowDashboard';
+import { OrganizationUsers } from './pages/dashboard/OrganizationUsers';
 
 function App() {
     useEffect(() => {
@@ -81,6 +82,11 @@ function App() {
                                     {/* Admin Features */}
                                     <Route element={<ProtectedRoute requiredPermission="user:view:all" />}>
                                         <Route path="users" element={<UserManagement />} />
+                                    </Route>
+
+                                    {/* Organization Admin - User Management */}
+                                    <Route element={<ProtectedRoute requiredPermission="user:view:org" />}>
+                                        <Route path="organization-users" element={<OrganizationUsers />} />
                                     </Route>
 
 

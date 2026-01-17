@@ -42,7 +42,8 @@ export function OrganizationUsersModal({ open, onOpenChange, organization }: Org
     if (!organization) return null;
 
     // Filter Users for this Organization
-    const orgUsers = allUsers.filter(u => {
+    const usersList = Array.isArray(allUsers) ? allUsers : (allUsers as any)?.users || [];
+    const orgUsers = usersList.filter((u: any) => {
         // Check if user's role belongs to this organization
         // The API returns role object nested in user
         return u.role?.organizationId === Number(organization.id) ||

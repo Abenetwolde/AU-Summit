@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import {
   LogOut,
   User,
+  UserCog,
   LayoutDashboard,
   BadgeCheck,
   Users,
@@ -302,8 +303,26 @@ export function DashboardLayout() {
                   )
                 }
               >
-                <User className="h-5 w-5" />
+                <UserCog className="h-5 w-5" />
                 User Management
+              </NavLink>
+            )}
+
+            {/* Organization Users (ORG_ADMIN) */}
+            {checkPermission('user:view:org') && (
+              <NavLink
+                to={`${basePath}/organization-users`}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-[#e6f4ea] text-primary'
+                      : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                  )
+                }
+              >
+                <Users className="h-5 w-5" />
+                Organization Users
               </NavLink>
             )}
 

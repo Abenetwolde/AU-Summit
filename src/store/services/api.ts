@@ -1637,6 +1637,51 @@ export const api = createApi({
             }),
         }),
 
+        // Organization User Management (ORG_ADMIN)
+        getOrganizationUsers: builder.query<{ users: User[]; total: number; currentPage: number; totalPages: number }, { page?: number; limit?: number; search?: string; roleId?: number }>({
+            query: ({ page = 1, limit = 10, search, roleId }) => {
+                const params = new URLSearchParams({
+                    page: page.toString(),
+                    limit: limit.toString(),
+                });
+                if (search) params.append('search', search);
+                if (roleId) params.append('roleId', roleId.toString());
+                return `/organization/users?${params}`;
+            },
+            transformResponse: (response: any) => response.data,
+            providesTags: ['User'],
+        }),
+        createOrganizationUser: builder.mutation<User, { fullName: string; email: string; password: string; roleId: number }>({
+            query: (body) => ({
+                url: '/organization/users',
+                method: 'POST',
+                body,
+            }),
+            transformResponse: (response: any) => response.data,
+            invalidatesTags: ['User'],
+        }),
+        updateOrganizationUser: builder.mutation<User, { id: number; data: { fullName?: string; email?: string; roleId?: number; status?: 'ACTIVE' | 'INACTIVE' } }>({
+            query: ({ id, data }) => ({
+                url: `/organization/users/${id}`,
+                method: 'PUT',
+                body: data,
+            }),
+            transformResponse: (response: any) => response.data,
+            invalidatesTags: ['User'],
+        }),
+        deleteOrganizationUser: builder.mutation<void, number>({
+            query: (id) => ({
+                url: `/organization/users/${id}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: ['User'],
+        }),
+        getOrganizationRoles: builder.query<Role[], void>({
+            query: () => '/organization/users/roles/available',
+            transformResponse: (response: any) => response.data,
+            providesTags: ['Role'],
+        }),
+
         // Super Admin Dashboard Endpoints
         getSuperAdminOverview: builder.query<SuperAdminOverview, void>({
             query: () => '/super-admin/overview',
@@ -1782,4 +1827,12 @@ export const {
     useUpdateIntegrationMutation,
     useDeleteIntegrationMutation,
     useChangePasswordMutation,
+
+    // Organization User Management Hooks
+    useGetOrganizationUsersQuery,
+    useCreateOrganizationUserMutation,
+    useUpdateOrganizationUserMutation,
+    useDeleteOrganizationUserMutation,
+    useGetOrganizationRolesQuery,
 } = api;
+
