@@ -308,6 +308,26 @@ export interface SingleWorkflowStepResponse {
     data: WorkflowStep;
 }
 
+// Notifications
+export interface Notification {
+    id: number;
+    userId: number;
+    title: string;
+    message: string;
+    type: string;
+    isRead: boolean;
+    applicationId?: number;
+    workflowStepId?: number;
+    metadata?: any;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface NotificationsResponse {
+    count: number;
+    rows: Notification[];
+}
+
 // Badge Templates
 export interface BadgeTemplate {
     id: number;
@@ -879,7 +899,7 @@ export const api = createApi({
             return headers;
         },
     }),
-    tagTypes: ['Role', 'Permission', 'Application', 'Form', 'User', 'Category', 'WorkflowStep', 'Invitation', 'Badge', 'EquipCatalog', 'Integration', 'APIProvider', 'Embassy', 'Country', 'Organization', 'EmailTemplate', 'LandingPage', 'Workflow'],
+    tagTypes: ['Role', 'Permission', 'Application', 'Form', 'User', 'Category', 'WorkflowStep', 'Invitation', 'Badge', 'EquipCatalog', 'Integration', 'APIProvider', 'Embassy', 'Country', 'Organization', 'EmailTemplate', 'LandingPage', 'Workflow', 'Notification'],
     endpoints: (builder) => ({
         login: builder.mutation<LoginResponse, any>({
             query: (credentials: any) => ({
@@ -908,6 +928,30 @@ export const api = createApi({
                 body: data,
             }),
             invalidatesTags: ['Role'],
+        }),
+
+        // Notifications
+        getNotifications: builder.query<NotificationsResponse, { page?: number; limit?: number }>({
+            query: ({ page = 1, limit = 20 }) => `/notifications?page=${page}&limit=${limit}`,
+            providesTags: ['Notification'],
+        }),
+        getUnreadNotificationCount: builder.query<{ unreadCount: number }, void>({
+            query: () => '/notifications/unread-count',
+            providesTags: ['Notification'],
+        }),
+        markNotificationAsRead: builder.mutation<Notification, number>({
+            query: (id) => ({
+                url: `/notifications/${id}/read`,
+                method: 'PATCH',
+            }),
+            invalidatesTags: ['Notification'],
+        }),
+        markAllNotificationsAsRead: builder.mutation<{ message: string }, void>({
+            query: () => ({
+                url: '/notifications/read-all',
+                method: 'PATCH',
+            }),
+            invalidatesTags: ['Notification'],
         }),
         getPermissionsMatrix: builder.query<MatrixResponse, void>({
             query: () => '/permissions/matrix',
@@ -1662,6 +1706,12 @@ export const {
     useGetExitWorkflowApplicationsQuery,
     useInitializeExitWorkflowMutation,
     useGetApplicationPhaseStatusQuery,
+
+    // Notifications
+    useGetNotificationsQuery,
+    useGetUnreadNotificationCountQuery,
+    useMarkNotificationAsReadMutation,
+    useMarkAllNotificationsAsReadMutation,
 
 
     // New Workflow hooks

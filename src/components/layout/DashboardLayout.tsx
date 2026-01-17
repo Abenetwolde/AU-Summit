@@ -25,6 +25,7 @@ import {
 import { getFileUrl } from '@/store/services/api';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
+import NotificationCenter from '@/components/notifications/NotificationCenter';
 
 import emmpaLogo from '@/assests/emmpa.jpg';
 import icsLogo from '@/assests/ics.png';
@@ -74,14 +75,17 @@ export function DashboardLayout() {
           </h1>
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsMobileMenuOpen(true)}
-          className="hover:bg-gray-100 rounded-xl"
-        >
-          <Menu className="h-6 w-6 text-gray-600" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <NotificationCenter />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="hover:bg-gray-100 rounded-xl"
+          >
+            <Menu className="h-6 w-6 text-gray-600" />
+          </Button>
+        </div>
       </header>
 
       {/* Mobile Sidebar Overlay */}
@@ -471,9 +475,16 @@ export function DashboardLayout() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-72 pt-20 md:pt-4 p-4 md:p-8 flex flex-col min-h-screen overflow-x-hidden">
-        <div className="max-w-[1600px] w-full mx-auto">
-          <Outlet />
+      <main className="flex-1 md:ml-72 flex flex-col min-h-screen overflow-x-hidden">
+        {/* Desktop Header */}
+        <header className="hidden md:flex sticky top-0 right-0 left-0 h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 z-40 items-center justify-end px-8 gap-4">
+          <NotificationCenter />
+        </header>
+
+        <div className="flex-1 pt-20 md:pt-4 p-4 md:p-8 flex flex-col">
+          <div className="max-w-[1600px] w-full mx-auto">
+            <Outlet />
+          </div>
         </div>
 
         <footer className="mt-auto pt-12 pb-6 text-center text-xs text-gray-400 font-medium tracking-wide">
