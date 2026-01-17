@@ -36,24 +36,70 @@ const NotificationCenter: React.FC = () => {
     const unreadCount = unreadData?.unreadCount || 0;
 
     useEffect(() => {
-        const token = localStorage.getItem('managment_token') || '';
-        if (token) {
-            const socket = socketService.connect(token);
+        let isMounted = true;
+        let notificationHandler: ((data: ApiNotification) => void) | null = null;
 
-            socket.on('new_notification', (data: ApiNotification) => {
-                // Invalidate tags to trigger refetch
-                dispatch(api.util.invalidateTags(['Notification']));
+        const initializeSocket = async () => {
+            const token = localStorage.getItem('managment_token');
+            if (!token) {
+                console.warn('[NotificationCenter] No token available');
+                return;
+            }
 
-                // Browser Notification
-                if (window.Notification && Notification.permission === 'granted') {
-                    new Notification(data.title, { body: data.message });
-                }
-            });
+            try {
+                // Connect to socket (non-blocking)
+                await socketService.connect(token);
 
-            return () => {
-                socketService.disconnect();
-            };
-        }
+                if (!isMounted) return;
+
+                // Define notification handler
+                notificationHandler = (data: ApiNotification) => {
+                    if (!isMounted) return;
+
+                    console.log('[NotificationCenter] New notification received:', data);
+
+                    // Invalidate tags to trigger refetch
+                    dispatch(api.util.invalidateTags(['Notification']));
+
+                    // Browser Notification (non-blocking)
+                    if (window.Notification && Notification.permission === 'granted') {
+                        try {
+                            new Notification(data.title, {
+                                body: data.message,
+                                icon: '/favicon.ico',
+                                tag: `notification-${data.id}`,
+                            });
+                        } catch (err) {
+                            console.error('[NotificationCenter] Browser notification failed:', err);
+                        }
+                    }
+                };
+
+                // Register event handler
+                socketService.on('new_notification', notificationHandler);
+
+                console.log('[NotificationCenter] Socket initialized successfully');
+            } catch (error) {
+                console.error('[NotificationCenter] Socket initialization failed:', error);
+                // Socket will auto-reconnect in background
+            }
+        };
+
+        // Initialize socket in background
+        initializeSocket();
+
+        // Cleanup function
+        return () => {
+            isMounted = false;
+
+            // Remove event handler if it was registered
+            if (notificationHandler) {
+                socketService.off('new_notification', notificationHandler);
+            }
+
+            // Note: We don't disconnect the socket here as it may be used by other components
+            // The socket will be disconnected when the user logs out
+        };
     }, [dispatch]);
 
     useEffect(() => {
