@@ -204,7 +204,7 @@ export function DashboardLayout() {
                 }
               >
                 <LogIn className="h-5 w-5" />
-                Entry Workflow
+                Entry Approval
               </NavLink>
             )}
 
@@ -222,7 +222,7 @@ export function DashboardLayout() {
                 }
               >
                 <ArrowRightLeft className="h-5 w-5" />
-                Exit Workflow
+                Exit Approval
               </NavLink>
             )}
 

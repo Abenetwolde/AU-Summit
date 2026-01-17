@@ -606,15 +606,7 @@ export function JournalistProfile() {
                             {/* Exit Workflow Activation Button */}
                             {application.status === 'APPROVED' && !approvals.some((a: any) => (a.workflowStep || a.approvalWorkflowStep)?.isExitStep) && (
                                 <div className="pt-4 border-t">
-                                    <Button
-                                        variant="outline"
-                                        className="w-full border-purple-200 text-purple-700 hover:bg-purple-50 font-bold gap-2"
-                                        onClick={handleActivateExit}
-                                        disabled={isActivatingExit}
-                                    >
-                                        {isActivatingExit ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                                        Initialize Exit Clearance
-                                    </Button>
+
                                     <p className="text-[10px] text-center text-gray-400 mt-2">
                                         Click when the journalist is ready to begin the exit approval process.
                                     </p>

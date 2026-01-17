@@ -119,7 +119,7 @@ export function ExitWorkflowDashboard() {
                         <ArrowLeft className="w-4 h-4" />
                         Back to Dashboard
                     </Button>
-                    <h1 className="text-3xl font-bold tracking-tight text-purple-900">Exit Workflow</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-purple-900">Exit Approvals</h1>
                     <p className="text-muted-foreground mt-1">
                         Manage applications in the exit approval phase
                     </p>
@@ -228,7 +228,7 @@ export function ExitWorkflowDashboard() {
                                                 {new Date(app.createdAt).toLocaleDateString()}
                                             </TableCell>
                                             <TableCell className="text-right flex items-center justify-end gap-2">
-                                                {canManageExit && app.status !== 'APPROVED' && (
+                                                {/* {canManageExit && app.status !== 'APPROVED' && (
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
@@ -238,7 +238,7 @@ export function ExitWorkflowDashboard() {
                                                         <Clock className="w-4 h-4" />
                                                         Initialize
                                                     </Button>
-                                                )}
+                                                )} */}
                                                 <Button
                                                     variant="outline"
                                                     size="sm"

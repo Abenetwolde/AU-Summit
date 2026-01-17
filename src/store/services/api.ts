@@ -250,7 +250,7 @@ export interface WorkflowStep {
     icon: string | null;
     color: string | null; // Hex color code
     dependencyType: 'ALL' | 'ANY' | 'NONE';
-    dependsOn: string[]; // Array of step KEYs that this step depends on
+    dependsOn: number[]; // Array of step IDs that this step depends on
     emailStep: boolean; // Controls if this step triggers the email
     targetAudience: 'LOCAL' | 'INTERNATIONAL';
     isExitStep: boolean;
@@ -268,7 +268,7 @@ export interface CreateWorkflowStepPayload {
     icon: string | null;
     color: string | null;
     dependencyType: 'ALL' | 'ANY' | 'NONE';
-    dependsOn: string[];
+    dependsOn: number[];
     emailStep?: boolean;
     targetAudience?: 'LOCAL' | 'INTERNATIONAL';
     isExitStep?: boolean;
@@ -285,7 +285,7 @@ export interface UpdateWorkflowStepPayload {
     icon?: string | null;
     color?: string | null;
     dependencyType?: 'ALL' | 'ANY' | 'NONE';
-    dependsOn?: string[];
+    dependsOn?: number[];
     emailStep?: boolean;
     targetAudience?: 'LOCAL' | 'INTERNATIONAL';
     isExitStep?: boolean;

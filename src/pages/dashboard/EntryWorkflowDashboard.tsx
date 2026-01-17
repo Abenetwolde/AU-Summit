@@ -103,7 +103,7 @@ export function EntryWorkflowDashboard() {
                         <ArrowLeft className="w-4 h-4" />
                         Back to Dashboard
                     </Button>
-                    <h1 className="text-3xl font-bold tracking-tight">Entry Workflow</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">Entry Approvals</h1>
                     <p className="text-muted-foreground mt-1">
                         Manage applications in the entry approval phase
                     </p>

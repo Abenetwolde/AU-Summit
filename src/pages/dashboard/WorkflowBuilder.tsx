@@ -73,7 +73,7 @@ interface StepNodeData extends Record<string, unknown> {
     label: string;
     key: string;
     dependencyType: string;
-    dependsOn?: string[];
+    dependsOn?: number[];
     requiredRole: string;
     isActive?: boolean;
     displayOrder?: number;
@@ -242,9 +242,9 @@ const transformApiToNodes = (steps: WorkflowStep[], onEdit: (step: WorkflowStep)
     const createdEdges = new Set<string>();
     placedSteps.forEach(step => {
         if (step.dependsOn && step.dependsOn.length > 0) {
-            step.dependsOn.forEach(depKey => {
-                // Find the source step ID by key in the current list
-                const sourceStep = placedSteps.find(s => s.key === depKey);
+            step.dependsOn.forEach(depId => {
+                // Find the source step in the current list by ID
+                const sourceStep = placedSteps.find(s => s.id === depId);
                 if (sourceStep) {
                     const edgeId = `e-${sourceStep.id}-${step.id}`;
                     edges.push({
@@ -274,11 +274,8 @@ const transformNodesToApi = (nodes: Node[], edges: Edge[], allStepsOriginal: Wor
         const incomingEdges = edges.filter(e => e.target === node.id);
         const dependsOnIds = incomingEdges.map(e => e.source);
 
-        // Map source IDs back to keys for dependsOn
-        const dependsOn = dependsOnIds.map(sourceId => {
-            const sourceNode = nodes.find(n => n.id === sourceId);
-            return sourceNode?.data.key as string;
-        }).filter(Boolean);
+        // Map source IDs back to number IDs for dependsOn
+        const dependsOn = dependsOnIds.map(sourceId => Number(sourceId)).filter(Boolean);
 
         // Keep existing ID for update
         const original = (node.data.originalStep as WorkflowStep) || allStepsOriginal.find(s => s.id === Number(node.id));
@@ -376,7 +373,7 @@ function WorkflowBuilderContent() {
                 ...step,
                 displayOrder: node.data.displayOrder as number,
                 dependencyType: node.data.dependencyType as any,
-                dependsOn: node.data.dependsOn as string[]
+                dependsOn: node.data.dependsOn as number[]
             });
         } else {
             setCurrentStep(step);
@@ -566,20 +563,16 @@ function WorkflowBuilderContent() {
                     // Remove existing incoming edges for this node
                     const otherEdges = eds.filter(e => e.target !== currentStep.id?.toString());
                     // Add new edges for each dependency
-                    const newEdges = currentStep.dependsOn!.map(depKey => {
-                        // Find the source node ID for this dependency key
-                        const sourceNode = nodes.find(n => n.data.key === depKey);
-                        if (!sourceNode) return null;
-
+                    const newEdges = currentStep.dependsOn!.map(depId => {
                         return {
-                            id: `e-${sourceNode.id}-${currentStep.id}`,
-                            source: sourceNode.id,
+                            id: `e-${depId}-${currentStep.id}`,
+                            source: depId.toString(),
                             target: currentStep.id!.toString(),
                             type: 'custom',
                             animated: true,
                             markerEnd: { type: MarkerType.ArrowClosed, color: '#94a3b8' }
                         };
-                    }).filter(Boolean) as Edge[];
+                    });
                     return [...otherEdges, ...newEdges];
                 });
             }
