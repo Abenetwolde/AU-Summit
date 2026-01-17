@@ -49,19 +49,23 @@ export function ExitWorkflowDashboard() {
     }, [page, search, statusFilter, refetch]);
 
     const getRoleApprovalStatus = (app: any) => {
+
         if (user?.role === 'SUPER_ADMIN') return app.status;
+
+        console.log("user", user);
 
         // Try matching by recognized role strings first (roleName is more likely to match backend logic)
         const relevantApproval = app.approvals?.find((a: any) => {
             const step = a.workflowStep;
             if (!step || !step.isExitStep) return false;
 
-            // Match by ID if we have authorized steps (most reliable)
-            if (user?.authorizedWorkflowSteps?.some(s => s.id === step.id)) return true;
+            // // Match by ID if we have authorized steps (most reliable)
+            // if (user?.authorizedWorkflowSteps?.some(s => s.id === step.id)) return true;
 
             // Fallback to role name matching
-            return step.requiredRole === user?.roleName || step.requiredRole === user?.role;
+            return step.requiredRole === user?.roleName;
         });
+        console.log(relevantApproval);
 
         return relevantApproval ? relevantApproval.status : app.status;
     };
@@ -144,10 +148,10 @@ export function ExitWorkflowDashboard() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ALL">All Applications</SelectItem>
-                                <SelectItem value="PENDING">Pending (My Step)</SelectItem>
-                                <SelectItem value="IN_REVIEW">In Review (My Step)</SelectItem>
-                                <SelectItem value="APPROVED">Approved (My Step)</SelectItem>
-                                <SelectItem value="REJECTED">Rejected (My Step)</SelectItem>
+                                <SelectItem value="PENDING">Pending </SelectItem>
+                                <SelectItem value="IN_REVIEW">In Review </SelectItem>
+                                <SelectItem value="APPROVED">Approved </SelectItem>
+                                <SelectItem value="REJECTED">Rejected </SelectItem>
                                 <SelectItem value="EXITED">Exited</SelectItem>
                             </SelectContent>
                         </Select>

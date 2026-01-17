@@ -47,7 +47,6 @@ export function EntryWorkflowDashboard() {
     }, [page, search, statusFilter, refetch]);
 
     const getRoleApprovalStatus = (app: any) => {
-        console.log(app);
         if (user?.role === 'SUPER_ADMIN') return app.status;
 
         // Try matching by recognized role strings first (roleName is more likely to match backend logic)
@@ -56,10 +55,10 @@ export function EntryWorkflowDashboard() {
             if (!step || step.isExitStep) return false;
 
             // Match by ID if we have authorized steps (most reliable)
-            if (user?.authorizedWorkflowSteps?.some(s => s.id === step.id)) return true;
+            // if (user?.authorizedWorkflowSteps?.some(s => s.id === step.id)) return true;
 
             // Fallback to role name matching
-            return step.requiredRole === user?.roleName || step.requiredRole === user?.role;
+            return step.requiredRole === user?.roleName;
         });
 
         return relevantApproval ? relevantApproval.status : app.status;
@@ -133,10 +132,10 @@ export function EntryWorkflowDashboard() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ALL">All Applications</SelectItem>
-                                <SelectItem value="PENDING">Pending (My Step)</SelectItem>
-                                <SelectItem value="IN_REVIEW">In Review (My Step)</SelectItem>
-                                <SelectItem value="APPROVED">Approved (My Step)</SelectItem>
-                                <SelectItem value="REJECTED">Rejected (My Step)</SelectItem>
+                                <SelectItem value="PENDING">Pending </SelectItem>
+                                <SelectItem value="IN_REVIEW">In Review </SelectItem>
+                                <SelectItem value="APPROVED">Approved </SelectItem>
+                                <SelectItem value="REJECTED">Rejected </SelectItem>
                                 <SelectItem value="EXITED">Exited</SelectItem>
                             </SelectContent>
                         </Select>
