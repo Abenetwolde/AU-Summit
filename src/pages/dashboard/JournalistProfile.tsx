@@ -272,15 +272,23 @@ export function JournalistProfile() {
     const isCustoms = user?.role === UserRole.CUSTOMS_OFFICER;
     const canUpdateEquipment = checkPermission('verification:equipment:single:update');
 
-    // Find the relevant approval record for the current user based on authorized IDs AND Form ID
+    // Find the relevant approval record for the current user based on authorized IDs AND Phase
+    const currentPhase = location.state?.phase; // 'entry' or 'exit'
+
     const userActionableApproval = approvals.find((a: any) => {
         const step = a.workflowStep || a.approvalWorkflowStep;
         if (!step) return false;
 
         // Strict check: User must be authorized for this specific step ID
-        // AND validation that the authorized step belongs to the same form as the application
-        // (This assumes user.authorizedWorkflowSteps contains the correct formId map)
-        return user?.authorizedWorkflowSteps?.some(s => s.id === step.id && s.formId === application.formId);
+        const isAuthorized = user?.authorizedWorkflowSteps?.some(s => s.id === step.id && s.formId === application.formId);
+
+        if (!isAuthorized) return false;
+
+        // Phase check: If we know the phase, filter accordingly
+        if (currentPhase === 'entry') return step.isExitStep === false;
+        if (currentPhase === 'exit') return step.isExitStep === true;
+
+        return true; // Fallback if no phase specified
     });
 
     // Determine current user's approval status for this application

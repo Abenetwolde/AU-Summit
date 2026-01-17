@@ -47,13 +47,20 @@ export function EntryWorkflowDashboard() {
     }, [page, search, statusFilter, refetch]);
 
     const getRoleApprovalStatus = (app: any) => {
+        console.log(app);
         if (user?.role === 'SUPER_ADMIN') return app.status;
 
-        // Find the approval step that matches the user's role and is NOT an exit step
-        const relevantApproval = app.approvals?.find((a: any) =>
-            a.workflowStep?.requiredRole === user?.role &&
-            a.workflowStep?.isExitStep === false
-        );
+        // Try matching by recognized role strings first (roleName is more likely to match backend logic)
+        const relevantApproval = app.approvals?.find((a: any) => {
+            const step = a.workflowStep;
+            if (!step || step.isExitStep) return false;
+
+            // Match by ID if we have authorized steps (most reliable)
+            if (user?.authorizedWorkflowSteps?.some(s => s.id === step.id)) return true;
+
+            // Fallback to role name matching
+            return step.requiredRole === user?.roleName || step.requiredRole === user?.role;
+        });
 
         return relevantApproval ? relevantApproval.status : app.status;
     };
@@ -81,7 +88,7 @@ export function EntryWorkflowDashboard() {
     };
 
     const handleViewDetails = (app: any) => {
-        navigate(`/dashboard/journalists/${app.id}`, { state: { application: app } });
+        navigate(`/dashboard/journalists/${app.id}`, { state: { application: app, phase: 'entry' } });
     };
 
     return (
@@ -125,11 +132,11 @@ export function EntryWorkflowDashboard() {
                                 <SelectValue placeholder="All Statuses" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="ALL">All Statuses</SelectItem>
-                                <SelectItem value="PENDING">Pending</SelectItem>
-                                <SelectItem value="IN_REVIEW">In Review</SelectItem>
-                                <SelectItem value="APPROVED">Approved</SelectItem>
-                                <SelectItem value="REJECTED">Rejected</SelectItem>
+                                <SelectItem value="ALL">All Applications</SelectItem>
+                                <SelectItem value="PENDING">Pending (My Step)</SelectItem>
+                                <SelectItem value="IN_REVIEW">In Review (My Step)</SelectItem>
+                                <SelectItem value="APPROVED">Approved (My Step)</SelectItem>
+                                <SelectItem value="REJECTED">Rejected (My Step)</SelectItem>
                                 <SelectItem value="EXITED">Exited</SelectItem>
                             </SelectContent>
                         </Select>
@@ -173,7 +180,8 @@ export function EntryWorkflowDashboard() {
                                         <TableHead>ID</TableHead>
                                         <TableHead>Applicant</TableHead>
                                         <TableHead>Email</TableHead>
-                                        <TableHead>Status</TableHead>
+                                        <TableHead>Your Approval</TableHead>
+                                        <TableHead>Phase Progress</TableHead>
                                         <TableHead>Created</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
@@ -192,6 +200,14 @@ export function EntryWorkflowDashboard() {
                                             </TableCell>
                                             <TableCell>
                                                 {getStatusBadge(getRoleApprovalStatus(app))}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="text-sm font-medium text-blue-700">
+                                                        {app.approvals?.filter((a: any) => a.workflowStep && !a.workflowStep.isExitStep && a.status === 'APPROVED').length} / {app.approvals?.filter((a: any) => a.workflowStep && !a.workflowStep.isExitStep).length}
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground text-blue-400">Steps</div>
+                                                </div>
                                             </TableCell>
                                             <TableCell className="text-muted-foreground">
                                                 {new Date(app.createdAt).toLocaleDateString()}
