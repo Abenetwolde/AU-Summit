@@ -286,11 +286,16 @@ export function JournalistProfile() {
     // Determine current user's approval status for this application
     const isStepApproved = userActionableApproval?.status === 'APPROVED';
 
-    // Authorization
-    const canApprove = isSuperAdmin || !!userActionableApproval;
-
     // Legacy support for relevantStep used in rendering
     const relevantStep = userActionableApproval?.workflowStep || userActionableApproval?.approvalWorkflowStep;
+
+    // Authorization
+    const isExitPhase = relevantStep?.isExitStep;
+    const canApprove = isSuperAdmin || (
+        isExitPhase
+            ? checkPermission('application:manage-exit-workflow')
+            : checkPermission('application:approve:dynamic')
+    ) && !!userActionableApproval;
 
 
     return (

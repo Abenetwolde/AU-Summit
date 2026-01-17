@@ -2,9 +2,6 @@ import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth, UserRole } from '@/auth/context';
 import { cn } from '@/lib/utils';
-<<<<<<< HEAD
-import { LogOut, User, LayoutDashboard, BadgeCheck, Users, Mail, FileText, Settings, Building2, GitMerge, ShieldAlert, Shield, Menu, X, Activity, Globe } from 'lucide-react';
-=======
 import {
   LogOut,
   User,
@@ -21,8 +18,10 @@ import {
   Menu,
   X,
   Activity,
+  Globe,
+  ArrowRightLeft,
+  LogIn,
 } from 'lucide-react';
->>>>>>> 3ca927b2 (new update)
 import { getFileUrl } from '@/store/services/api';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
@@ -85,40 +84,6 @@ export function DashboardLayout() {
         </Button>
       </header>
 
-<<<<<<< HEAD
-    return (
-        <div className="flex min-h-screen bg-gray-50/50">
-            {/* Mobile Header */}
-            <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50 flex items-center justify-between px-4 shadow-sm">
-                <div className="flex items-center gap-2">
-<<<<<<< HEAD
-                    <img src={user?.organization?.logo ? getFileUrl(user.organization.logo) : getLogo()} alt="Logo" className="h-8 w-auto object-contain" />
-                    {user?.organization?.name ? (
-                        <h1 className="text-sm font-bold font-sans text-primary truncate max-w-[180px]">
-                            {user.organization.name}
-                        </h1>
-                    ) : (
-                        <h1 className="text-sm font-bold font-sans text-primary truncate max-w-[180px]">
-                            SUPERADMIN
-                        </h1>
-                    )}
-=======
-                    {/* <img src={getLogo()} alt="Logo" className="h-8 w-auto object-contain" /> */}
-                    <h1 className="text-sm font-bold font-sans text-primary truncate max-w-[180px]">
-                        {getTitle()}
-                    </h1>
->>>>>>> 132371bf (minor change)
-                </div>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setIsMobileMenuOpen(true)}
-                    className="hover:bg-gray-100 rounded-xl"
-                >
-                    <Menu className="h-6 w-6 text-gray-600" />
-                </Button>
-            </header>
-=======
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div
@@ -126,7 +91,6 @@ export function DashboardLayout() {
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
->>>>>>> 3ca927b2 (new update)
 
       {/* Sidebar */}
       <aside
@@ -163,55 +127,9 @@ export function DashboardLayout() {
               </h1>
             )}
 
-<<<<<<< HEAD
-            {/* Sidebar */}
-            <aside className={cn(
-                "fixed inset-y-0 left-0 z-[70] w-72 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 shadow-2xl md:shadow-none",
-                isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-            )}>
-<<<<<<< HEAD
-                <div className="p-6 flex flex-col items-center justify-center border-b border-gray-50 mb-4 relaitve">
-                    <Button
-=======
-                <div className="p-6 flex items-center justify-between border-b border-gray-50 ">
-                    <div className="flex items-start flex-col gap-1 text-primary">
-                        {/* <img src={getLogo()} alt="Logo" className="h-10 w-auto" /> */}
-                        <h1 className="text-lg font-bold font-sans leading-tight">
-                            {getTitle()}
-                        </h1>
-                
-                        <p>
-                            {user?.email}
-                        </p>
-                        
-                    </div>
-                    {/* <Button
->>>>>>> 132371bf (minor change)
-                        variant="ghost"
-                        size="icon"
-                        className="md:hidden absolute right-4 top-4 hover:bg-gray-100 rounded-xl"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                        <X className="h-5 w-5 text-gray-500" />
-<<<<<<< HEAD
-                    </Button>
-                    <div className="flex flex-col items-center gap-4 text-primary w-full text-center">
-                        <img src={user?.organization?.logo ? getFileUrl(user.organization.logo) : getLogo()} alt="Logo" className="h-20 w-auto object-contain transition-all hover:scale-105 duration-300" />
-                        {user?.organization?.name && (
-                            <h1 className="text-xs font-bold font-sans leading-relaxed text-black uppercase tracking-wider">
-                                {user.organization.name}
-                            </h1>
-                        )}
-                    </div>
-=======
-                    </Button> */}
->>>>>>> 132371bf (minor change)
-                </div>
-=======
             <p className="text-xs text-muted-foreground">{user?.email}</p>
           </div>
         </div>
->>>>>>> 3ca927b2 (new update)
 
         <div className="border-b border-primary mx-4 mb-2" />
 
@@ -236,137 +154,22 @@ export function DashboardLayout() {
               </NavLink>
             )}
 
-<<<<<<< HEAD
-                        {/* Economist/Journalist List */}
-                        <NavLink
-                            to={`${basePath}/journalists`}
-                            className={({ isActive }) =>
-                                cn(
-                                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                    isActive
-                                        ? "bg-[#e6f4ea] text-primary"
-                                        : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                )
-                            }
-                        >
-                            <Users className="h-5 w-5" />
-                            List of journalists
-                        </NavLink >
-
-                        {/* Accredited Journalists - 'application:view:approved' */}
-                        {
-                            checkPermission('application:view:approved') && (
-                                <NavLink
-                                    to={`${basePath}/accredited`}
-                                    className={({ isActive }) =>
-                                        cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                            isActive
-                                                ? "bg-[#e6f4ea] text-primary"
-                                                : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                        )
-                                    }
-                                >
-                                    <BadgeCheck className="h-5 w-5" />
-                                    Accredited Journalists
-                                </NavLink>
-                            )
-                        }
-                        {/* Workflow Builder - 'workflow:config:view' */}
-                        {
-                            checkPermission('workflow:config:view') && (
-                                <NavLink
-                                    to={`${basePath}/workflow`}
-                                    className={({ isActive }) =>
-                                        cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                            isActive
-                                                ? "bg-[#e6f4ea] text-primary"
-                                                : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                        )
-                                    }
-                                >
-                                    <GitMerge className="h-5 w-5" />
-                                    Workflow Builder
-                                </NavLink>
-                            )
-                        }
-                        {/* Permissions - 'permission:matrix:view' */}
-                        {
-                            checkPermission('permission:matrix:view') && (
-                                <NavLink
-                                    to={`${basePath}/permissions`}
-                                    className={({ isActive }) =>
-                                        cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                            isActive
-                                                ? "bg-[#e6f4ea] text-primary"
-                                                : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                        )
-                                    }
-                                >
-                                    <ShieldAlert className="h-5 w-5" />
-                                    Permissions
-                                </NavLink>
-                            )
-                        }
-
-                        {/* Form Builder - 'form:view:all' */}
-                        {
-                            checkPermission('form:view:all') && (
-                                <NavLink
-                                    to={`${basePath}/forms`}
-                                    className={({ isActive }) =>
-                                        cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                            isActive
-                                                ? "bg-[#e6f4ea] text-primary"
-                                                : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                        )
-                                    }
-                                >
-                                    <FileText className="h-5 w-5" />
-                                    Form Builder
-                                </NavLink>
-                            )
-                        }
-
-                        {/* User Management - 'user:view:all' */}
-                        {
-                            checkPermission('user:view:all') && (
-                                <NavLink
-                                    to={`${basePath}/users`}
-                                    className={({ isActive }) =>
-                                        cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                            isActive
-                                                ? "bg-[#e6f4ea] text-primary"
-                                                : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                        )
-                                    }
-                                >
-                                    <User className="h-5 w-5" />
-                                    User Management
-                                </NavLink>
-                            )
-                        }
-=======
             {/* List of journalists */}
             {checkPermission('application:view:approved') && (
-            <NavLink
-              to={`${basePath}/journalists`}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-[#e6f4ea] text-primary'
-                    : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
-                )
-              }
-            >
-              <Users className="h-5 w-5" />
-              List of journalists
-            </NavLink>
+              <NavLink
+                to={`${basePath}/journalists`}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-[#e6f4ea] text-primary'
+                      : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                  )
+                }
+              >
+                <Users className="h-5 w-5" />
+                List of journalists
+              </NavLink>
             )}
 
             {/* Accredited Journalists */}
@@ -384,6 +187,42 @@ export function DashboardLayout() {
               >
                 <BadgeCheck className="h-5 w-5" />
                 Accredited Journalists
+              </NavLink>
+            )}
+
+            {/* Entry Workflow */}
+            {checkPermission('application:view:entry-workflow') && (
+              <NavLink
+                to={`${basePath}/entry-workflow`}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-[#e6f4ea] text-primary'
+                      : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                  )
+                }
+              >
+                <LogIn className="h-5 w-5" />
+                Entry Workflow
+              </NavLink>
+            )}
+
+            {/* Exit Workflow */}
+            {checkPermission('application:view:exit-workflow') && (
+              <NavLink
+                to={`${basePath}/exit-workflow`}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-[#e6f4ea] text-primary'
+                      : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                  )
+                }
+              >
+                <ArrowRightLeft className="h-5 w-5" />
+                Exit Workflow
               </NavLink>
             )}
 
@@ -422,7 +261,6 @@ export function DashboardLayout() {
                 Permissions
               </NavLink>
             )}
->>>>>>> 3ca927b2 (new update)
 
             {/* Form Builder */}
             {checkPermission('form:view:all') && (
@@ -460,67 +298,6 @@ export function DashboardLayout() {
               </NavLink>
             )}
 
-<<<<<<< HEAD
-                        {/* Organizations - 'organization:view:all' */}
-                        {
-                            checkPermission('organization:view:all') && (
-                                <NavLink
-                                    to={`${basePath}/organizations`}
-                                    className={({ isActive }) =>
-                                        cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                            isActive
-                                                ? "bg-[#e6f4ea] text-primary"
-                                                : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                        )
-                                    }
-                                >
-                                    <Building2 className="h-5 w-5" />
-                                    Organizations
-                                </NavLink>
-                            )
-                        }
-
-                        {/* Embassy Management - 'organization:view:all' (Reusing same permission for now or superadmin only) */}
-                        {
-                            user?.role === UserRole.SUPER_ADMIN && (
-                                <NavLink
-                                    to={`${basePath}/embassies`}
-                                    className={({ isActive }) =>
-                                        cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                            isActive
-                                                ? "bg-[#e6f4ea] text-primary"
-                                                : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                        )
-                                    }
-                                >
-                                    <Globe className="h-5 w-5" />
-                                    Embassy Management
-                                </NavLink>
-                            )
-                        }
-
-                        {/* Roles - 'role:view:all' */}
-                        {
-                            checkPermission('role:view:all') && (
-                                <NavLink
-                                    to={`${basePath}/roles`}
-                                    className={({ isActive }) =>
-                                        cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                            isActive
-                                                ? "bg-[#e6f4ea] text-primary"
-                                                : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                        )
-                                    }
-                                >
-                                    <Shield className="h-5 w-5" />
-                                    Roles
-                                </NavLink>
-                            )
-                        }
-=======
             {/* Organizations */}
             {checkPermission('organization:view:all') && (
               <NavLink
@@ -536,6 +313,24 @@ export function DashboardLayout() {
               >
                 <Building2 className="h-5 w-5" />
                 Organizations
+              </NavLink>
+            )}
+
+            {/* Embassy Management */}
+            {user?.role === UserRole.SUPER_ADMIN && (
+              <NavLink
+                to={`${basePath}/embassies`}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-[#e6f4ea] text-primary'
+                      : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                  )
+                }
+              >
+                <Globe className="h-5 w-5" />
+                Embassy Management
               </NavLink>
             )}
 
@@ -556,9 +351,8 @@ export function DashboardLayout() {
                 Roles
               </NavLink>
             )}
->>>>>>> 3ca927b2 (new update)
 
-            {/* Email Templates – SUPER_ADMIN only */}
+            {/* Email Templates */}
             {user?.role === UserRole.SUPER_ADMIN && (
               <NavLink
                 to={`${basePath}/email-templates`}
@@ -576,7 +370,7 @@ export function DashboardLayout() {
               </NavLink>
             )}
 
-            {/* Badge Center – SUPER_ADMIN only */}
+            {/* Badge Center */}
             {user?.role === UserRole.SUPER_ADMIN && (
               <NavLink
                 to={`${basePath}/badge-center`}
@@ -612,7 +406,7 @@ export function DashboardLayout() {
               </NavLink>
             )}
 
-            {/* System Settings – SUPER_ADMIN only */}
+            {/* System Settings */}
             {user?.role === UserRole.SUPER_ADMIN && (
               <NavLink
                 to={`${basePath}/settings`}
@@ -630,155 +424,7 @@ export function DashboardLayout() {
               </NavLink>
             )}
 
-<<<<<<< HEAD
-                        {/* Email Templates */}
-                        {
-                            (user?.role === UserRole.SUPER_ADMIN) && (
-                                <NavLink
-                                    to={`${basePath}/email-templates`}
-                                    className={({ isActive }) =>
-                                        cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                            isActive
-                                                ? "bg-[#e6f4ea] text-primary"
-                                                : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                        )
-                                    }
-                                >
-                                    <Mail className="h-5 w-5" />
-                                    Email Templates
-                                </NavLink>
-                            )
-                        }
-
-                        {/* Badge Center */}
-                        {
-                            user?.role === UserRole.SUPER_ADMIN && (
-                                <NavLink
-                                    to={`${basePath}/badge-center`}
-                                    className={({ isActive }) =>
-                                        cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                            isActive
-                                                ? "bg-[#e6f4ea] text-primary"
-                                                : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                        )
-                                    }
-                                >
-                                    <LayoutDashboard className="h-5 w-5" />
-                                    Badge Center
-                                </NavLink>
-                            )
-                        }
-
-                        {/* Invitation Center */}
-                        {
-                            checkPermission('application:view:approved') && (
-                                <NavLink
-                                    to={`${basePath}/invitations`}
-                                    className={({ isActive }) =>
-                                        cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                            isActive
-                                                ? "bg-[#e6f4ea] text-primary"
-                                                : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                        )
-                                    }
-                                >
-                                    <Mail className="h-5 w-5" />
-                                    Invitation Center
-                                </NavLink>
-                            )
-                        }
-                        {/* System Settings */}
-                        {
-                            user?.role === UserRole.SUPER_ADMIN && (
-                                <NavLink
-                                    to={`${basePath}/settings`}
-                                    className={({ isActive }) =>
-                                        cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                            isActive
-                                                ? "bg-[#e6f4ea] text-primary"
-                                                : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                        )
-                                    }
-                                >
-                                    <Settings className="h-5 w-5" />
-                                    System Settings
-                                </NavLink>
-                            )
-                        }
-
-                        {/* API Management */}
-                        {
-                            user?.role === UserRole.SUPER_ADMIN && (
-                                <NavLink
-                                    to={`${basePath}/api-management`}
-                                    className={({ isActive }) =>
-                                        cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                                            isActive
-                                                ? "bg-[#e6f4ea] text-primary"
-                                                : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
-                                        )
-                                    }
-                                >
-                                    <Activity className="h-5 w-5" />
-                                    API Management
-                                </NavLink>
-                            )
-                        }
-                    </nav >
-                </ScrollArea >
-
-
-                <div className="p-6 mt-auto">
-                    <div className="mb-6">
-                        <p className="text-sm font-medium text-gray-900 uppercase tracking-wider mb-2">
-                            {/* {user?.gate || 'AU DESK - GATE 1'} */}
-                        </p>
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
-                                <User className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold text-gray-900">{user?.name}</p>
-                                <p className="text-xs text-gray-500 truncate max-w-[150px]">{user?.email}</p>
-                                <p className="text-xs text-gray-400">ID: #{user?.id}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <Button
-                        variant="default"
-                        className="w-full bg-black hover:bg-black/90 text-white justify-start pl-4"
-                        onClick={handleLogout}
-                    >
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Log Out
-                    </Button>
-                </div>
-            </aside >
-
-            {/* Main Content */}
-<<<<<<< HEAD
-            < main className="flex-1 md:ml-72 pt-20 md:pt-4 p-4 md:p-8 flex flex-col min-h-screen overflow-x-hidden" >
-=======
-            <main className="flex-1 md:ml-72 pt-20 md:pt-4 p-4 md:p-8 flex flex-col min-h-screen mx-auto">
->>>>>>> 132371bf (minor change)
-                <div className="max-w-[1600px] w-full mx-auto">
-                    <Outlet />
-                </div>
-
-                <footer className="mt-auto pt-12 pb-6 text-center text-xs text-gray-400 font-medium tracking-wide">
-                    © 2025 African Union Accreditation Portal. All rights reserved.
-                </footer>
-            </main >
-        </div >
-    );
-=======
-            {/* API Management – SUPER_ADMIN only */}
+            {/* API Management */}
             {user?.role === UserRole.SUPER_ADMIN && (
               <NavLink
                 to={`${basePath}/api-management`}
@@ -836,5 +482,4 @@ export function DashboardLayout() {
       </main>
     </div>
   );
->>>>>>> 3ca927b2 (new update)
 }

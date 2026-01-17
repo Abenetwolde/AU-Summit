@@ -715,7 +715,7 @@ export interface UpdateEquipmentStatusPayload {
 }
 
 // export const FILE_BASE_URL = 'https://cw761gt5-3000.uks1.devtunnels.ms';
-export const FILE_BASE_URL = 'http://localhost:5000';
+export const FILE_BASE_URL = 'http://localhost:3000';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -869,21 +869,17 @@ export const api = createApi({
     reducerPath: 'api',
     baseQuery: fetchBaseQuery({
         baseUrl: `${FILE_BASE_URL}/api/v1`,
-    prepareHeaders: (headers) => {
-        const dynamicToken = localStorage.getItem('managment_token');
-        if (dynamicToken) {
-            headers.set('authorization', `Bearer ${dynamicToken}`);
-        } else {
-            headers.set('authorization', `Bearer ${TOKEN}`);
-        }
-        return headers;
-    },
+        prepareHeaders: (headers) => {
+            const dynamicToken = localStorage.getItem('managment_token');
+            if (dynamicToken) {
+                headers.set('authorization', `Bearer ${dynamicToken}`);
+            } else {
+                headers.set('authorization', `Bearer ${TOKEN}`);
+            }
+            return headers;
+        },
     }),
-<<<<<<< HEAD
     tagTypes: ['Role', 'Permission', 'Application', 'Form', 'User', 'Category', 'WorkflowStep', 'Invitation', 'Badge', 'EquipCatalog', 'Integration', 'APIProvider', 'Embassy', 'Country', 'Organization', 'EmailTemplate', 'LandingPage', 'Workflow'],
-=======
-tagTypes: ['Role', 'Permission', 'Category', 'Application', 'Organization', 'User', 'EmailTemplate', 'LandingPage', 'Workflow', 'Badge', 'Invitation'],
->>>>>>> 132371bf (minor change)
     endpoints: (builder) => ({
         login: builder.mutation<LoginResponse, any>({
             query: (credentials: any) => ({
@@ -1141,6 +1137,47 @@ tagTypes: ['Role', 'Permission', 'Category', 'Application', 'Organization', 'Use
                 method: 'POST',
             }),
             invalidatesTags: (_result, _error, id) => [{ type: 'Application', id }],
+        }),
+        // Two-Phase Workflow Endpoints
+        getEntryWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string }>({
+            query: (params = {}) => {
+                const { page = 1, limit = 10, search = '', status = '' } = params;
+                const queryParams = new URLSearchParams({
+                    page: String(page),
+                    limit: String(limit),
+                    ...(search && { search }),
+                    ...(status && { status })
+                });
+                return `/applications/entry-workflow?${queryParams}`;
+            },
+            transformResponse: (response: ApplicationsResponse) => response.data,
+            providesTags: ['Application'],
+        }),
+        getExitWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string }>({
+            query: (params = {}) => {
+                const { page = 1, limit = 10, search = '', status = '' } = params;
+                const queryParams = new URLSearchParams({
+                    page: String(page),
+                    limit: String(limit),
+                    ...(search && { search }),
+                    ...(status && { status })
+                });
+                return `/applications/exit-workflow?${queryParams}`;
+            },
+            transformResponse: (response: ApplicationsResponse) => response.data,
+            providesTags: ['Application'],
+        }),
+        initializeExitWorkflow: builder.mutation<void, number>({
+            query: (id) => ({
+                url: `/applications/${id}/initialize-exit`,
+                method: 'POST',
+            }),
+            invalidatesTags: (_result, _error, id) => [{ type: 'Application', id }, 'Application'],
+        }),
+        getApplicationPhaseStatus: builder.query<any, number>({
+            query: (id) => `/applications/${id}/phase-status`,
+            transformResponse: (response: any) => response.data || response,
+            providesTags: (_result, _error, id) => [{ type: 'Application', id }],
         }),
         getApprovedApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number } | void>({
             query: (params) => {
@@ -1621,6 +1658,10 @@ export const {
     useCreateLandingPageSettingsMutation,
     useDeleteLandingPageSettingsMutation,
     useUpdateEquipmentStatusMutation,
+    useGetEntryWorkflowApplicationsQuery,
+    useGetExitWorkflowApplicationsQuery,
+    useInitializeExitWorkflowMutation,
+    useGetApplicationPhaseStatusQuery,
 
 
     // New Workflow hooks
