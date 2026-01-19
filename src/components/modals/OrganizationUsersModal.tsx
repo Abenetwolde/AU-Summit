@@ -82,6 +82,7 @@ export function OrganizationUsersModal({ open, onOpenChange, organization }: Org
                 email: userData.email,
                 password: userData.password,
                 roleId: Number(userData.roleId),
+                organizationId: Number(organization.id),
                 status: 'ACTIVE'
             }).unwrap();
             toast.success("User created successfully");

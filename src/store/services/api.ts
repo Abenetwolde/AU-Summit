@@ -147,6 +147,7 @@ export interface User {
     password?: string; // Only for creation/update
     status: string;
     roleId: number;
+    organizationId?: number;
     createdAt: string;
     updatedAt: string;
     role?: Role;
