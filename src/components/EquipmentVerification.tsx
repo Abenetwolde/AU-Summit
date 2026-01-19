@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Check, X, ShieldCheck, Forward } from 'lucide-react';
+import { Check, X, ShieldCheck, Forward, RotateCcw } from 'lucide-react';
 import { useAuth, UserRole } from '@/auth/context';
+import { useUpdateEquipmentStatusMutation, EquipmentStatus } from '@/store/services/api';
+import { toast } from 'sonner';
 
 interface Equipment {
+    id: number;
     type: string;
     model: string;
-    status?: 'Pending' | 'Approved' | 'Forwarded' | 'Rejected';
+    status: EquipmentStatus;
     // Drone specific fields
     weight?: string;
     frequency?: string;
@@ -28,35 +31,74 @@ export function EquipmentVerification({
     onReject,
     showActions = true
 }: EquipmentVerificationProps) {
-    const { user } = useAuth();
+    const { user, checkPermission } = useAuth();
+    const [updateStatus, { isLoading: isUpdating }] = useUpdateEquipmentStatusMutation();
     const [securityCheck, setSecurityCheck] = useState(false);
     const [restrictedAreaAccess, setRestrictedAreaAccess] = useState(false);
     const [equipmentVerified, setEquipmentVerified] = useState(true);
 
-    // Manage local status for mock demonstration
-    const [items, setItems] = useState<Equipment[]>(
-        initialEquipment.map(item => ({ ...item, status: item.status || 'Pending' }))
-    );
-
-    // Determine if current user can perform actions
-    const isCustoms = user?.role === UserRole.CUSTOMS_OFFICER;
-    const isINSA = user?.role === UserRole.INSA_OFFICER;
-    const canPerformActions = showActions && (isCustoms || isINSA);
-
-    const updateItemStatus = (index: number, newStatus: NonNullable<Equipment['status']>) => {
-        const newItems = [...items];
-        newItems[index].status = newStatus;
-        setItems(newItems);
+    // Normalize status to uppercase for reliable enum comparison
+    const normalizeStatus = (status?: string): EquipmentStatus => {
+        if (!status) return EquipmentStatus.PENDING;
+        const upper = status.toUpperCase();
+        if (upper === 'PENDING') return EquipmentStatus.PENDING;
+        if (upper === 'APPROVED') return EquipmentStatus.APPROVED;
+        if (upper === 'REJECTED') return EquipmentStatus.REJECTED;
+        return EquipmentStatus.PENDING;
     };
 
-    const getStatusBadge = (status: Equipment['status']) => {
+    // Manage local status
+    const [items, setItems] = useState<Equipment[]>(
+        initialEquipment.map((item, idx) => ({
+            ...item,
+            id: item.id || (idx + 1), // Fallback for mock data without IDs
+            status: normalizeStatus(item.status)
+        }))
+    );
+
+    useEffect(() => {
+        setItems(
+            initialEquipment.map((item, idx) => ({
+                ...item,
+                id: item.id || (idx + 1),
+                status: normalizeStatus(item.status)
+            }))
+        );
+    }, [initialEquipment]);
+
+    // Determine if current user can perform actions
+    const hasPermission = checkPermission('verification:equipment:single:update');
+    // For safety with existing mock roles
+    const isCustoms = user?.role === UserRole.CUSTOMS_OFFICER;
+    const isINSA = user?.role === UserRole.INSA_OFFICER;
+    const canPerformActions = showActions && (hasPermission || isCustoms || isINSA || user?.role === UserRole.SUPER_ADMIN);
+
+    const updateItemStatus = async (index: number, newStatus: EquipmentStatus, rejectionReason?: string) => {
+        const item = items[index];
+        try {
+            await updateStatus({
+                equipmentId: item.id,
+                status: newStatus,
+                rejectionReason
+            }).unwrap();
+
+            const newItems = [...items];
+            newItems[index].status = newStatus;
+            setItems(newItems);
+
+            toast.success(`Equipment status updated to ${newStatus}`);
+        } catch (error: any) {
+            toast.error(error.data?.message || 'Failed to update equipment status');
+        }
+    };
+
+    const getStatusBadge = (status: EquipmentStatus) => {
         switch (status) {
-            case 'Approved':
+            case EquipmentStatus.APPROVED:
                 return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700"><Check className="h-3 w-3 mr-1" /> Approved</span>;
-            case 'Forwarded':
-                return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700"><Forward className="h-3 w-3 mr-1" /> Forwarded to INSA</span>;
-            case 'Rejected':
+            case EquipmentStatus.REJECTED:
                 return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700"><X className="h-3 w-3 mr-1" /> Rejected</span>;
+            case EquipmentStatus.PENDING:
             default:
                 return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-700">Pending</span>;
         }
@@ -111,35 +153,45 @@ export function EquipmentVerification({
                                     {canPerformActions && (
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex justify-end gap-1.5">
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                                    onClick={() => updateItemStatus(index, 'Approved')}
-                                                    title="Approve Item"
-                                                >
-                                                    <Check className="h-4 w-4" />
-                                                </Button>
-                                                {isCustoms && !isINSA && (
+                                                {item.status !== EquipmentStatus.APPROVED && (
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
-                                                        className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                        onClick={() => updateItemStatus(index, 'Forwarded')}
-                                                        title="Forward to INSA"
+                                                        className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                        onClick={() => updateItemStatus(index, EquipmentStatus.APPROVED)}
+                                                        disabled={isUpdating}
+                                                        title="Approve Item"
                                                     >
-                                                        <Forward className="h-4 w-4" />
+                                                        <Check className="h-4 w-4" />
                                                     </Button>
                                                 )}
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                    onClick={() => updateItemStatus(index, 'Rejected')}
-                                                    title="Reject Item"
-                                                >
-                                                    <X className="h-4 w-4" />
-                                                </Button>
+                                                {item.status === EquipmentStatus.APPROVED && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-8 w-8 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                                        onClick={() => updateItemStatus(index, EquipmentStatus.PENDING)}
+                                                        disabled={isUpdating}
+                                                        title="Revoke Approval (Set to Pending)"
+                                                    >
+                                                        <RotateCcw className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                                {item.status !== EquipmentStatus.REJECTED && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                        onClick={() => {
+                                                            const reason = window.prompt('Enter rejection reason:');
+                                                            if (reason) updateItemStatus(index, EquipmentStatus.REJECTED, reason);
+                                                        }}
+                                                        disabled={isUpdating}
+                                                        title="Reject Item"
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                             </div>
                                         </td>
                                     )}

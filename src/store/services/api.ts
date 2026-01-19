@@ -1474,8 +1474,8 @@ export const api = createApi({
         // Add this endpoint to the endpoints builder (you can place it near other equipment/verification endpoints)
         updateEquipmentStatus: builder.mutation<Equipment, UpdateEquipmentStatusPayload>({
             query: ({ equipmentId, status, rejectionReason, notes }) => ({
-                url: `/verification/single-equipment/${equipmentId}`,
-                method: 'POST',
+                url: `/equipment/equipment/${equipmentId}/status`,
+                method: 'PATCH',
                 body: {
                     status,
                     ...(rejectionReason && { rejectionReason }),

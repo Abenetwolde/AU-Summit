@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2 } from 'lucide-react';
+import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw } from 'lucide-react';
 import { getFlagEmoji } from '@/lib/utils';
 import en from 'react-phone-number-input/locale/en';
 import { SystemCheckSuccess } from '@/components/SystemCheckSuccess';
@@ -482,9 +482,9 @@ export function JournalistProfile() {
                                                             <p className="text-xs font-bold text-gray-400 uppercase">QUANTITY</p>
                                                             <p className="text-sm font-bold text-gray-900">{item.quantity}</p>
                                                         </div>
-                                                        <div>
+                                                        <div className="flex flex-col">
                                                             <p className="text-xs font-bold text-gray-400 uppercase">STATUS</p>
-                                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${item.status === 'APPROVED' ? 'bg-green-100 text-green-700' : item.status === 'REJECTED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full w-fit ${item.status?.toUpperCase() === 'APPROVED' ? 'bg-green-100 text-green-700' : item.status?.toUpperCase() === 'REJECTED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                                                 {item.status}
                                                             </span>
                                                         </div>
@@ -498,31 +498,51 @@ export function JournalistProfile() {
                                                     )}
 
                                                     {/* Equipment Approval Buttons */}
-                                                    {canUpdateEquipment && item.status !== 'APPROVED' && (
+                                                    {canUpdateEquipment && (
                                                         <div className="mt-4 pt-4 border-t flex gap-2">
-                                                            <Button
-                                                                size="sm"
-                                                                className="bg-[#009b4d] hover:bg-[#007a3d] text-white font-bold"
-                                                                onClick={() => openEquipmentDialog(item, EquipmentStatus.APPROVED)}
-                                                                disabled={isEquipmentUpdating}
-                                                            >
-                                                                {isEquipmentUpdating && selectedEquipment?.id === item.id ? (
-                                                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                                                ) : (
-                                                                    <Check className="h-4 w-4 mr-2" />
-                                                                )}
-                                                                Approve Equipment
-                                                            </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                className="text-red-600 border-red-200 hover:bg-red-50 font-bold"
-                                                                onClick={() => openEquipmentDialog(item, EquipmentStatus.REJECTED)}
-                                                                disabled={isEquipmentUpdating}
-                                                            >
-                                                                <X className="h-4 w-4 mr-2" />
-                                                                Reject Equipment
-                                                            </Button>
+                                                            {item.status?.toUpperCase() !== 'APPROVED' && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    className="bg-[#009b4d] hover:bg-[#007a3d] text-white font-bold"
+                                                                    onClick={() => openEquipmentDialog(item, EquipmentStatus.APPROVED)}
+                                                                    disabled={isEquipmentUpdating}
+                                                                >
+                                                                    {isEquipmentUpdating && selectedEquipment?.id === item.id && equipmentStatus === EquipmentStatus.APPROVED ? (
+                                                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                                    ) : (
+                                                                        <Check className="h-4 w-4 mr-2" />
+                                                                    )}
+                                                                    Approve
+                                                                </Button>
+                                                            )}
+                                                            {item.status?.toUpperCase() === 'APPROVED' && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="text-amber-600 border-amber-200 hover:bg-amber-50 font-bold"
+                                                                    onClick={() => handleEquipmentApproval(item.id, EquipmentStatus.PENDING)}
+                                                                    disabled={isEquipmentUpdating}
+                                                                >
+                                                                    {isEquipmentUpdating && selectedEquipment?.id === item.id ? (
+                                                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                                    ) : (
+                                                                        <RotateCcw className="h-4 w-4 mr-2" />
+                                                                    )}
+                                                                    Revoke Approval
+                                                                </Button>
+                                                            )}
+                                                            {item.status?.toUpperCase() !== 'REJECTED' && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="text-red-600 border-red-200 hover:bg-red-50 font-bold"
+                                                                    onClick={() => openEquipmentDialog(item, EquipmentStatus.REJECTED)}
+                                                                    disabled={isEquipmentUpdating}
+                                                                >
+                                                                    <X className="h-4 w-4 mr-2" />
+                                                                    Reject
+                                                                </Button>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
