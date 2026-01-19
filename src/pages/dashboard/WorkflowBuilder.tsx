@@ -51,6 +51,7 @@ import {
     useBulkUpdateWorkflowStepsMutation,
     useGetRolesQuery,
     useGetFormsQuery,
+    useGetEmailTemplatesQuery,
     WorkflowStep,
     BulkUpdateWorkflowStepsPayload
 } from '@/store/services/api';
@@ -325,6 +326,8 @@ function WorkflowBuilderContent() {
 
     const { data: roles } = useGetRolesQuery();
     const { data: forms } = useGetFormsQuery();
+    const { data: emailTemplatesData } = useGetEmailTemplatesQuery({ limit: 100 });
+    const emailTemplates = emailTemplatesData?.templates || [];
 
     const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -530,6 +533,7 @@ function WorkflowBuilderContent() {
                 emailStep: currentStep.emailStep,
                 targetAudience: currentStep.targetAudience as any || 'INTERNATIONAL',
                 isExitStep: currentStep.isExitStep || false,
+                emailTemplateId: currentStep.emailStep ? currentStep.emailTemplateId : undefined,
                 branchCondition: currentStep.branchCondition || null,
                 // Automatically assign next order within this context to make it appear on canvas
                 displayOrder: ((workflowSteps || []).filter(s =>
@@ -590,6 +594,7 @@ function WorkflowBuilderContent() {
                     color: currentStep.color,
                     dependencyType: currentStep.dependencyType as any,
                     emailStep: currentStep.emailStep,
+                    emailTemplateId: currentStep.emailStep ? currentStep.emailTemplateId : undefined,
                     targetAudience: currentStep.targetAudience,
                     isExitStep: currentStep.isExitStep,
                     branchCondition: currentStep.branchCondition || null
@@ -816,6 +821,7 @@ function WorkflowBuilderContent() {
                                 <TableHead className="w-[150px]">Dep. Type</TableHead>
                                 <TableHead>Depends On</TableHead>
                                 <TableHead>Email Trigger</TableHead>
+                                <TableHead>Template</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
@@ -836,6 +842,7 @@ function WorkflowBuilderContent() {
                                     }).filter(Boolean)
                                     : step.dependsOn;
                                 const emailStep = currentNode ? (currentNode.data.emailStep as boolean) : (step as any).emailStep;
+                                const emailTemplateId = currentNode ? (currentNode.data.emailTemplateId as number) : step.emailTemplateId;
 
                                 const updateNodeData = (newData: any) => {
                                     if (!isPlaced) {
@@ -985,6 +992,23 @@ function WorkflowBuilderContent() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
+                                            <Select
+                                                value={emailTemplateId?.toString() || 'none'}
+                                                disabled={!emailStep}
+                                                onValueChange={v => updateNodeData({ emailTemplateId: v === 'none' ? undefined : Number(v) })}
+                                            >
+                                                <SelectTrigger className="h-8 text-[10px] w-[140px]">
+                                                    <SelectValue placeholder="Default" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="none">Default Notification</SelectItem>
+                                                    {emailTemplates?.map(t => (
+                                                        <SelectItem key={t.id} value={t.id.toString()} className="text-[10px]">{t.templateName}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </TableCell>
+                                        <TableCell>
                                             {isPlaced ? <Badge className="bg-emerald-500 h-5 text-[9px]">Active</Badge> : <Badge variant="secondary" className="text-slate-500 h-5 text-[9px]">Unused</Badge>}
                                         </TableCell>
                                         <TableCell className="text-right">
@@ -1050,20 +1074,37 @@ function WorkflowBuilderContent() {
                                     <Input value={currentStep.color || ''} onChange={e => setCurrentStep({ ...currentStep, color: e.target.value })} />
                                 </div>
                             </div>
-                            <div className="flex items-center space-x-2 border p-3 rounded-md bg-slate-50">
-                                <Checkbox
-                                    id="create-email-step"
-                                    checked={!!currentStep.emailStep}
-                                    onCheckedChange={(c) => setCurrentStep({ ...currentStep, emailStep: !!c })}
-                                />
-                                <div className="grid gap-1.5 leading-none">
-                                    <label
-                                        htmlFor="create-email-step"
-                                        className="text-sm font-medium leading-none"
-                                    >
-                                        Send Email Trigger
-                                    </label>
+                            <div className="space-y-4 border p-3 rounded-md bg-slate-50">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="create-email-step"
+                                        checked={!!currentStep.emailStep}
+                                        onCheckedChange={(c) => setCurrentStep({ ...currentStep, emailStep: !!c })}
+                                    />
+                                    <div className="grid gap-1.5 leading-none">
+                                        <label
+                                            htmlFor="create-email-step"
+                                            className="text-sm font-medium leading-none"
+                                        >
+                                            Send Email Trigger
+                                        </label>
+                                    </div>
                                 </div>
+                                {currentStep.emailStep && (
+                                    <div className="space-y-2 mt-2">
+                                        <Label className="text-xs">Specific Email Template (Optional)</Label>
+                                        <Select value={currentStep.emailTemplateId?.toString() || 'none'} onValueChange={v => setCurrentStep({ ...currentStep, emailTemplateId: v === 'none' ? undefined : Number(v) })}>
+                                            <SelectTrigger className="bg-white"><SelectValue placeholder="Default Approval Template" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none">Default Approval (System Default)</SelectItem>
+                                                {emailTemplates?.map(t => (
+                                                    <SelectItem key={t.id} value={t.id.toString()}>{t.templateName}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-[10px] text-slate-400 italic">If not set, uses the standard approval email.</p>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -1344,20 +1385,37 @@ function WorkflowBuilderContent() {
                                 )}
                             </div>
 
-                            <div className="flex items-center space-x-2 border p-3 rounded-md bg-slate-50 mt-4">
-                                <Checkbox
-                                    id="edit-email-step"
-                                    checked={!!currentStep.emailStep}
-                                    onCheckedChange={(c) => setCurrentStep({ ...currentStep, emailStep: !!c })}
-                                />
-                                <div className="grid gap-1.5 leading-none">
-                                    <label
-                                        htmlFor="edit-email-step"
-                                        className="text-sm font-medium leading-none"
-                                    >
-                                        Send Email Trigger
-                                    </label>
+                            <div className="space-y-4 border p-3 rounded-md bg-slate-50 mt-4">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="edit-email-step"
+                                        checked={!!currentStep.emailStep}
+                                        onCheckedChange={(c) => setCurrentStep({ ...currentStep, emailStep: !!c })}
+                                    />
+                                    <div className="grid gap-1.5 leading-none">
+                                        <label
+                                            htmlFor="edit-email-step"
+                                            className="text-sm font-medium leading-none"
+                                        >
+                                            Send Email Trigger
+                                        </label>
+                                    </div>
                                 </div>
+                                {currentStep.emailStep && (
+                                    <div className="space-y-2 mt-2">
+                                        <Label className="text-xs">Specific Email Template (Optional)</Label>
+                                        <Select value={currentStep.emailTemplateId?.toString() || 'none'} onValueChange={v => setCurrentStep({ ...currentStep, emailTemplateId: v === 'none' ? undefined : Number(v) })}>
+                                            <SelectTrigger className="bg-white"><SelectValue placeholder="Default Approval Template" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none">Default Approval (System Default)</SelectItem>
+                                                {emailTemplates?.map(t => (
+                                                    <SelectItem key={t.id} value={t.id.toString()}>{t.templateName}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-[10px] text-slate-400 italic">If not set, uses the standard approval email.</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </ScrollArea>
