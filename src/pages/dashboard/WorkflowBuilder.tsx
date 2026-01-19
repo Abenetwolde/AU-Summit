@@ -39,7 +39,8 @@ import {
     PanelLeftOpen,
     Edit,
     GripVertical,
-    X
+    X,
+    GitBranch
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -292,7 +293,7 @@ const transformNodesToApi = (nodes: Node[], edges: Edge[], allStepsOriginal: Wor
             // Pass through identity fields to ensure they are preserved or updated correctly
             isExitStep: !!node.data.isExitStep,
             targetAudience: node.data.targetAudience as any,
-            formId: node.data.formId || null
+            formId: (node.data.formId as number | null) || null
         };
     });
 
@@ -302,7 +303,7 @@ const transformNodesToApi = (nodes: Node[], edges: Edge[], allStepsOriginal: Wor
     // To be safe, we should probably send Sidebar steps with displayOrder: 0 to persist their "unplaced" state.
     // But transformNodesToApi usually only deals with Graph state.
 
-    return { steps };
+    return { steps: steps as Partial<WorkflowStep>[] };
 };
 
 // --- Component ---
@@ -529,6 +530,7 @@ function WorkflowBuilderContent() {
                 emailStep: currentStep.emailStep,
                 targetAudience: currentStep.targetAudience as any || 'INTERNATIONAL',
                 isExitStep: currentStep.isExitStep || false,
+                branchCondition: currentStep.branchCondition || null,
                 // Automatically assign next order within this context to make it appear on canvas
                 displayOrder: ((workflowSteps || []).filter(s =>
                     s.formId === (currentStep.formId || null) &&
@@ -589,7 +591,8 @@ function WorkflowBuilderContent() {
                     dependencyType: currentStep.dependencyType as any,
                     emailStep: currentStep.emailStep,
                     targetAudience: currentStep.targetAudience,
-                    isExitStep: currentStep.isExitStep
+                    isExitStep: currentStep.isExitStep,
+                    branchCondition: currentStep.branchCondition || null
                 }
             }).unwrap();
 
@@ -908,15 +911,15 @@ function WorkflowBuilderContent() {
                                             <div className="flex flex-col gap-1.5">
                                                 <div className="flex flex-wrap gap-1 min-h-[24px]">
                                                     {dependsOn && dependsOn.length > 0 ? (
-                                                        dependsOn.map((d: string) => (
+                                                        (dependsOn as any[]).map((d: any) => (
                                                             <Badge key={d} variant="secondary" className="bg-slate-100 text-[9px] flex items-center gap-1 h-5">
                                                                 {d}
                                                                 <button
                                                                     onClick={() => {
-                                                                        const newDeps = dependsOn.filter((k: string) => k !== d);
+                                                                        const newDeps = (dependsOn as any[]).filter((k: any) => k !== d);
                                                                         updateNodeData({ dependsOn: newDeps });
                                                                         // Remove Edge: source is the dependency key's node.id, target is current step's id
-                                                                        const sourceNode = nodes.find(n => n.data.key === d);
+                                                                        const sourceNode = nodes.find(n => n.data.key === d || n.id === d.toString());
                                                                         if (sourceNode) {
                                                                             setEdges(eds => eds.filter(e => !(e.source === sourceNode.id && e.target === stepIdStr)));
                                                                         }
@@ -935,8 +938,8 @@ function WorkflowBuilderContent() {
                                                         toast.error("Place the step on the canvas first.");
                                                         return;
                                                     }
-                                                    if (!dependsOn.includes(v)) {
-                                                        const newDeps = [...dependsOn, v];
+                                                    if (!(dependsOn as any[]).includes(v)) {
+                                                        const newDeps = [...(dependsOn as any[]), v];
                                                         const updates: any = { dependsOn: newDeps };
                                                         if (depType === 'NONE' || !depType) {
                                                             updates.dependencyType = 'ANY';
@@ -999,91 +1002,148 @@ function WorkflowBuilderContent() {
 
             {/* Create Modal */}
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader><DialogTitle>Create New Step</DialogTitle></DialogHeader>
-                    <div className="space-y-4 py-2">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>Name *</Label>
-                                <Input value={currentStep.name || ''} onChange={e => setCurrentStep({ ...currentStep, name: e.target.value })} />
+                <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+                    <DialogHeader className="p-6 pb-2">
+                        <DialogTitle>Create New Step</DialogTitle>
+                    </DialogHeader>
+                    <ScrollArea className="flex-1 p-6 pt-2 overflow-y-auto">
+                        <div className="space-y-4 py-2 min-h-0">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Name *</Label>
+                                    <Input value={currentStep.name || ''} onChange={e => setCurrentStep({ ...currentStep, name: e.target.value })} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Key *</Label>
+                                    <Input value={currentStep.key || ''} onChange={e => setCurrentStep({ ...currentStep, key: e.target.value })} />
+                                </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Key *</Label>
-                                <Input value={currentStep.key || ''} onChange={e => setCurrentStep({ ...currentStep, key: e.target.value })} />
+                                <Label>Scoped Form (Optional)</Label>
+                                <Select value={currentStep.formId?.toString() || 'null'} onValueChange={v => setCurrentStep({ ...currentStep, formId: v === 'null' ? null : Number(v) })}>
+                                    <SelectTrigger className="bg-slate-50"><SelectValue placeholder="Select Form" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="null">Global (All Forms)</SelectItem>
+                                        {forms?.map(f => <SelectItem key={f.form_id} value={f.form_id.toString()}>{f.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-[10px] text-slate-400">If Global, this step appears across all different portal forms.</p>
                             </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Scoped Form (Optional)</Label>
-                            <Select value={currentStep.formId?.toString() || 'null'} onValueChange={v => setCurrentStep({ ...currentStep, formId: v === 'null' ? null : Number(v) })}>
-                                <SelectTrigger className="bg-slate-50"><SelectValue placeholder="Select Form" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="null">Global (All Forms)</SelectItem>
-                                    {forms?.map(f => <SelectItem key={f.form_id} value={f.form_id.toString()}>{f.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <p className="text-[10px] text-slate-400">If Global, this step appears across all different portal forms.</p>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Role *</Label>
-                            <Select value={currentStep.requiredRole} onValueChange={v => setCurrentStep({ ...currentStep, requiredRole: v })}>
-                                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="ICS">ICS</SelectItem>
-                                    <SelectItem value="SECURITY_OFFICER">Security Officer</SelectItem>
-                                    <SelectItem value="CUSTOM_OFFICER">Custom Officer</SelectItem>
-                                    <SelectItem value="INSA_OFFICER">INSA Officer</SelectItem>
-                                    <SelectItem value="MEDIA_LIAISON">Media Liaison</SelectItem>
-                                    {roles?.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Color</Label>
-                            <div className="flex gap-2">
-                                <Input type="color" className="w-12 p-0 border-0" value={currentStep.color || '#3b82f6'} onChange={e => setCurrentStep({ ...currentStep, color: e.target.value })} />
-                                <Input value={currentStep.color || ''} onChange={e => setCurrentStep({ ...currentStep, color: e.target.value })} />
+                            <div className="space-y-2">
+                                <Label>Role *</Label>
+                                <Select value={currentStep.requiredRole} onValueChange={v => setCurrentStep({ ...currentStep, requiredRole: v })}>
+                                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ICS">ICS</SelectItem>
+                                        <SelectItem value="SECURITY_OFFICER">Security Officer</SelectItem>
+                                        <SelectItem value="CUSTOM_OFFICER">Custom Officer</SelectItem>
+                                        <SelectItem value="INSA_OFFICER">INSA Officer</SelectItem>
+                                        <SelectItem value="MEDIA_LIAISON">Media Liaison</SelectItem>
+                                        {roles?.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
                             </div>
-                        </div>
-                        <div className="flex items-center space-x-2 border p-3 rounded-md bg-slate-50">
-                            <Checkbox
-                                id="create-email-step"
-                                checked={!!currentStep.emailStep}
-                                onCheckedChange={(c) => setCurrentStep({ ...currentStep, emailStep: !!c })}
-                            />
-                            <div className="grid gap-1.5 leading-none">
-                                <label
-                                    htmlFor="create-email-step"
-                                    className="text-sm font-medium leading-none"
-                                >
-                                    Send Email Trigger
-                                </label>
+                            <div className="space-y-2">
+                                <Label>Color</Label>
+                                <div className="flex gap-2">
+                                    <Input type="color" className="w-12 p-0 border-0" value={currentStep.color || '#3b82f6'} onChange={e => setCurrentStep({ ...currentStep, color: e.target.value })} />
+                                    <Input value={currentStep.color || ''} onChange={e => setCurrentStep({ ...currentStep, color: e.target.value })} />
+                                </div>
                             </div>
-                        </div>
+                            <div className="flex items-center space-x-2 border p-3 rounded-md bg-slate-50">
+                                <Checkbox
+                                    id="create-email-step"
+                                    checked={!!currentStep.emailStep}
+                                    onCheckedChange={(c) => setCurrentStep({ ...currentStep, emailStep: !!c })}
+                                />
+                                <div className="grid gap-1.5 leading-none">
+                                    <label
+                                        htmlFor="create-email-step"
+                                        className="text-sm font-medium leading-none"
+                                    >
+                                        Send Email Trigger
+                                    </label>
+                                </div>
+                            </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>Target Audience</Label>
-                                <Select value={currentStep.targetAudience} onValueChange={v => setCurrentStep({ ...currentStep, targetAudience: v as any })}>
-                                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="LOCAL">Local Only</SelectItem>
-                                        <SelectItem value="INTERNATIONAL">International Only</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Target Audience</Label>
+                                    <Select value={currentStep.targetAudience} onValueChange={v => setCurrentStep({ ...currentStep, targetAudience: v as any })}>
+                                        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="LOCAL">Local Only</SelectItem>
+                                            <SelectItem value="INTERNATIONAL">International Only</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Phase</Label>
+                                    <Select value={currentStep.isExitStep ? "true" : "false"} onValueChange={v => setCurrentStep({ ...currentStep, isExitStep: v === "true" })}>
+                                        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="false">Accreditation (Entry)</SelectItem>
+                                            <SelectItem value="true">Exit Workflow (Exit)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label>Phase</Label>
-                                <Select value={currentStep.isExitStep ? "true" : "false"} onValueChange={v => setCurrentStep({ ...currentStep, isExitStep: v === "true" })}>
-                                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="false">Accreditation (Entry)</SelectItem>
-                                        <SelectItem value="true">Exit Workflow (Exit)</SelectItem>
-                                    </SelectContent>
-                                </Select>
+
+                            {/* Branching Condition */}
+                            <div className="space-y-4 border p-3 rounded-md bg-emerald-50/30">
+                                <Label className="text-emerald-800 font-bold flex items-center gap-2">
+                                    <GitBranch className="h-4 w-4" /> Branching Condition (Optional)
+                                </Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] uppercase text-slate-500">Field Name</Label>
+                                        <Input
+                                            placeholder="e.g. visa_type"
+                                            value={currentStep.branchCondition?.field || ''}
+                                            onChange={e => setCurrentStep({
+                                                ...currentStep,
+                                                branchCondition: { ...currentStep.branchCondition, field: e.target.value }
+                                            })}
+                                            className="h-8 text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] uppercase text-slate-500">Operator</Label>
+                                        <Select
+                                            value={currentStep.branchCondition?.operator || 'eq'}
+                                            onValueChange={v => setCurrentStep({
+                                                ...currentStep,
+                                                branchCondition: { ...currentStep.branchCondition, operator: v }
+                                            })}
+                                        >
+                                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="eq">Equals</SelectItem>
+                                                <SelectItem value="neq">Not Equals</SelectItem>
+                                                <SelectItem value="exists">Exists</SelectItem>
+                                                <SelectItem value="not_exists">Not Exists</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                {['eq', 'neq'].includes(currentStep.branchCondition?.operator || 'eq') && (
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] uppercase text-slate-500">Value</Label>
+                                        <Input
+                                            placeholder="e.g. e-visa"
+                                            value={currentStep.branchCondition?.value || ''}
+                                            onChange={e => setCurrentStep({
+                                                ...currentStep,
+                                                branchCondition: { ...currentStep.branchCondition, value: e.target.value }
+                                            })}
+                                            className="h-8 text-xs"
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </div>
-                    </div>
-                    <DialogFooter>
+                    </ScrollArea>
+                    <DialogFooter className="p-6 pt-2 border-t mt-auto">
                         <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
                         <Button onClick={handleCreate} disabled={isCreating}>Create</Button>
                     </DialogFooter>
@@ -1092,156 +1152,219 @@ function WorkflowBuilderContent() {
 
             {/* Edit Modal (Enhanced with Dependencies) */}
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader><DialogTitle>Edit Step: {currentStep.name}</DialogTitle></DialogHeader>
-                    <div className="space-y-4 py-2">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>Name</Label>
-                                <Input value={currentStep.name || ''} onChange={e => setCurrentStep({ ...currentStep, name: e.target.value })} />
+                <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+                    <DialogHeader className="p-6 pb-2">
+                        <DialogTitle>Edit Step: {currentStep.name}</DialogTitle>
+                    </DialogHeader>
+                    <ScrollArea className="flex-1 p-6 pt-2 overflow-y-auto">
+                        <div className="space-y-4 py-2 min-h-0">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Name</Label>
+                                    <Input value={currentStep.name || ''} onChange={e => setCurrentStep({ ...currentStep, name: e.target.value })} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Key (Read-only)</Label>
+                                    <Input value={currentStep.key || ''} disabled className="bg-slate-50" />
+                                </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Key (Read-only)</Label>
-                                <Input value={currentStep.key || ''} disabled className="bg-slate-50" />
+                                <Label>Description</Label>
+                                <Textarea value={currentStep.description || ''} onChange={e => setCurrentStep({ ...currentStep, description: e.target.value })} />
                             </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Description</Label>
-                            <Textarea value={currentStep.description || ''} onChange={e => setCurrentStep({ ...currentStep, description: e.target.value })} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Scoped Form (Optional)</Label>
-                            <Select value={currentStep.formId?.toString() || "null"} onValueChange={v => setCurrentStep({ ...currentStep, formId: v === "null" ? null : Number(v) })}>
-                                <SelectTrigger className="bg-slate-50"><SelectValue placeholder="Global" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="null">Global (All Forms)</SelectItem>
-                                    {forms?.map(f => <SelectItem key={f.form_id} value={f.form_id.toString()}>{f.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Role</Label>
-                                <Select value={currentStep.requiredRole} onValueChange={v => setCurrentStep({ ...currentStep, requiredRole: v })}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                <Label>Scoped Form (Optional)</Label>
+                                <Select value={currentStep.formId?.toString() || "null"} onValueChange={v => setCurrentStep({ ...currentStep, formId: v === "null" ? null : Number(v) })}>
+                                    <SelectTrigger className="bg-slate-50"><SelectValue placeholder="Global" /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="ICS">ICS</SelectItem>
-                                        <SelectItem value="SECURITY_OFFICER">Security</SelectItem>
-                                        <SelectItem value="CUSTOM_OFFICER">Customs</SelectItem>
-                                        <SelectItem value="INSA_OFFICER">INSA</SelectItem>
-                                        <SelectItem value="MEDIA_LIAISON">Media</SelectItem>
-                                        {roles?.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}
+                                        <SelectItem value="null">Global (All Forms)</SelectItem>
+                                        {forms?.map(f => <SelectItem key={f.form_id} value={f.form_id.toString()}>{f.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2">
-                                <Label>Dependency Type</Label>
-                                <Select value={currentStep.dependencyType} onValueChange={v => setCurrentStep({ ...currentStep, dependencyType: v as any })}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="ALL">ALL (Mandatory)</SelectItem>
-                                        <SelectItem value="NONE">NONE (Start)</SelectItem>
-                                        <SelectItem value="ANY">ANY (Optional)</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Role</Label>
+                                    <Select value={currentStep.requiredRole} onValueChange={v => setCurrentStep({ ...currentStep, requiredRole: v })}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="ICS">ICS</SelectItem>
+                                            <SelectItem value="SECURITY_OFFICER">Security</SelectItem>
+                                            <SelectItem value="CUSTOM_OFFICER">Customs</SelectItem>
+                                            <SelectItem value="INSA_OFFICER">INSA</SelectItem>
+                                            <SelectItem value="MEDIA_LIAISON">Media</SelectItem>
+                                            {roles?.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Dependency Type</Label>
+                                    <Select value={currentStep.dependencyType} onValueChange={v => setCurrentStep({ ...currentStep, dependencyType: v as any })}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="ALL">ALL (Mandatory)</SelectItem>
+                                            <SelectItem value="NONE">NONE (Start)</SelectItem>
+                                            <SelectItem value="ANY">ANY (Optional)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="space-y-2">
-                            <Label>Depends On</Label>
-                            <div className="flex flex-wrap gap-2 mb-2 p-2 border rounded-md bg-slate-50 min-h-[40px]">
-                                {currentStep.dependsOn && currentStep.dependsOn.length > 0 ? (
-                                    currentStep.dependsOn.map(depKey => (
-                                        <Badge key={depKey} variant="secondary" className="flex items-center gap-1">
-                                            {depKey}
-                                            <button
-                                                onClick={() => setCurrentStep({
-                                                    ...currentStep,
-                                                    dependsOn: currentStep.dependsOn?.filter(k => k !== depKey)
-                                                })}
-                                                className="hover:text-destructive"
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </button>
-                                        </Badge>
-                                    ))
-                                ) : (
-                                    <span className="text-xs text-slate-400 italic">No dependencies</span>
+                            <div className="space-y-2">
+                                <Label>Depends On</Label>
+                                <div className="flex flex-wrap gap-2 mb-2 p-2 border rounded-md bg-slate-50 min-h-[40px]">
+                                    {currentStep.dependsOn && currentStep.dependsOn.length > 0 ? (
+                                        currentStep.dependsOn.map(depId => {
+                                            const depStep = workflowSteps?.find(s => s.id === depId);
+                                            return (
+                                                <Badge key={depId} variant="secondary" className="flex items-center gap-1">
+                                                    {depStep?.name || depId}
+                                                    <button
+                                                        onClick={() => setCurrentStep({
+                                                            ...currentStep,
+                                                            dependsOn: currentStep.dependsOn?.filter(id => id !== depId)
+                                                        })}
+                                                        className="hover:text-destructive"
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </Badge>
+                                            );
+                                        })
+                                    ) : (
+                                        <span className="text-xs text-slate-400 italic">No dependencies</span>
+                                    )}
+                                </div>
+                                <Select onValueChange={v => {
+                                    if (v === 'none') return;
+                                    const depId = Number(v);
+                                    if (!currentStep.dependsOn?.includes(depId)) {
+                                        setCurrentStep({
+                                            ...currentStep,
+                                            dependsOn: [...(currentStep.dependsOn || []), depId]
+                                        });
+                                    }
+                                }}>
+                                    <SelectTrigger><SelectValue placeholder="Add dependency..." /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">Select a step...</SelectItem>
+                                        {workflowSteps?.filter(s =>
+                                            s.id !== currentStep.id &&
+                                            s.formId === currentStep.formId &&
+                                            s.targetAudience === currentStep.targetAudience &&
+                                            s.isExitStep === currentStep.isExitStep
+                                        ).map(s => (
+                                            <SelectItem key={s.id} value={s.id.toString()}>{s.name} ({s.key})</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Display Order</Label>
+                                    <Input
+                                        type="number"
+                                        value={currentStep.displayOrder}
+                                        onChange={e => setCurrentStep({ ...currentStep, displayOrder: Number(e.target.value) })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Target Audience</Label>
+                                    <Select value={currentStep.targetAudience} onValueChange={v => setCurrentStep({ ...currentStep, targetAudience: v as any })}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="LOCAL">Local Only</SelectItem>
+                                            <SelectItem value="INTERNATIONAL">International Only</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Phase</Label>
+                                    <Select value={currentStep.isExitStep ? "true" : "false"} onValueChange={v => setCurrentStep({ ...currentStep, isExitStep: v === "true" })}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="false">Accreditation (Entry)</SelectItem>
+                                            <SelectItem value="true">Exit Workflow (Exit)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            {/* Branching Condition */}
+                            <div className="space-y-4 border p-3 rounded-md bg-emerald-50/30">
+                                <Label className="text-emerald-800 font-bold flex items-center gap-2">
+                                    <GitBranch className="h-4 w-4" /> Branching Condition (Optional)
+                                </Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] uppercase text-slate-500">Field Name</Label>
+                                        <Input
+                                            placeholder="e.g. visa_type"
+                                            value={currentStep.branchCondition?.field || ''}
+                                            onChange={e => setCurrentStep({
+                                                ...currentStep,
+                                                branchCondition: { ...currentStep.branchCondition, field: e.target.value }
+                                            })}
+                                            className="h-8 text-xs"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] uppercase text-slate-500">Operator</Label>
+                                        <Select
+                                            value={currentStep.branchCondition?.operator || 'eq'}
+                                            onValueChange={v => setCurrentStep({
+                                                ...currentStep,
+                                                branchCondition: { ...currentStep.branchCondition, operator: v }
+                                            })}
+                                        >
+                                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="eq">Equals</SelectItem>
+                                                <SelectItem value="neq">Not Equals</SelectItem>
+                                                <SelectItem value="exists">Exists</SelectItem>
+                                                <SelectItem value="not_exists">Not Exists</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                                {['eq', 'neq'].includes(currentStep.branchCondition?.operator || 'eq') && (
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] uppercase text-slate-500">Value</Label>
+                                        <Input
+                                            placeholder="e.g. e-visa"
+                                            value={currentStep.branchCondition?.value || ''}
+                                            onChange={e => setCurrentStep({
+                                                ...currentStep,
+                                                branchCondition: { ...currentStep.branchCondition, value: e.target.value }
+                                            })}
+                                            className="h-8 text-xs"
+                                        />
+                                    </div>
                                 )}
                             </div>
-                            <Select onValueChange={v => {
-                                if (v === 'none') return;
-                                if (!currentStep.dependsOn?.includes(v)) {
-                                    setCurrentStep({
-                                        ...currentStep,
-                                        dependsOn: [...(currentStep.dependsOn || []), v]
-                                    });
-                                }
-                            }}>
-                                <SelectTrigger><SelectValue placeholder="Add dependency..." /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">Select a step...</SelectItem>
-                                    {workflowSteps?.filter(s =>
-                                        s.id !== currentStep.id &&
-                                        s.formId === currentStep.formId &&
-                                        s.targetAudience === currentStep.targetAudience &&
-                                        s.isExitStep === currentStep.isExitStep
-                                    ).map(s => (
-                                        <SelectItem key={s.id} value={s.key}>{s.name} ({s.key})</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>Display Order</Label>
-                                <Input
-                                    type="number"
-                                    value={currentStep.displayOrder}
-                                    onChange={e => setCurrentStep({ ...currentStep, displayOrder: Number(e.target.value) })}
+                            <div className="flex items-center space-x-2 border p-3 rounded-md bg-slate-50 mt-4">
+                                <Checkbox
+                                    id="edit-email-step"
+                                    checked={!!currentStep.emailStep}
+                                    onCheckedChange={(c) => setCurrentStep({ ...currentStep, emailStep: !!c })}
                                 />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Target Audience</Label>
-                                <Select value={currentStep.targetAudience} onValueChange={v => setCurrentStep({ ...currentStep, targetAudience: v as any })}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="LOCAL">Local Only</SelectItem>
-                                        <SelectItem value="INTERNATIONAL">International Only</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Phase</Label>
-                                <Select value={currentStep.isExitStep ? "true" : "false"} onValueChange={v => setCurrentStep({ ...currentStep, isExitStep: v === "true" })}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="false">Accreditation (Entry)</SelectItem>
-                                        <SelectItem value="true">Exit Workflow (Exit)</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <div className="grid gap-1.5 leading-none">
+                                    <label
+                                        htmlFor="edit-email-step"
+                                        className="text-sm font-medium leading-none"
+                                    >
+                                        Send Email Trigger
+                                    </label>
+                                </div>
                             </div>
                         </div>
-
-                        <div className="flex items-center space-x-2 border p-3 rounded-md bg-slate-50 mt-4">
-                            <Checkbox
-                                id="edit-email-step"
-                                checked={!!currentStep.emailStep}
-                                onCheckedChange={(c) => setCurrentStep({ ...currentStep, emailStep: !!c })}
-                            />
-                            <div className="grid gap-1.5 leading-none">
-                                <label
-                                    htmlFor="edit-email-step"
-                                    className="text-sm font-medium leading-none"
-                                >
-                                    Send Email Trigger
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <DialogFooter className="flex justify-between">
-                        <Button variant="destructive" size="sm" onClick={handleDelete}><Trash2 className="w-4 h-4 mr-2" /> Delete</Button>
+                    </ScrollArea>
+                    <DialogFooter className="p-6 pt-2 border-t mt-auto flex justify-between items-center sm:justify-between">
+                        <Button variant="destructive" size="sm" onClick={handleDelete} className="px-3">
+                            <Trash2 className="w-4 h-4 mr-2" /> Delete
+                        </Button>
                         <Button onClick={handleUpdate}>Save Changes</Button>
                     </DialogFooter>
                 </DialogContent>

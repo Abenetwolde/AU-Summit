@@ -254,6 +254,7 @@ export interface WorkflowStep {
     emailStep: boolean; // Controls if this step triggers the email
     targetAudience: 'LOCAL' | 'INTERNATIONAL';
     isExitStep: boolean;
+    branchCondition?: any;
     createdAt: string;
     updatedAt: string;
 }
@@ -272,6 +273,7 @@ export interface CreateWorkflowStepPayload {
     emailStep?: boolean;
     targetAudience?: 'LOCAL' | 'INTERNATIONAL';
     isExitStep?: boolean;
+    branchCondition?: any;
 }
 
 export interface UpdateWorkflowStepPayload {
@@ -289,6 +291,7 @@ export interface UpdateWorkflowStepPayload {
     emailStep?: boolean;
     targetAudience?: 'LOCAL' | 'INTERNATIONAL';
     isExitStep?: boolean;
+    branchCondition?: any;
 }
 
 export interface BulkUpdateWorkflowStepsPayload {
