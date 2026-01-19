@@ -201,9 +201,7 @@ export function OrganizationManagement() {
                                         <DropdownMenuItem onClick={() => openEdit(org)}>
                                             <Edit className="h-4 w-4 mr-2" /> Edit Details
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => openUserManagement(org)}>
-                                            <Users className="h-4 w-4 mr-2" /> Manage Permissions
-                                        </DropdownMenuItem>
+
                                         <DropdownMenuItem className="text-red-600">
                                             <Trash className="h-4 w-4 mr-2" /> Delete
                                         </DropdownMenuItem>

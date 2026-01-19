@@ -6,9 +6,11 @@ import {
     useUpdateOrganizationUserMutation,
     useDeleteOrganizationUserMutation,
     useGetOrganizationRolesQuery,
+    useGetOrganizationsQuery,
     User,
     Role
 } from '../../store/services/api';
+import { useAuth, UserRole } from '../../auth/context';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -40,6 +42,9 @@ import { Label } from '../../components/ui/label';
 import { toast } from 'sonner';
 
 export function OrganizationUsers() {
+    const { user: authUser } = useAuth();
+    const isSuperAdmin = authUser?.role === UserRole.SUPER_ADMIN;
+
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
     const [selectedRole, setSelectedRole] = useState<number | undefined>();
@@ -56,14 +61,26 @@ export function OrganizationUsers() {
         roleId: ''
     });
 
+    const [selectedOrgId, setSelectedOrgId] = useState<number | undefined>();
+
+    const { data: organizations } = useGetOrganizationsQuery(undefined, {
+        skip: !isSuperAdmin
+    });
+
     const { data, isLoading, refetch } = useGetOrganizationUsersQuery({
         page,
         limit: 10,
         search,
-        roleId: selectedRole
+        roleId: selectedRole,
+        organizationId: isSuperAdmin ? selectedOrgId : undefined
+    }, {
+        skip: isSuperAdmin && !selectedOrgId
     });
 
-    const { data: roles } = useGetOrganizationRolesQuery();
+    const { data: roles } = useGetOrganizationRolesQuery(isSuperAdmin ? selectedOrgId : undefined, {
+        skip: isSuperAdmin && !selectedOrgId
+    });
+
     const [createUser, { isLoading: isCreating }] = useCreateOrganizationUserMutation();
     const [updateUser, { isLoading: isUpdating }] = useUpdateOrganizationUserMutation();
     const [deleteUser, { isLoading: isDeleting }] = useDeleteOrganizationUserMutation();
@@ -81,7 +98,8 @@ export function OrganizationUsers() {
                 fullName: formData.fullName,
                 email: formData.email,
                 password: formData.password,
-                roleId: Number(formData.roleId)
+                roleId: Number(formData.roleId),
+                organizationId: isSuperAdmin ? selectedOrgId : undefined
             }).unwrap();
 
             toast.success('User created successfully');
@@ -105,6 +123,7 @@ export function OrganizationUsers() {
                     fullName: formData.fullName || undefined,
                     email: formData.email || undefined,
                     roleId: formData.roleId ? Number(formData.roleId) : undefined,
+                    organizationId: isSuperAdmin ? selectedOrgId : undefined
                 }
             }).unwrap();
 
@@ -122,7 +141,10 @@ export function OrganizationUsers() {
         if (!selectedUser) return;
 
         try {
-            await deleteUser(selectedUser.id).unwrap();
+            await deleteUser({
+                id: selectedUser.id,
+                organizationId: isSuperAdmin ? selectedOrgId : undefined
+            }).unwrap();
             toast.success('User deleted successfully');
             setShowDeleteModal(false);
             setSelectedUser(null);
@@ -155,13 +177,38 @@ export function OrganizationUsers() {
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Organization Users</h1>
                     <p className="text-muted-foreground mt-1">
-                        Manage user accounts within your organization
+                        Manage user accounts and roles within organizations
                     </p>
                 </div>
-                <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-                    <UserPlus className="w-4 h-4" />
-                    Create User
-                </Button>
+                <div className="flex gap-2">
+                    {isSuperAdmin && (
+                        <div className="w-64">
+                            <Select
+                                value={selectedOrgId?.toString()}
+                                onValueChange={(val) => setSelectedOrgId(Number(val))}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Organization" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {organizations?.map(org => (
+                                        <SelectItem key={org.id} value={org.id.toString()}>
+                                            {org.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    <Button
+                        onClick={() => setShowCreateModal(true)}
+                        className="gap-2"
+                        disabled={isSuperAdmin && !selectedOrgId}
+                    >
+                        <UserPlus className="w-4 h-4" />
+                        Create User
+                    </Button>
+                </div>
             </div>
 
             {/* Filters */}
@@ -186,7 +233,7 @@ export function OrganizationUsers() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Roles</SelectItem>
-                                {roles?.map(role => (
+                                {roles?.filter(r => r.name !== 'CLIENT').map(role => (
                                     <SelectItem key={role.id} value={role.id.toString()}>
                                         {role.name}
                                     </SelectItem>
@@ -208,6 +255,10 @@ export function OrganizationUsers() {
                 <CardContent>
                     {isLoading ? (
                         <div className="text-center py-8 text-muted-foreground">Loading...</div>
+                    ) : isSuperAdmin && !selectedOrgId ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                            Please select an organization to manage its users.
+                        </div>
                     ) : !data?.users?.length ? (
                         <div className="text-center py-8 text-muted-foreground">
                             No users found. Create your first user to get started.
@@ -351,7 +402,7 @@ export function OrganizationUsers() {
                                     <SelectValue placeholder="Select a role" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {roles?.map(role => (
+                                    {roles?.filter(r => r.name !== 'CLIENT').map(role => (
                                         <SelectItem key={role.id} value={role.id.toString()}>
                                             {role.name}
                                         </SelectItem>

@@ -1639,20 +1639,21 @@ export const api = createApi({
         }),
 
         // Organization User Management (ORG_ADMIN)
-        getOrganizationUsers: builder.query<{ users: User[]; total: number; currentPage: number; totalPages: number }, { page?: number; limit?: number; search?: string; roleId?: number }>({
-            query: ({ page = 1, limit = 10, search, roleId }) => {
+        getOrganizationUsers: builder.query<{ users: User[]; total: number; currentPage: number; totalPages: number }, { page?: number; limit?: number; search?: string; roleId?: number; organizationId?: number }>({
+            query: ({ page = 1, limit = 10, search, roleId, organizationId }) => {
                 const params = new URLSearchParams({
                     page: page.toString(),
                     limit: limit.toString(),
                 });
                 if (search) params.append('search', search);
                 if (roleId) params.append('roleId', roleId.toString());
+                if (organizationId) params.append('organizationId', organizationId.toString());
                 return `/organization/users?${params}`;
             },
             transformResponse: (response: any) => response.data,
             providesTags: ['User'],
         }),
-        createOrganizationUser: builder.mutation<User, { fullName: string; email: string; password: string; roleId: number }>({
+        createOrganizationUser: builder.mutation<User, { fullName: string; email: string; password: string; roleId: number; organizationId?: number }>({
             query: (body) => ({
                 url: '/organization/users',
                 method: 'POST',
@@ -1661,7 +1662,7 @@ export const api = createApi({
             transformResponse: (response: any) => response.data,
             invalidatesTags: ['User'],
         }),
-        updateOrganizationUser: builder.mutation<User, { id: number; data: { fullName?: string; email?: string; roleId?: number; status?: 'ACTIVE' | 'INACTIVE' } }>({
+        updateOrganizationUser: builder.mutation<User, { id: number; data: { fullName?: string; email?: string; roleId?: number; status?: 'ACTIVE' | 'INACTIVE'; organizationId?: number } }>({
             query: ({ id, data }) => ({
                 url: `/organization/users/${id}`,
                 method: 'PUT',
@@ -1670,15 +1671,19 @@ export const api = createApi({
             transformResponse: (response: any) => response.data,
             invalidatesTags: ['User'],
         }),
-        deleteOrganizationUser: builder.mutation<void, number>({
-            query: (id) => ({
+        deleteOrganizationUser: builder.mutation<void, { id: number; organizationId?: number }>({
+            query: ({ id, organizationId }) => ({
                 url: `/organization/users/${id}`,
                 method: 'DELETE',
+                params: organizationId ? { organizationId } : undefined
             }),
             invalidatesTags: ['User'],
         }),
-        getOrganizationRoles: builder.query<Role[], void>({
-            query: () => '/organization/users/roles/available',
+        getOrganizationRoles: builder.query<Role[], number | void>({
+            query: (organizationId) => {
+                const url = '/organization/users/roles/available';
+                return organizationId ? `${url}?organizationId=${organizationId}` : url;
+            },
             transformResponse: (response: any) => response.data,
             providesTags: ['Role'],
         }),

@@ -136,7 +136,7 @@ export function CreateUserModal({ open, onOpenChange, onConfirm, roles, isLoadin
                                 <SelectValue placeholder="Select user role" />
                             </SelectTrigger>
                             <SelectContent>
-                                {roles?.length > 0 ? roles.map(r => (
+                                {roles?.length > 0 ? roles.filter(r => r.name !== 'CLIENT').map(r => (
                                     <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
                                 )) : <SelectItem value="none" disabled>No roles available</SelectItem>}
                             </SelectContent>
