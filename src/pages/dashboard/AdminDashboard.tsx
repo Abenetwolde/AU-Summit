@@ -3,12 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import {
     CheckCircle, Clock, XCircle, TrendingUp,
-    Eye, Activity, Calendar
+    Eye, Activity, Calendar, Plane
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, CartesianGrid, Legend } from 'recharts';
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { useGetAdminAnalyticsQuery } from '@/store/services/api';
+import { useGetAdminAnalyticsQuery, useGetAdminEntryExitStatsQuery } from '@/store/services/api';
 import { exportDashboardAnalyticsToCSV, exportDashboardAnalyticsToPDF } from '@/lib/export-utils';
 import { Download, FileText } from 'lucide-react';
 
@@ -72,8 +72,22 @@ const Badge = ({ children, className, variant = "neutral" }: { children: React.R
     );
 };
 
+interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
+    value?: number;
+    indicatorClassName?: string;
+}
+const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(({ className, value = 0, indicatorClassName, ...props }, ref) => (
+    <div ref={ref} className={cn("relative h-2.5 w-full overflow-hidden rounded-full bg-slate-100", className)} {...props}>
+        <div className={cn("h-full w-full flex-1 transition-all duration-500 ease-out", indicatorClassName)} style={{ transform: `translateX(-${100 - (value || 0)}%)` }} />
+    </div>
+));
+Progress.displayName = "Progress";
+
 export default function AdminDashboard() {
-    const { data: analytics, isLoading, isError } = useGetAdminAnalyticsQuery();
+    const { data: analytics, isLoading: isAnalyticsLoading, isError: isAnalyticsError } = useGetAdminAnalyticsQuery();
+    const { data: entryExitStats, isLoading: isEntryExitLoading, isError: isEntryExitError } = useGetAdminEntryExitStatsQuery({ timeframe: 'month' });
+    const isLoading = isAnalyticsLoading || isEntryExitLoading;
+    const isError = isAnalyticsError || isEntryExitError;
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -89,7 +103,7 @@ export default function AdminDashboard() {
         </div>
     );
 
-    if (isError || !analytics) return (
+    if (isError || !analytics || !entryExitStats) return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 gap-4">
             <div className="p-4 bg-red-100 text-red-600 rounded-full">
                 <XCircle className="h-12 w-12" />
@@ -184,6 +198,77 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-1 text-white/90 text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full mb-1">
                                 <Clock className="h-3 w-3" />
                                 <span>Urgent</span>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Entry/Exit Workflow Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                {/* Entry Workflow */}
+                <Card className="border-0 shadow-sm bg-white overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 p-6 opacity-5">
+                        <Plane className="h-32 w-32 rotate-45" />
+                    </div>
+                    <CardContent className="p-6 relative">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <p className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-1">Entry Workflow</p>
+                                <h3 className="text-3xl font-bold text-slate-800">
+                                    {entryExitStats?.entry.total} <span className="text-lg text-slate-400 font-medium">Total Apps</span>
+                                </h3>
+                            </div>
+                            <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${entryExitStats?.entry.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                <TrendingUp className={`h-3 w-3 ${entryExitStats?.entry.trend === 'up' ? '' : 'rotate-180'}`} />
+                                {entryExitStats?.entry.percentage}%
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-blue-50 p-4 rounded-xl">
+                                <p className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">Active</p>
+                                <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.entry.active}</h4>
+                                <Progress value={(entryExitStats?.entry.active || 0) / (entryExitStats?.entry.total || 1) * 100} className="mt-2 h-1.5 bg-blue-200" indicatorClassName="bg-blue-600" />
+                            </div>
+                            <div className="bg-emerald-50 p-4 rounded-xl">
+                                <p className="text-emerald-600 text-xs font-bold uppercase tracking-wider mb-1">Completed</p>
+                                <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.entry.completed}</h4>
+                                <Progress value={(entryExitStats?.entry.completed || 0) / (entryExitStats?.entry.total || 1) * 100} className="mt-2 h-1.5 bg-emerald-200" indicatorClassName="bg-emerald-600" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Exit Workflow */}
+                <Card className="border-0 shadow-sm bg-white overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 p-6 opacity-5">
+                        <Plane className="h-32 w-32 -rotate-45" />
+                    </div>
+                    <CardContent className="p-6 relative">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <p className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-1">Exit Workflow</p>
+                                <h3 className="text-3xl font-bold text-slate-800">
+                                    {entryExitStats?.exit.total} <span className="text-lg text-slate-400 font-medium">Total Apps</span>
+                                </h3>
+                            </div>
+                            <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${entryExitStats?.exit.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                <TrendingUp className={`h-3 w-3 ${entryExitStats?.exit.trend === 'up' ? '' : 'rotate-180'}`} />
+                                {entryExitStats?.exit.percentage}%
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-amber-50 p-4 rounded-xl">
+                                <p className="text-amber-600 text-xs font-bold uppercase tracking-wider mb-1">Active</p>
+                                <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.exit.active}</h4>
+                                <Progress value={(entryExitStats?.exit.active || 0) / (entryExitStats?.exit.total || 1) * 100} className="mt-2 h-1.5 bg-amber-200" indicatorClassName="bg-amber-600" />
+                            </div>
+                            <div className="bg-emerald-50 p-4 rounded-xl">
+                                <p className="text-emerald-600 text-xs font-bold uppercase tracking-wider mb-1">Completed</p>
+                                <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.exit.completed}</h4>
+                                <Progress value={(entryExitStats?.exit.completed || 0) / (entryExitStats?.exit.total || 1) * 100} className="mt-2 h-1.5 bg-emerald-200" indicatorClassName="bg-emerald-600" />
                             </div>
                         </div>
                     </CardContent>

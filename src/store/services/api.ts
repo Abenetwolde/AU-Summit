@@ -800,6 +800,29 @@ export interface SuperAdminStakeholdersResponse {
     data: SuperAdminStakeholder[];
 }
 
+export interface EntryExitStats {
+    entry: {
+        active: number;
+        completed: number;
+        total: number;
+        percentage: number;
+        trend: 'up' | 'down';
+    };
+    exit: {
+        active: number;
+        completed: number;
+        total: number;
+        percentage: number;
+        trend: 'up' | 'down';
+    };
+}
+
+export interface EntryExitStatsResponse {
+    success: boolean;
+    message: string;
+    data: EntryExitStats;
+}
+
 export interface SuperAdminStakeholderStatusResponse {
     success: boolean;
     message: string;
@@ -1703,6 +1726,14 @@ export const api = createApi({
             query: () => '/super-admin/charts',
             transformResponse: (response: SuperAdminChartsResponse) => response.data,
         }),
+        getSuperAdminEntryExitStats: builder.query<EntryExitStats, { timeframe?: string }>({
+            query: (params) => ({
+                url: '/dashboard/entry-exit-stats',
+                method: 'GET',
+                params
+            }),
+            transformResponse: (response: EntryExitStatsResponse) => response.data,
+        }),
         getSuperAdminStakeholders: builder.query<SuperAdminStakeholder[], void>({
             query: () => '/super-admin/stakeholders',
             transformResponse: (response: SuperAdminStakeholdersResponse) => response.data,
@@ -1718,6 +1749,14 @@ export const api = createApi({
         getAdminAnalytics: builder.query<AdminAnalyticsData, void>({
             query: () => '/admin/analytics',
             transformResponse: (response: AdminAnalyticsResponse) => response.data,
+        }),
+        getAdminEntryExitStats: builder.query<EntryExitStats, { timeframe?: string }>({
+            query: (params) => ({
+                url: '/admin/entry-exit-stats',
+                method: 'GET',
+                params
+            }),
+            transformResponse: (response: EntryExitStatsResponse) => response.data,
         }),
     }),
 });
@@ -1824,10 +1863,12 @@ export const {
     // Super Admin Dashboard Hooks
     useGetSuperAdminOverviewQuery,
     useGetSuperAdminChartsQuery,
+    useGetSuperAdminEntryExitStatsQuery,
     useGetSuperAdminStakeholdersQuery,
     useGetSuperAdminStakeholderStatusQuery,
     useGetSuperAdminPerformanceQuery,
     useGetAdminAnalyticsQuery,
+    useGetAdminEntryExitStatsQuery,
 
     // API Management Hooks
     useGetApiProvidersQuery,

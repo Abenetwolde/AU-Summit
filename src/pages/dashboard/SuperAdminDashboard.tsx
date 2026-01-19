@@ -21,7 +21,8 @@ import {
   useGetSuperAdminChartsQuery,
   useGetSuperAdminStakeholdersQuery,
   useGetSuperAdminStakeholderStatusQuery,
-  useGetSuperAdminPerformanceQuery
+  useGetSuperAdminPerformanceQuery,
+  useGetSuperAdminEntryExitStatsQuery
 } from '@/store/services/api';
 import { exportDashboardAnalyticsToCSV, exportDashboardAnalyticsToPDF } from '@/lib/export-utils';
 
@@ -115,6 +116,7 @@ export default function SuperAdminDashboard() {
   const { data: stakeholders, isLoading: isStakeholdersLoading } = useGetSuperAdminStakeholdersQuery();
   const { data: stakeholderStatus, isLoading: isStatusLoading } = useGetSuperAdminStakeholderStatusQuery();
   const { data: performanceData = [], isLoading: isPerformanceLoading } = useGetSuperAdminPerformanceQuery();
+  const { data: entryExitStats, isLoading: isEntryExitLoading } = useGetSuperAdminEntryExitStatsQuery({ timeframe: 'month' });
 
   const [selectedStakeholder, setSelectedStakeholder] = useState<string>("");
   const [appTrendRange, setAppTrendRange] = useState<'thisMonth' | 'lastMonth'>('thisMonth');
@@ -154,7 +156,7 @@ export default function SuperAdminDashboard() {
   };
 
   // Additional System Data
-  const { data: users = [] } = useGetUsersQuery();
+  const { data: usersData } = useGetUsersQuery();
   const { data: organizations = [] } = useGetOrganizationsQuery();
   const { data: appsData } = useGetApplicationsQuery({ page: 1, limit: 10 });
   const recentApplications = appsData?.applications || [];
@@ -165,8 +167,8 @@ export default function SuperAdminDashboard() {
 
   if (!mounted) return null;
 
-  const isLoading = isDashboardLoading || isOverviewLoading || isChartsLoading || isStakeholdersLoading || isStatusLoading || isPerformanceLoading;
-  const isError = isDashboardError || !dashboardData || !overview || !adminCharts || !stakeholders || !stakeholderStatus || !performanceData;
+  const isLoading = isDashboardLoading || isOverviewLoading || isChartsLoading || isStakeholdersLoading || isStatusLoading || isPerformanceLoading || isEntryExitLoading;
+  const isError = isDashboardError || !dashboardData || !overview || !adminCharts || !stakeholders || !stakeholderStatus || !performanceData || !entryExitStats;
 
   if (isLoading) return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 gap-4">
@@ -299,7 +301,7 @@ export default function SuperAdminDashboard() {
               <CardContent className="p-6 relative">
                 <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">System Administrators</p>
                 <div className="flex items-end gap-3">
-                  <h3 className="text-4xl font-bold">{users.length}</h3>
+                  <h3 className="text-4xl font-bold">{usersData?.total || 0}</h3>
                   <span className="text-white/60 text-sm mb-1 font-medium">Active Users</span>
                 </div>
               </CardContent>
@@ -327,6 +329,77 @@ export default function SuperAdminDashboard() {
                 <div className="flex items-end gap-3">
                   <h3 className="text-4xl font-bold">12</h3>
                   <span className="text-white/60 text-sm mb-1 font-medium">Defined Roles</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Entry/Exit Workflow Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+            {/* Entry Workflow */}
+            <Card className="border-0 shadow-sm bg-white overflow-hidden relative group">
+              <div className="absolute top-0 right-0 p-6 opacity-5">
+                <Plane className="h-32 w-32 rotate-45" />
+              </div>
+              <CardContent className="p-6 relative">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <p className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-1">Entry Workflow</p>
+                    <h3 className="text-3xl font-bold text-slate-800">
+                      {entryExitStats?.entry.total} <span className="text-lg text-slate-400 font-medium">Total Apps</span>
+                    </h3>
+                  </div>
+                  <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${entryExitStats?.entry.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                    <TrendingUp className={`h-3 w-3 ${entryExitStats?.entry.trend === 'up' ? '' : 'rotate-180'}`} />
+                    {entryExitStats?.entry.percentage}%
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-blue-50 p-4 rounded-xl">
+                    <p className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">Active</p>
+                    <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.entry.active}</h4>
+                    <Progress value={(entryExitStats?.entry.active || 0) / (entryExitStats?.entry.total || 1) * 100} className="mt-2 h-1.5 bg-blue-200" indicatorClassName="bg-blue-600" />
+                  </div>
+                  <div className="bg-emerald-50 p-4 rounded-xl">
+                    <p className="text-emerald-600 text-xs font-bold uppercase tracking-wider mb-1">Completed</p>
+                    <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.entry.completed}</h4>
+                    <Progress value={(entryExitStats?.entry.completed || 0) / (entryExitStats?.entry.total || 1) * 100} className="mt-2 h-1.5 bg-emerald-200" indicatorClassName="bg-emerald-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Exit Workflow */}
+            <Card className="border-0 shadow-sm bg-white overflow-hidden relative group">
+              <div className="absolute top-0 right-0 p-6 opacity-5">
+                <Plane className="h-32 w-32 -rotate-45" />
+              </div>
+              <CardContent className="p-6 relative">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <p className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-1">Exit Workflow</p>
+                    <h3 className="text-3xl font-bold text-slate-800">
+                      {entryExitStats?.exit.total} <span className="text-lg text-slate-400 font-medium">Total Apps</span>
+                    </h3>
+                  </div>
+                  <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${entryExitStats?.exit.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                    <TrendingUp className={`h-3 w-3 ${entryExitStats?.exit.trend === 'up' ? '' : 'rotate-180'}`} />
+                    {entryExitStats?.exit.percentage}%
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-amber-50 p-4 rounded-xl">
+                    <p className="text-amber-600 text-xs font-bold uppercase tracking-wider mb-1">Active</p>
+                    <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.exit.active}</h4>
+                    <Progress value={(entryExitStats?.exit.active || 0) / (entryExitStats?.exit.total || 1) * 100} className="mt-2 h-1.5 bg-amber-200" indicatorClassName="bg-amber-600" />
+                  </div>
+                  <div className="bg-emerald-50 p-4 rounded-xl">
+                    <p className="text-emerald-600 text-xs font-bold uppercase tracking-wider mb-1">Completed</p>
+                    <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.exit.completed}</h4>
+                    <Progress value={(entryExitStats?.exit.completed || 0) / (entryExitStats?.exit.total || 1) * 100} className="mt-2 h-1.5 bg-emerald-200" indicatorClassName="bg-emerald-600" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -492,7 +565,7 @@ export default function SuperAdminDashboard() {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <p className="text-sm font-semibold text-slate-500 mb-1">System Admins</p>
-                    <h3 className="text-4xl font-bold text-slate-900 tracking-tight">{users.length}</h3>
+                    <h3 className="text-4xl font-bold text-slate-900 tracking-tight">{usersData?.total || 0}</h3>
                   </div>
                   <div className="p-3 bg-slate-100 rounded-2xl text-slate-600">
                     <Shield className="h-6 w-6" />
@@ -653,7 +726,7 @@ export default function SuperAdminDashboard() {
                           border: 'none',
                           boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                         }}
-                        formatter={(value: number) => [formatMinutes(value), 'Avg Process Time']}
+                        formatter={(value: number | undefined) => [formatMinutes(value || 0), 'Avg Process Time']}
                         labelFormatter={(label) => new Date(label).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                       />
                       <Area
