@@ -380,6 +380,81 @@ export function DashboardLayout() {
               </NavLink>
             )}
 
+            {/* Super Admin Specific Tools */}
+            {user?.role === UserRole.SUPER_ADMIN && (
+              <>
+                <div className="pt-4 pb-2 px-4">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                    System Administration
+                  </p>
+                </div>
+
+                {/* Email Templates */}
+                <NavLink
+                  to={`${basePath}/email-templates`}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-[#e6f4ea] text-primary'
+                        : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                    )
+                  }
+                >
+                  <Mail className="h-5 w-5" />
+                  Email Templates
+                </NavLink>
+
+                {/* Badge Center */}
+                <NavLink
+                  to={`${basePath}/badge-center`}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-[#e6f4ea] text-primary'
+                        : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                    )
+                  }
+                >
+                  <BadgeCheck className="h-5 w-5" />
+                  Badge Center
+                </NavLink>
+
+                {/* API Management */}
+                <NavLink
+                  to={`${basePath}/api-management`}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-[#e6f4ea] text-primary'
+                        : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                    )
+                  }
+                >
+                  <Activity className="h-5 w-5" />
+                  API Management
+                </NavLink>
+
+                {/* System Settings */}
+                <NavLink
+                  to={`${basePath}/settings`}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-[#e6f4ea] text-primary'
+                        : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                    )
+                  }
+                >
+                  <Settings className="h-5 w-5" />
+                  System Settings
+                </NavLink>
+              </>
+            )}
+
             {/* Invitation Center – visible to more roles */}
           </nav>
         </ScrollArea>
