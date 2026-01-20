@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+ import React, { useState, useEffect } from 'react';
 import { useGetInvitationTemplateByIdQuery, useCreateLetterConfigMutation, useUpdateLetterConfigMutation, LetterConfig } from '@/store/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
