@@ -34,6 +34,7 @@ import EmbassyManagement from './pages/dashboard/EmbassyManagement';
 import { EntryWorkflowDashboard } from './pages/dashboard/EntryWorkflowDashboard';
 import { ExitWorkflowDashboard } from './pages/dashboard/ExitWorkflowDashboard';
 import { OrganizationUsers } from './pages/dashboard/OrganizationUsers';
+import AirlineOfficeManagement from './pages/dashboard/AirlineOfficeManagement';
 
 function App() {
     useEffect(() => {
@@ -122,6 +123,7 @@ function App() {
                                         <Route path="badge-center" element={<BadgeCenter />} />
                                         <Route path="api-management" element={<ApiManagement />} />
                                         <Route path="embassies" element={<EmbassyManagement />} />
+                                        <Route path="airline-offices" element={<AirlineOfficeManagement />} />
                                     </Route>
 
                                     {/* AU Admin Specific */}

@@ -154,6 +154,16 @@ export interface Embassy {
     overseeingCountries: Country[];
 }
 
+export interface AirlineOffice {
+    id: number;
+    name: string;
+    address?: string;
+    city?: string;
+    contactPhone?: string;
+    contactEmail: string;
+    overseeingCountries: Country[];
+}
+
 export interface User {
     id: number;
     fullName: string;
@@ -942,7 +952,7 @@ export const api = createApi({
             return headers;
         },
     }),
-    tagTypes: ['Role', 'Permission', 'Application', 'Form', 'User', 'Category', 'WorkflowStep', 'Invitation', 'Badge', 'EquipCatalog', 'Integration', 'APIProvider', 'Embassy', 'Country', 'Organization', 'EmailTemplate', 'LandingPage', 'Workflow', 'Notification'],
+    tagTypes: ['Role', 'Permission', 'Application', 'Form', 'User', 'Category', 'WorkflowStep', 'Invitation', 'Badge', 'EquipCatalog', 'Integration', 'APIProvider', 'Embassy', 'Country', 'Organization', 'EmailTemplate', 'LandingPage', 'Workflow', 'Notification', 'AirlineOffice'],
     endpoints: (builder) => ({
         login: builder.mutation<LoginResponse, any>({
             query: (credentials: any) => ({
@@ -1208,6 +1218,35 @@ export const api = createApi({
                 method: 'DELETE',
             }),
             invalidatesTags: ['Embassy'],
+        }),
+        // --- Airline Office Management ---
+        getAirlineOffices: builder.query<AirlineOffice[], void>({
+            query: () => '/airline-offices',
+            transformResponse: (response: any) => response.data || response,
+            providesTags: ['AirlineOffice'],
+        }),
+        createAirlineOffice: builder.mutation<AirlineOffice, Partial<AirlineOffice> & { countryIds?: number[] }>({
+            query: (body) => ({
+                url: '/airline-offices',
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['AirlineOffice'],
+        }),
+        updateAirlineOffice: builder.mutation<AirlineOffice, { id: number; data: Partial<AirlineOffice> & { countryIds?: number[] } }>({
+            query: ({ id, data }) => ({
+                url: `/airline-offices/${id}`,
+                method: 'PUT',
+                body: data,
+            }),
+            invalidatesTags: ['AirlineOffice'],
+        }),
+        deleteAirlineOffice: builder.mutation<void, number>({
+            query: (id) => ({
+                url: `/airline-offices/${id}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: ['AirlineOffice'],
         }),
         updateApplicationStatus: builder.mutation<void, { applicationId: number, status: string }>({
             query: (body) => ({
@@ -1901,5 +1940,11 @@ export const {
     useUpdateOrganizationUserMutation,
     useDeleteOrganizationUserMutation,
     useGetOrganizationRolesQuery,
+
+    // Airline Office Hooks
+    useGetAirlineOfficesQuery,
+    useCreateAirlineOfficeMutation,
+    useUpdateAirlineOfficeMutation,
+    useDeleteAirlineOfficeMutation,
 } = api;
 
