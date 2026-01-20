@@ -59,6 +59,11 @@ export function JournalistProfile() {
     const [rejectionReason, setRejectionReason] = useState('');
     const [equipmentNotes, setEquipmentNotes] = useState('');
 
+    // Field-specific rejection states
+    const [showRejectionDialog, setShowRejectionDialog] = useState(false);
+    const [selectedFields, setSelectedFields] = useState<string[]>([]);
+    const [fieldNotes, setFieldNotes] = useState<Record<string, string>>({});
+
     useEffect(() => {
         if (location.state?.application) {
             setApplication(location.state.application);
@@ -96,8 +101,13 @@ export function JournalistProfile() {
 
     const countryName = (code: string) => code ? (en[code as keyof typeof en] || code) : 'Unknown';
 
-    const handleDecision = async (status: 'APPROVED' | 'REJECTED' | 'PENDING') => {
+    const handleDecision = async (status: 'APPROVED' | 'REJECTED' | 'PENDING', rejectionDetails?: any) => {
         if (!application) return;
+
+        if (status === 'REJECTED' && !rejectionDetails) {
+            setShowRejectionDialog(true);
+            return;
+        }
 
         // Ensure we have a workflow key
         const stepKey = user?.workflowStepKey;
@@ -143,7 +153,8 @@ export function JournalistProfile() {
                 stepKey: 'legacy_fallback', // Backend ignores this as stepId takes precedence
                 stepId: effectiveStepId, // NEW: Sending explicit ID
                 status: status as any,
-                notes
+                notes,
+                rejectionDetails // NEW: Sending structured details
             }).unwrap();
 
             toast.success(`Application ${status.toLowerCase()} successfully`);
@@ -153,7 +164,7 @@ export function JournalistProfile() {
                 const step = app.workflowStep || app.approvalWorkflowStep;
                 // Match by ID if we have it
                 if (step && step.id === effectiveStepId) {
-                    return { ...app, status };
+                    return { ...app, status, isResubmitted: false };
                 }
                 return app;
             });
@@ -165,6 +176,9 @@ export function JournalistProfile() {
                 status: status === 'APPROVED' ? application.status : 'REJECTED'
             });
             setNotes('');
+            setShowRejectionDialog(false);
+            setSelectedFields([]);
+            setFieldNotes({});
         } catch (err: any) {
             toast.error(err?.data?.message || `Failed to ${status.toLowerCase()} application`);
         }
@@ -563,7 +577,14 @@ export function JournalistProfile() {
                                 <ShieldCheck className="h-5 w-5 text-blue-600" />
                                 <div>
                                     <h3 className="font-bold text-gray-900">Decision Panel</h3>
-                                    <p className="text-xs text-gray-500 leading-tight">Current Status: <span className="font-bold">{application.status}</span></p>
+                                    <div className="flex flex-col gap-1">
+                                        <p className="text-xs text-gray-500 leading-tight">Current Status: <span className="font-bold">{application.status}</span></p>
+                                        {userActionableApproval?.isResubmitted && (
+                                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 w-fit animate-pulse border border-amber-200 uppercase tracking-wider">
+                                                <RotateCcw className="h-2.5 w-2.5" /> Resubmitted / Updated
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </CardHeader>
@@ -659,6 +680,101 @@ export function JournalistProfile() {
                     </Card>
                 </div>
             </div>
+
+            {/* Structured Rejection Dialog */}
+            <Dialog open={showRejectionDialog} onOpenChange={setShowRejectionDialog}>
+                <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-red-600">
+                            <X className="h-5 w-5" /> Detailed Rejection Feedback
+                        </DialogTitle>
+                        <DialogDescription>
+                            Select the specific fields that are incorrect and provide feedback for each. The applicant will see these notes on their dashboard and in their notification email.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-6 pt-4">
+                        <div className="space-y-4">
+                            <Label className="text-sm font-bold uppercase text-gray-400 tracking-wider">Select Fields to Flag</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {templates?.filter(t => t.field_type !== 'file').map((template) => (
+                                    <div
+                                        key={template.field_name}
+                                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${selectedFields.includes(template.field_name)
+                                                ? 'border-red-200 bg-red-50 text-red-700'
+                                                : 'border-gray-200 hover:bg-gray-50'
+                                            }`}
+                                        onClick={() => {
+                                            if (selectedFields.includes(template.field_name)) {
+                                                setSelectedFields(prev => prev.filter(f => f !== template.field_name));
+                                            } else {
+                                                setSelectedFields(prev => [...prev, template.field_name]);
+                                            }
+                                        }}
+                                    >
+                                        <div className={`mt-0.5 h-4 w-4 rounded border flex items-center justify-center transition-colors ${selectedFields.includes(template.field_name) ? 'bg-red-500 border-red-500 text-white' : 'border-gray-300'
+                                            }`}>
+                                            {selectedFields.includes(template.field_name) && <Check className="h-3 w-3" />}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold">{template.label}</p>
+                                            <p className="text-xs opacity-70 truncate">{formData[template.field_name] || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {selectedFields.length > 0 && (
+                            <div className="space-y-4 pt-4 border-t">
+                                <Label className="text-sm font-bold uppercase text-gray-400 tracking-wider">Provide Feedback for Selected Fields</Label>
+                                {selectedFields.map((fieldName) => {
+                                    const template = templates?.find(t => t.field_name === fieldName);
+                                    return (
+                                        <div key={fieldName} className="space-y-2 p-4 rounded-lg bg-gray-50 border">
+                                            <Label className="text-sm font-bold">{template?.label || fieldName}</Label>
+                                            <Textarea
+                                                placeholder={`Explain why ${template?.label || fieldName} is being rejected...`}
+                                                className="bg-white"
+                                                value={fieldNotes[fieldName] || ''}
+                                                onChange={(e) => setFieldNotes(prev => ({ ...prev, [fieldName]: e.target.value }))}
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <div className="space-y-2 pt-4 border-t">
+                            <Label className="text-sm font-bold uppercase text-gray-400 tracking-wider">General Rejection Note (Optional)</Label>
+                            <Textarea
+                                placeholder="Any additional context or summary of the rejection..."
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter className="pt-6 border-t mt-6">
+                        <Button variant="ghost" onClick={() => setShowRejectionDialog(false)}>Cancel</Button>
+                        <Button
+                            className="bg-red-600 hover:bg-red-700 text-white font-bold px-8 shadow-lg shadow-red-100"
+                            disabled={isStatusUpdating || selectedFields.length === 0}
+                            onClick={() => {
+                                const rejectionDetails: Record<string, string> = {};
+                                selectedFields.forEach(field => {
+                                    const template = templates?.find(t => t.field_name === field);
+                                    rejectionDetails[template?.label || field] = fieldNotes[field] || 'Incorrect information provided.';
+                                });
+                                handleDecision('REJECTED', rejectionDetails);
+                            }}
+                        >
+                            {isStatusUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <X className="h-4 w-4 mr-2" />}
+                            Confirm Rejection
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Equipment Approval Dialog */}
             <Dialog open={showEquipmentDialog} onOpenChange={setShowEquipmentDialog}>

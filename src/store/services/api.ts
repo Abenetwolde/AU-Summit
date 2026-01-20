@@ -79,6 +79,19 @@ export interface ApplicationFormData {
     [key: string]: any;
 }
 
+export interface ApplicationApproval {
+    id: number;
+    applicationId: number;
+    workflowStepId: number;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'IN_REVIEW' | 'NOT_APPLICABLE';
+    notes: string | null;
+    rejectionDetails: any | null;
+    isResubmitted: boolean;
+    verifiedBy: number | null;
+    verifiedAt: string | null;
+    workflowStep?: WorkflowStep;
+}
+
 export interface Application {
     id: number;
     userId: number;
@@ -113,6 +126,7 @@ export interface Application {
         type: string;
     };
     equipment: Equipment[];
+    approvals?: ApplicationApproval[];
 }
 
 export interface Organization {
@@ -1203,7 +1217,7 @@ export const api = createApi({
             }),
             invalidatesTags: ['Application'],
         }),
-        approveWorkflowStep: builder.mutation<void, { applicationId: number, stepKey: string, stepId?: number, status: 'APPROVED' | 'REJECTED', notes?: string }>({
+        approveWorkflowStep: builder.mutation<void, { applicationId: number, stepKey: string, stepId?: number, status: 'APPROVED' | 'REJECTED', notes?: string, rejectionDetails?: any }>({
             query: ({ applicationId, stepKey, stepId, ...body }) => ({
                 url: `/applications/${applicationId}/approve/${stepKey}`,
                 method: 'PUT',
