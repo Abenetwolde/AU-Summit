@@ -1370,6 +1370,14 @@ export const api = createApi({
             transformResponse: (response: ApplicationsResponse) => response.data,
             providesTags: ['Application'],
         }),
+        createManualApplication: builder.mutation<Application, any>({
+            query: (body) => ({
+                url: '/applications/manual-entry',
+                method: 'POST',
+                body,
+            }),
+            invalidatesTags: ['Application', 'User'],
+        }),
         // Organizations
         getOrganizations: builder.query<Organization[], void>({
             query: () => '/organizations',
@@ -1908,6 +1916,7 @@ export const {
     useGetExitWorkflowApplicationsQuery,
     useInitializeExitWorkflowMutation,
     useGetApplicationPhaseStatusQuery,
+    useCreateManualApplicationMutation,
 
     // Notifications
     useGetNotificationsQuery,
