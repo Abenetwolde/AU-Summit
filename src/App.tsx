@@ -35,6 +35,7 @@ import { EntryWorkflowDashboard } from './pages/dashboard/EntryWorkflowDashboard
 import { ExitWorkflowDashboard } from './pages/dashboard/ExitWorkflowDashboard';
 import { OrganizationUsers } from './pages/dashboard/OrganizationUsers';
 import AirlineOfficeManagement from './pages/dashboard/AirlineOfficeManagement';
+import ManualEntry from './pages/dashboard/ManualEntry';
 
 function App() {
     useEffect(() => {
@@ -61,6 +62,9 @@ function App() {
                                     {/* Consolidated Pages */}
                                     <Route path="admin" element={<DashboardIndex />} />
                                     <Route path="journalists" element={<JournalistList />} />
+                                    <Route element={<ProtectedRoute requiredPermission="application:manual-entry" />}>
+                                        <Route path="manual-entry" element={<ManualEntry />} />
+                                    </Route>
 
                                     <Route element={<ProtectedRoute requiredPermission="application:view:by-id" />}>
                                         <Route path="journalists/:id" element={<JournalistProfile />} />
