@@ -800,6 +800,37 @@ export interface SuperAdminStakeholderStatus {
     };
 }
 
+export interface OfficerKPI {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    organization: string;
+    totalProcessed: number;
+    approved: number;
+    rejected: number;
+    avgDecisionTimeMinutes: number;
+    successRate: number;
+}
+
+export interface OrganizationKPI {
+    id: number;
+    name: string;
+    totalProcessed: number;
+    approved: number;
+    rejected: number;
+    avgDecisionTimeMinutes: number;
+    successRate: number;
+}
+
+export interface OfficerPerformanceResponse {
+    officers: OfficerKPI[];
+    organizations: OrganizationKPI[];
+    throughputTrend: { date: string; count: number }[];
+    timeframe: string;
+    totalProcessedGlobal: number;
+}
+
 export interface SuperAdminPerformance {
     stakeholder: string;
     averageProcessingTimeMinutes: number;
@@ -1811,6 +1842,22 @@ export const api = createApi({
             }),
             transformResponse: (response: EntryExitStatsResponse) => response.data,
         }),
+        getAdminOfficerKPIs: builder.query<OfficerPerformanceResponse, { timeframe?: string }>({
+            query: (params) => ({
+                url: '/admin/officer-kpis',
+                method: 'GET',
+                params
+            }),
+            transformResponse: (response: any) => response.data,
+        }),
+        getSuperAdminOfficerPerformance: builder.query<OfficerPerformanceResponse, { timeframe?: string }>({
+            query: (params) => ({
+                url: '/super-admin/officer-performance',
+                method: 'GET',
+                params
+            }),
+            transformResponse: (response: any) => response.data,
+        }),
     }),
 });
 
@@ -1922,6 +1969,9 @@ export const {
     useGetSuperAdminPerformanceQuery,
     useGetAdminAnalyticsQuery,
     useGetAdminEntryExitStatsQuery,
+
+    useGetAdminOfficerKPIsQuery,
+    useGetSuperAdminOfficerPerformanceQuery,
 
     // API Management Hooks
     useGetApiProvidersQuery,

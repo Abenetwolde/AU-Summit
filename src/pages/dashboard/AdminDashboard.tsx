@@ -8,9 +8,10 @@ import {
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, CartesianGrid, Legend } from 'recharts';
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { useGetAdminAnalyticsQuery, useGetAdminEntryExitStatsQuery } from '@/store/services/api';
+import { useGetAdminAnalyticsQuery, useGetAdminEntryExitStatsQuery, useGetAdminOfficerKPIsQuery } from '@/store/services/api';
 import { exportDashboardAnalyticsToCSV, exportDashboardAnalyticsToPDF } from '@/lib/export-utils';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, User } from 'lucide-react';
+import { OfficerPerformance } from '@/components/dashboard/OfficerPerformance';
 
 // --- UTILITY ---
 function cn(...inputs: ClassValue[]) {
@@ -86,6 +87,7 @@ Progress.displayName = "Progress";
 export default function AdminDashboard() {
     const { data: analytics, isLoading: isAnalyticsLoading, isError: isAnalyticsError } = useGetAdminAnalyticsQuery();
     const { data: entryExitStats, isLoading: isEntryExitLoading, isError: isEntryExitError } = useGetAdminEntryExitStatsQuery({ timeframe: 'month' });
+    const { data: officerKPIs, isLoading: isOfficerLoading } = useGetAdminOfficerKPIsQuery({ timeframe: 'month' });
     const isLoading = isAnalyticsLoading || isEntryExitLoading;
     const isError = isAnalyticsError || isEntryExitError;
     const [mounted, setMounted] = useState(false);
@@ -402,6 +404,17 @@ export default function AdminDashboard() {
                         </div>
                     </CardContent>
                 </Card>
+            </div>
+
+            {/* Officer Performance KPIs */}
+            <div className="animate-fade-in">
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-800">Team Performance KPIs</h2>
+                        <p className="text-sm text-slate-500">Monitor your team's application processing efficiency</p>
+                    </div>
+                </div>
+                <OfficerPerformance data={officerKPIs} isLoading={isOfficerLoading} />
             </div>
 
             {/* Recent Activity Table */}

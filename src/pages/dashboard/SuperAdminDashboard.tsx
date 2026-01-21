@@ -22,9 +22,11 @@ import {
   useGetSuperAdminStakeholdersQuery,
   useGetSuperAdminStakeholderStatusQuery,
   useGetSuperAdminPerformanceQuery,
-  useGetSuperAdminEntryExitStatsQuery
+  useGetSuperAdminEntryExitStatsQuery,
+  useGetSuperAdminOfficerPerformanceQuery
 } from '@/store/services/api';
 import { exportDashboardAnalyticsToCSV, exportDashboardAnalyticsToPDF } from '@/lib/export-utils';
+import { OfficerPerformance } from '@/components/dashboard/OfficerPerformance';
 
 // --- UTILITY ---
 function cn(...inputs: ClassValue[]) {
@@ -117,6 +119,7 @@ export default function SuperAdminDashboard() {
   const { data: stakeholderStatus, isLoading: isStatusLoading } = useGetSuperAdminStakeholderStatusQuery();
   const { data: performanceData = [], isLoading: isPerformanceLoading } = useGetSuperAdminPerformanceQuery();
   const { data: entryExitStats, isLoading: isEntryExitLoading } = useGetSuperAdminEntryExitStatsQuery({ timeframe: 'month' });
+  const { data: officerKPIs, isLoading: isOfficerLoading } = useGetSuperAdminOfficerPerformanceQuery({ timeframe: 'month' });
 
   const [selectedStakeholder, setSelectedStakeholder] = useState<string>("");
   const [appTrendRange, setAppTrendRange] = useState<'thisMonth' | 'lastMonth'>('thisMonth');
@@ -744,6 +747,17 @@ export default function SuperAdminDashboard() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Officer Performance KPIs */}
+          <div className="animate-slide-up" style={{ animationDelay: '0.32s' }}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">Officer Performance KPIs</h2>
+                <p className="text-sm text-slate-500">Track and monitor officer processing efficiency</p>
+              </div>
+            </div>
+            <OfficerPerformance data={officerKPIs} isLoading={isOfficerLoading} viewMode="organization" />
           </div>
 
           {/* Second Row: Application Trends & Stakeholder Analysis */}
