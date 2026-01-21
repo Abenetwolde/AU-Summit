@@ -765,8 +765,8 @@ export interface UpdateEquipmentStatusPayload {
     notes?: string;
 }
 
-// export const FILE_BASE_URL = 'https://cw761gt5-3000.uks1.devtunnels.ms';
-export const FILE_BASE_URL = 'http://localhost:3000';
+export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
+// export const FILE_BASE_URL = 'http://localhost:3000';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -944,9 +944,9 @@ export const getFileUrl = (path?: string | null): string => {
     }
 
     // 🔁 Replace localhost base URL if present
-    if (/^https?:\/\/localhost:3000/i.test(trimmedPath)) {
+    if (/^https?:\/\/arrivalclearance.gov.et/i.test(trimmedPath)) {
         const replaced = trimmedPath.replace(
-            /^https?:\/\/localhost:3000/i,
+            /^https?:\/\/arrivalclearance.gov.et/i,
             FILE_BASE_URL
         );
         console.log('[getFileUrl] replaced localhost URL:', replaced);
