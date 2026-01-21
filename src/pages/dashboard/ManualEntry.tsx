@@ -55,9 +55,9 @@ const manualEntrySchema = z.object({
     applyingFromCountryId: z.string().optional(),
     externalPlatform: z.string().optional(),
     registrationNotes: z.string().optional(),
-});
+}).passthrough();
 
-type ManualEntryFormValues = z.infer<typeof manualEntrySchema>;
+type ManualEntryFormValues = z.infer<typeof manualEntrySchema> & Record<string, any>;
 
 interface EquipmentItem {
     id: string;
@@ -92,9 +92,12 @@ export default function ManualEntry() {
         handleSubmit,
         setValue,
         watch,
-        formState: { errors },
+        trigger,
+        setError,
+        clearErrors,
+        formState: { errors, isValid },
     } = useForm<ManualEntryFormValues>({
-        resolver: zodResolver(manualEntrySchema),
+        mode: 'onTouched',
         defaultValues: {
             externalPlatform: 'Manual Entry',
         }
@@ -103,15 +106,46 @@ export default function ManualEntry() {
     const selectedFormId = watch('formId');
     const { data: fullForm, isLoading: isLoadingForm } = useGetFormByIdQuery(selectedFormId || '', { skip: !selectedFormId });
 
-    // State for dynamic fields
-    const [dynamicValues, setDynamicValues] = useState<Record<string, any>>({});
+    // State for files/equipment
     const [files, setFiles] = useState<Record<string, File[]>>({});
-
-    // State for equipment
     const [equipments, setEquipments] = useState<EquipmentItem[]>([]);
 
-    const handleDynamicChange = (name: string, value: any) => {
-        setDynamicValues(prev => ({ ...prev, [name]: value }));
+    const validateDynamicField = (name: string, value: any, field?: any) => {
+        // Find field definition if not provided
+        if (!field && fullForm) {
+            for (const cat of fullForm.categories || []) {
+                const f = cat.fields?.find((f: any) => f.field_name === name);
+                if (f) { field = f; break; }
+            }
+            if (!field && fullForm.uncategorizedFields) {
+                field = fullForm.uncategorizedFields.find((f: any) => f.field_name === name);
+            }
+        }
+        if (!field) return true;
+
+        let error = '';
+        if (field.is_required) {
+            if (field.field_type === 'file') {
+                if (!files[name] || files[name].length === 0) {
+                    error = field.validation_criteria?.errorMessage || `${field.label} is required`;
+                }
+            } else if (value === undefined || value === null || value === '') {
+                error = field.validation_criteria?.errorMessage || `${field.label} is required`;
+            }
+        } else if (value && field.field_type === 'email' && !field.validation_criteria?.pattern) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(value)) {
+                error = 'Invalid email format';
+            }
+        }
+
+        if (error) {
+            setError(name as any, { type: 'manual', message: error });
+            return false;
+        } else {
+            clearErrors(name as any);
+            return true;
+        }
     };
 
     const handleFileChange = (name: string, fileList: FileList | null) => {
@@ -143,7 +177,7 @@ export default function ManualEntry() {
         if (itemToRemove?.isDrone || itemToRemove?.type === 'drone') {
             const anyDroneRemaining = newList.some(eq => eq.isDrone || eq.type === 'drone');
             if (!anyDroneRemaining) {
-                handleDynamicChange('has_drone', false);
+                setValue('has_drone' as any, false);
             }
         }
     };
@@ -153,20 +187,41 @@ export default function ManualEntry() {
     };
 
     const addEquipmentWithStatus = () => {
-        if (!dynamicValues.declaration_status) {
-            handleDynamicChange('declaration_status', true);
+        if (!watch('declaration_status' as any)) {
+            setValue('declaration_status' as any, true);
         }
         addEquipment();
     };
 
     const addDroneWithStatus = () => {
-        if (!dynamicValues.has_drone) {
-            handleDynamicChange('has_drone', true);
-            addEquipment('drone', true);
+        if (!watch('has_drone' as any)) {
+            setValue('has_drone' as any, true);
         }
+        addEquipment('drone', true);
     };
 
     const onSubmit = async (values: ManualEntryFormValues) => {
+        // Special manual check for files and drone logic
+        let hasErrors = false;
+        if (fullForm) {
+            const fields = [
+                ...(fullForm.categories?.flatMap((c: any) => c.fields) || []),
+                ...(fullForm.uncategorizedFields || [])
+            ];
+
+            for (const field of fields) {
+                if (field.field_type === 'file') {
+                    const isValid = validateDynamicField(field.field_name, values[field.field_name], field);
+                    if (!isValid) hasErrors = true;
+                }
+            }
+        }
+
+        if (hasErrors) {
+            toast.error('Please complete all required fields and file uploads.');
+            return;
+        }
+
         try {
             const formData = new FormData();
             formData.append('fullName', values.fullName);
@@ -175,8 +230,17 @@ export default function ManualEntry() {
             if (values.applyingFromCountryId) formData.append('applyingFromCountryId', values.applyingFromCountryId);
             if (values.externalPlatform) formData.append('externalPlatform', values.externalPlatform);
 
+            // Filter out internal form fields from form_data
+            const reserved = ['fullName', 'email', 'formId', 'applyingFromCountryId', 'externalPlatform', 'registrationNotes'];
+            const dynamicData: Record<string, any> = {};
+            Object.keys(values).forEach(key => {
+                if (!reserved.includes(key)) {
+                    dynamicData[key] = values[key];
+                }
+            });
+
             const formContent = {
-                ...dynamicValues,
+                ...dynamicData,
                 registration_notes: values.registrationNotes,
                 manually_added: true,
                 added_at: new Date().toISOString(),
@@ -201,9 +265,61 @@ export default function ManualEntry() {
         }
     };
 
+    const getValidationRules = (field: any) => {
+        const { label, is_required, validation_criteria, field_type } = field;
+        const rules: any = {};
+
+        if (is_required) {
+            rules.required = validation_criteria?.errorMessage || `${label} is required`;
+        }
+
+        if (validation_criteria) {
+            if (validation_criteria.minLength) {
+                rules.minLength = {
+                    value: Number(validation_criteria.minLength),
+                    message: validation_criteria.errorMessage || `Must be at least ${validation_criteria.minLength} characters`
+                };
+            }
+
+            if (validation_criteria.maxLength) {
+                rules.maxLength = {
+                    value: Number(validation_criteria.maxLength),
+                    message: validation_criteria.errorMessage || `Must be less than ${validation_criteria.maxLength} characters`
+                };
+            }
+
+            if (validation_criteria.pattern) {
+                try {
+                    // Handle patterns that might come as strings with slashes from backend
+                    let patternString = validation_criteria.pattern;
+                    if (patternString.startsWith('/') && patternString.endsWith('/')) {
+                        patternString = patternString.slice(1, -1);
+                    }
+                    rules.pattern = {
+                        value: new RegExp(patternString),
+                        message: validation_criteria.errorMessage || 'Invalid format'
+                    };
+                } catch (e) {
+                    console.error('Invalid regex pattern:', validation_criteria.pattern);
+                }
+            }
+        }
+
+        // Default email validation if no specific pattern is provided
+        if (field_type === 'email' && !rules.pattern) {
+            rules.pattern = {
+                value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                message: 'Invalid email format'
+            };
+        }
+
+        return rules;
+    };
+
     const renderField = (field: any) => {
         const { field_name, label, field_type, is_required, field_options } = field;
-        const value = dynamicValues[field_name] || '';
+        const value = watch(field_name) || '';
+        const error = (errors as any)[field_name];
 
         switch (field_type) {
             case 'textarea':
@@ -212,22 +328,32 @@ export default function ManualEntry() {
                         <Label className="text-sm font-medium">{label} {is_required && '*'}</Label>
                         <Textarea
                             placeholder={`Enter ${label.toLowerCase()}...`}
-                            value={value}
-                            onChange={(e) => handleDynamicChange(field_name, e.target.value)}
+                            {...register(field_name, getValidationRules(field))}
                             rows={field_options?.rows || 2}
-                            className="resize-none"
+                            className={`resize-none ${error ? "border-destructive ring-destructive" : ""}`}
                         />
+                        {error && (
+                            <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1 mt-1">
+                                {error.message}
+                            </p>
+                        )}
                     </div>
                 );
             case 'select':
+                register(field_name, getValidationRules(field));
                 return (
                     <div key={field_name} className="space-y-2">
                         <Label className="text-sm font-medium">{label} {is_required && '*'}</Label>
                         <Select
                             value={value}
-                            onValueChange={(val) => handleDynamicChange(field_name, val)}
+                            onValueChange={(val) => {
+                                setValue(field_name as any, val, { shouldValidate: true, shouldDirty: true });
+                            }}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger
+                                className={error ? "border-destructive ring-destructive" : ""}
+                                onBlur={() => trigger(field_name)}
+                            >
                                 <SelectValue placeholder={`Select ${label.toLowerCase()}...`} />
                             </SelectTrigger>
                             <SelectContent>
@@ -238,6 +364,11 @@ export default function ManualEntry() {
                                 ))}
                             </SelectContent>
                         </Select>
+                        {error && (
+                            <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1 mt-1">
+                                {error.message}
+                            </p>
+                        )}
                     </div>
                 );
             case 'date':
@@ -246,23 +377,34 @@ export default function ManualEntry() {
                         <Label className="text-sm font-medium">{label} {is_required && '*'}</Label>
                         <Input
                             type="date"
-                            value={value}
-                            onChange={(e) => handleDynamicChange(field_name, e.target.value)}
+                            {...register(field_name, getValidationRules(field))}
+                            className={error ? "border-destructive ring-destructive" : ""}
                         />
+                        {error && (
+                            <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1 mt-1">
+                                {error.message}
+                            </p>
+                        )}
                     </div>
                 );
             case 'boolean':
             case 'checkbox':
                 return (
-                    <div key={field_name} className="flex items-center gap-3 pt-6">
-                        <input
-                            type="checkbox"
-                            id={field_name}
-                            checked={!!value}
-                            onChange={(e) => handleDynamicChange(field_name, e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-                        />
-                        <Label htmlFor={field_name} className="text-sm font-medium cursor-pointer">{label} {is_required && '*'}</Label>
+                    <div key={field_name} className="flex flex-col gap-1 pt-4">
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="checkbox"
+                                id={field_name}
+                                {...register(field_name, getValidationRules(field))}
+                                className={`h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer ${error ? "border-destructive" : ""}`}
+                            />
+                            <Label htmlFor={field_name} className="text-sm font-medium cursor-pointer">{label} {is_required && '*'}</Label>
+                        </div>
+                        {error && (
+                            <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1 mt-1">
+                                {error.message}
+                            </p>
+                        )}
                     </div>
                 );
             case 'file':
@@ -273,10 +415,19 @@ export default function ManualEntry() {
                             <Input
                                 type="file"
                                 multiple
-                                onChange={(e) => handleFileChange(field_name, e.target.files)}
-                                className="cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                onChange={(e) => {
+                                    handleFileChange(field_name, e.target.files);
+                                    // Trigger validation for files manually
+                                    setTimeout(() => validateDynamicField(field_name, value, field), 100);
+                                }}
+                                className={`cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 ${error ? "border-destructive ring-destructive" : ""}`}
                             />
                         </div>
+                        {error && (
+                            <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1 mt-1">
+                                {error.message}
+                            </p>
+                        )}
                         {files[field_name] && (
                             <div className="flex flex-wrap gap-2 mt-2">
                                 {files[field_name].map((file, i) => (
@@ -295,9 +446,14 @@ export default function ManualEntry() {
                         <Input
                             type={field_type === 'number' ? 'number' : 'text'}
                             placeholder={`Enter ${label.toLowerCase()}...`}
-                            value={value}
-                            onChange={(e) => handleDynamicChange(field_name, e.target.value)}
+                            {...register(field_name, getValidationRules(field))}
+                            className={error ? "border-destructive ring-destructive" : ""}
                         />
+                        {error && (
+                            <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1 mt-1">
+                                {error.message}
+                            </p>
+                        )}
                     </div>
                 );
         }
@@ -337,13 +493,16 @@ export default function ManualEntry() {
                                         id="fullName"
                                         placeholder="John Doe"
                                         className="pl-10 h-11"
-                                        {...register('fullName')}
+                                        {...register('fullName', {
+                                            required: 'Full name is required',
+                                            minLength: { value: 3, message: 'Full name must be at least 3 characters' }
+                                        })}
                                     />
                                     <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                                 </div>
                                 {errors.fullName && (
-                                    <p className="text-xs text-destructive flex items-center gap-1">
-                                        <AlertCircle className="h-3 w-3" /> {errors.fullName.message}
+                                    <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1 mt-1">
+                                        {errors.fullName.message}
                                     </p>
                                 )}
                             </div>
@@ -356,13 +515,16 @@ export default function ManualEntry() {
                                         type="email"
                                         placeholder="john@example.com"
                                         className="pl-10 h-11"
-                                        {...register('email')}
+                                        {...register('email', {
+                                            required: 'Email address is required',
+                                            pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email address' }
+                                        })}
                                     />
                                     <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                                 </div>
                                 {errors.email && (
-                                    <p className="text-xs text-destructive flex items-center gap-1">
-                                        <AlertCircle className="h-3 w-3" /> {errors.email.message}
+                                    <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1 mt-1">
+                                        {errors.email.message}
                                     </p>
                                 )}
                             </div>
@@ -384,7 +546,9 @@ export default function ManualEntry() {
                                 <Label htmlFor="formId" className="text-sm font-medium">Form Type</Label>
                                 <Select
                                     value={selectedFormId}
-                                    onValueChange={(val) => setValue('formId', val)}
+                                    onValueChange={(val) => {
+                                        setValue('formId', val, { shouldValidate: true, shouldDirty: true });
+                                    }}
                                 >
                                     <SelectTrigger className="h-11">
                                         <SelectValue placeholder={isLoadingForms ? "Loading..." : "Select Type"} />
@@ -397,9 +561,11 @@ export default function ManualEntry() {
                                         ))}
                                     </SelectContent>
                                 </Select>
+                                {/* Register formId manually to track validation state */}
+                                <input type="hidden" {...register('formId', { required: 'Please select a form type' })} />
                                 {errors.formId && (
-                                    <p className="text-xs text-destructive flex items-center gap-1">
-                                        <AlertCircle className="h-3 w-3" /> {errors.formId.message}
+                                    <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1 mt-1">
+                                        {errors.formId.message}
                                     </p>
                                 )}
                             </div>
@@ -444,63 +610,78 @@ export default function ManualEntry() {
                                     {...register('registrationNotes')}
                                 />
                             </div>
+                        </CardContent>
+                    </Card>
 
-                            <div className="space-y-4 md:col-span-2">
-                                <Label className="text-sm font-semibold text-gray-700">Are you bringing professional media equipment? *</Label>
-                                <div className="flex gap-4">
-                                    <Button
-                                        type="button"
-                                        variant={dynamicValues.declaration_status === false ? "default" : "outline"}
-                                        onClick={() => {
-                                            handleDynamicChange('declaration_status', false);
-                                            if (!dynamicValues.has_drone) {
-                                                setEquipments([]);
-                                            } else {
-                                                setEquipments(prev => prev.filter(eq => eq.isDrone || eq.type === 'drone'));
-                                            }
-                                        }}
-                                        className={dynamicValues.declaration_status === false ? "bg-gray-800 text-white" : ""}
-                                    >
-                                        No
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant={dynamicValues.declaration_status === true ? "default" : "outline"}
-                                        onClick={() => handleDynamicChange('declaration_status', true)}
-                                        className={dynamicValues.declaration_status === true ? "bg-gray-800 text-white" : ""}
-                                    >
-                                        Yes
-                                    </Button>
-                                </div>
+                    <Card className="border-none shadow-xl bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-200">
+                        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-gray-100 pb-4">
+                            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                                <Radio className="h-5 w-5 text-primary" />
+                                Drone Equipment
+                            </CardTitle>
+                            <CardDescription>
+                                Will you be bringing drone equipment?
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <Button
+                                    type="button"
+                                    variant={watch('has_drone' as any) ? "default" : "outline"}
+                                    className={`h-12 text-base font-semibold transition-all ${watch('has_drone' as any) ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                                    onClick={() => {
+                                        setValue('has_drone' as any, true);
+                                        if (!equipments.some(e => e.isDrone)) addEquipment('drone', true);
+                                    }}
+                                >
+                                    Yes, I am
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={watch('has_drone' as any) === false ? "default" : "outline"}
+                                    className={`h-12 text-base font-semibold transition-all ${watch('has_drone' as any) === false ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                                    onClick={() => {
+                                        setValue('has_drone' as any, false);
+                                        setEquipments(equipments.filter(e => !e.isDrone));
+                                    }}
+                                >
+                                    No, I am not
+                                </Button>
                             </div>
+                        </CardContent>
+                    </Card>
 
-                            <div className="space-y-4 md:col-span-2">
-                                <Label className="text-sm font-semibold text-gray-700">Will you bring drone equipment? *</Label>
-                                <div className="flex gap-4">
-                                    <Button
-                                        type="button"
-                                        variant={dynamicValues.has_drone === false ? "default" : "outline"}
-                                        onClick={() => {
-                                            handleDynamicChange('has_drone', false);
-                                            setEquipments(prev => prev.filter(eq => !eq.isDrone && eq.type !== 'drone'));
-                                        }}
-                                        className={dynamicValues.has_drone === false ? "bg-gray-800 text-white" : ""}
-                                    >
-                                        No
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant={dynamicValues.has_drone === true ? "default" : "outline"}
-                                        onClick={() => {
-                                            if (dynamicValues.has_drone) return;
-                                            handleDynamicChange('has_drone', true);
-                                            addEquipment('drone', true);
-                                        }}
-                                        className={dynamicValues.has_drone === true ? "bg-gray-800 text-white" : ""}
-                                    >
-                                        Yes
-                                    </Button>
-                                </div>
+                    <Card className="border-none shadow-xl bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-200">
+                        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-gray-100 pb-4">
+                            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                                <Camera className="h-5 w-5 text-primary" />
+                                Professional Media Equipment
+                            </CardTitle>
+                            <CardDescription>
+                                Are you bringing professional media equipment?
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <Button
+                                    type="button"
+                                    variant={watch('declaration_status' as any) ? "default" : "outline"}
+                                    className={`h-12 text-base font-semibold transition-all ${watch('declaration_status' as any) ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                                    onClick={() => setValue('declaration_status' as any, true)}
+                                >
+                                    Yes, I am
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={watch('declaration_status' as any) === false ? "default" : "outline"}
+                                    className={`h-12 text-base font-semibold transition-all ${watch('declaration_status' as any) === false ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                                    onClick={() => {
+                                        setValue('declaration_status' as any, false);
+                                        setEquipments(equipments.filter(e => e.isDrone));
+                                    }}
+                                >
+                                    No, I am not
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
@@ -555,8 +736,9 @@ export default function ManualEntry() {
                                             </div>
                                         </CardHeader>
                                         <CardContent className="p-6">
-                                            {(dynamicValues.declaration_status || dynamicValues.has_drone) ? (
-                                                <div className="space-y-6">
+                                            {/* Equipment Listing Section */}
+                                            {(watch('declaration_status' as any) || watch('has_drone' as any)) && (
+                                                <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-500">
                                                     {equipments.map((item, index) => (
                                                         <div key={item.id} className="p-4 border border-gray-200 rounded-lg space-y-4 relative bg-white/50">
                                                             <Button
@@ -588,11 +770,11 @@ export default function ManualEntry() {
                                                                             updateEquipment(item.id, updates);
 
                                                                             if (isDrone) {
-                                                                                handleDynamicChange('has_drone', true);
+                                                                                setValue('has_drone' as any, true, { shouldValidate: true });
                                                                             } else if (wasDrone) {
                                                                                 const anyDroneRemaining = equipments.some(eq => (eq.id !== item.id && eq.isDrone) || (eq.id === item.id && isDrone));
                                                                                 if (!anyDroneRemaining) {
-                                                                                    handleDynamicChange('has_drone', false);
+                                                                                    setValue('has_drone' as any, false, { shouldValidate: true });
                                                                                 }
                                                                             }
                                                                         }}
@@ -734,7 +916,9 @@ export default function ManualEntry() {
                                                         Add Item to Declaration
                                                     </Button>
                                                 </div>
-                                            ) : (
+                                            )}
+
+                                            {!(watch('declaration_status' as any) || watch('has_drone' as any)) && (
                                                 <div className="p-12 text-center text-muted-foreground flex flex-col items-center gap-3">
                                                     <Package className="h-10 w-10 opacity-20" />
                                                     <p className="text-sm italic">Please select 'Yes' for equipment or drone to begin declaration.</p>
@@ -760,7 +944,7 @@ export default function ManualEntry() {
                         <Button
                             type="submit"
                             className="px-8 h-12 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]"
-                            disabled={isLoading}
+                            disabled={isLoading || !isValid}
                         >
                             {isLoading ? (
                                 <>
