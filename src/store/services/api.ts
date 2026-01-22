@@ -9,6 +9,12 @@ export enum ApplicationStatus {
     IN_REVIEW = 'IN_REVIEW'
 }
 
+export interface RegistrationStats {
+    coverage: { name: string; value: number }[];
+    mediaType: { name: string; value: number }[];
+    totalApplications: number;
+}
+
 export interface Role {
     id: number;
     name: string;
@@ -984,6 +990,10 @@ export const api = createApi({
     }),
     tagTypes: ['Role', 'Permission', 'Application', 'Form', 'User', 'Category', 'WorkflowStep', 'Invitation', 'Badge', 'EquipCatalog', 'Integration', 'APIProvider', 'Embassy', 'Country', 'Organization', 'EmailTemplate', 'LandingPage', 'Workflow', 'Notification', 'AirlineOffice'],
     endpoints: (builder) => ({
+        getRegistrationStats: builder.query<RegistrationStats, void>({
+            query: () => '/analytics/stats',
+            transformResponse: (response: { success: boolean, data: RegistrationStats }) => response.data,
+        }),
         login: builder.mutation<LoginResponse, any>({
             query: (credentials: any) => ({
                 url: '/auth/login',
@@ -2010,5 +2020,6 @@ export const {
     useCreateAirlineOfficeMutation,
     useUpdateAirlineOfficeMutation,
     useDeleteAirlineOfficeMutation,
+    useGetRegistrationStatsQuery,
 } = api;
 

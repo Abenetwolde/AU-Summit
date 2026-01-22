@@ -100,11 +100,11 @@ export function Login() {
                                 </button>
                             </div>
                         </div>
-                        <div className="flex justify-end">
+                        {/* <div className="flex justify-end">
                             <button type="button" className="text-sm text-blue-600 hover:underline">
                                 Forgot Password?
                             </button>
-                        </div>
+                        </div> */}
                         <Button type="submit" className="w-full" disabled={isLoading}>
                             {isLoading ? "Signing In..." : "Sign In"}
                         </Button>
