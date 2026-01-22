@@ -18,7 +18,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Search, Eye, CheckCircle, XCircle, Clock, ArrowLeft, LogOut } from 'lucide-react';
+import { Loader2, Search, Eye, CheckCircle, XCircle, Clock, ArrowLeft, LogOut, Download, FileText, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useGetEntryWorkflowApplicationsQuery } from '@/store/services/api';
@@ -30,6 +30,8 @@ export function EntryWorkflowDashboard() {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('PENDING');
+    const [startDate, setStartDate] = useState<string>('');
+    const [endDate, setEndDate] = useState<string>('');
     const limit = 10;
 
     // Check if user has permission to approve/reject in entry workflow
@@ -39,12 +41,14 @@ export function EntryWorkflowDashboard() {
         page,
         limit,
         search,
-        status: statusFilter !== 'PENDING' ? statusFilter : undefined
+        status: statusFilter !== 'PENDING' ? statusFilter : undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined
     });
 
     useEffect(() => {
         refetch();
-    }, [page, search, statusFilter, refetch]);
+    }, [page, search, statusFilter, startDate, endDate, refetch]);
 
     const getRoleApprovalStatus = (app: any) => {
         if (user?.role === 'SUPER_ADMIN') return app.status;
@@ -90,6 +94,45 @@ export function EntryWorkflowDashboard() {
         navigate(`/dashboard/journalists/${app.id}`, { state: { application: app, phase: 'entry' } });
     };
 
+    const handleExport = async (format: 'PDF' | 'EXCEL') => {
+        try {
+            const token = localStorage.getItem('managment_token');
+            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+            const queryParams = new URLSearchParams({
+                format,
+                ...(search && { search }),
+                ...(statusFilter !== 'PENDING' && { status: statusFilter }),
+                ...(startDate && { startDate }),
+                ...(endDate && { endDate })
+            });
+
+            const response = await fetch(`${baseUrl}/applications/entry-workflow/export?${queryParams}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) throw new Error('Export failed');
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const extension = format === 'EXCEL' ? 'xlsx' : 'pdf';
+            const timestamp = new Date().toISOString().slice(0, 10);
+            a.download = `entry_applications_${timestamp}.${extension}`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            toast.success(`Exported as ${format}`);
+        } catch (error) {
+            console.error('Export error:', error);
+            toast.error('Failed to export applications');
+        }
+    };
+
     return (
         <div className="p-6 space-y-6">
             {/* Header */}
@@ -107,6 +150,24 @@ export function EntryWorkflowDashboard() {
                     <p className="text-muted-foreground mt-1">
                         Manage applications in the entry approval phase
                     </p>
+                </div>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={() => handleExport('EXCEL')}
+                        className="gap-2 border-green-600 text-green-700 hover:bg-green-50"
+                    >
+                        <Download className="w-4 h-4" />
+                        Export Excel
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={() => handleExport('PDF')}
+                        className="gap-2 border-red-600 text-red-700 hover:bg-red-50"
+                    >
+                        <FileText className="w-4 h-4" />
+                        Export PDF
+                    </Button>
                 </div>
             </div>
 
@@ -138,13 +199,41 @@ export function EntryWorkflowDashboard() {
                                 <SelectItem value="EXITED">Exited</SelectItem>
                             </SelectContent>
                         </Select>
+                        <div className="flex items-center gap-2">
+                            <div className="relative flex-1">
+                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="pl-9"
+                                    placeholder="Start Date"
+                                />
+                            </div>
+                            <span className="text-muted-foreground">to</span>
+                            <div className="relative flex-1">
+                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="pl-9"
+                                    placeholder="End Date"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex justify-end">
                         <Button
                             variant="outline"
                             onClick={() => {
                                 setSearch('');
-                                setStatusFilter('ALL');
+                                setStatusFilter('PENDING');
+                                setStartDate('');
+                                setEndDate('');
                                 setPage(1);
                             }}
+                            className="gap-2"
                         >
                             Clear Filters
                         </Button>
@@ -230,7 +319,7 @@ export function EntryWorkflowDashboard() {
                             {data && data.totalPages > 1 && (
                                 <div className="flex items-center justify-between mt-4">
                                     <p className="text-sm text-muted-foreground">
-                                        Showing page {data.currentPage} of {data.totalPages}
+                                        Showing page {data?.currentPage} of {data?.totalPages}
                                     </p>
                                     <div className="flex gap-2">
                                         <Button
@@ -245,7 +334,7 @@ export function EntryWorkflowDashboard() {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => setPage(p => p + 1)}
-                                            disabled={page >= data.totalPages}
+                                            disabled={!!data?.totalPages && page >= data.totalPages}
                                         >
                                             Next
                                         </Button>

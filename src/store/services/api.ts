@@ -765,8 +765,8 @@ export interface UpdateEquipmentStatusPayload {
     notes?: string;
 }
 
-export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
-// export const FILE_BASE_URL = 'http://localhost:3000';
+// export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
+export const FILE_BASE_URL = 'http://localhost:3000';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -976,9 +976,8 @@ export const api = createApi({
         baseUrl: `${FILE_BASE_URL}/api/v1`,
         prepareHeaders: (headers) => {
             const dynamicToken = localStorage.getItem('managment_token');
-            if (dynamicToken) {
+            if (dynamicToken && dynamicToken !== 'null' && dynamicToken !== 'undefined') {
                 headers.set('authorization', `Bearer ${dynamicToken}`);
-
             }
             return headers;
         },
@@ -1303,28 +1302,34 @@ export const api = createApi({
             invalidatesTags: (_result, _error, id) => [{ type: 'Application', id }],
         }),
         // Two-Phase Workflow Endpoints
-        getEntryWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string }>({
+        getEntryWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string; nationality?: string; startDate?: string; endDate?: string }>({
             query: (params = {}) => {
-                const { page = 1, limit = 10, search = '', status = '' } = params;
+                const { page = 1, limit = 10, search = '', status = '', nationality = '', startDate = '', endDate = '' } = params;
                 const queryParams = new URLSearchParams({
                     page: String(page),
                     limit: String(limit),
                     ...(search && { search }),
-                    ...(status && { status })
+                    ...(status && { status }),
+                    ...(nationality && { nationality }),
+                    ...(startDate && { startDate }),
+                    ...(endDate && { endDate })
                 });
                 return `/applications/entry-workflow?${queryParams}`;
             },
             transformResponse: (response: ApplicationsResponse) => response.data,
             providesTags: ['Application'],
         }),
-        getExitWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string }>({
+        getExitWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string; nationality?: string; startDate?: string; endDate?: string }>({
             query: (params = {}) => {
-                const { page = 1, limit = 10, search = '', status = '' } = params;
+                const { page = 1, limit = 10, search = '', status = '', nationality = '', startDate = '', endDate = '' } = params;
                 const queryParams = new URLSearchParams({
                     page: String(page),
                     limit: String(limit),
                     ...(search && { search }),
-                    ...(status && { status })
+                    ...(status && { status }),
+                    ...(nationality && { nationality }),
+                    ...(startDate && { startDate }),
+                    ...(endDate && { endDate })
                 });
                 return `/applications/exit-workflow?${queryParams}`;
             },
