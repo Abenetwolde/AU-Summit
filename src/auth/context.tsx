@@ -1,20 +1,23 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 
-export enum UserRole {
-    EMA_OFFICER = 'EMA_OFFICER',
-    STAKEHOLDER = 'STAKEHOLDER',
-    SUPER_ADMIN = 'SUPER_ADMIN',
-    ICS_OFFICER = 'ICS_OFFICER',
-    NISS_OFFICER = 'NISS_OFFICER',
-    INSA_OFFICER = 'INSA_OFFICER',
-    CUSTOMS_OFFICER = 'CUSTOMS_OFFICER',
-    AU_ADMIN = 'AU_ADMIN',
-    IMMIGRATION_OFFICER = 'IMMIGRATION_OFFICER',
-    MEDIA_EQUIPMENT_VERIFIER = 'MEDIA_EQUIPMENT_VERIFIER',
-    DRONE_CLEARANCE_OFFICER = 'DRONE_CLEARANCE_OFFICER',
-    EMBASSY_OFFICER = 'EMBASSY_OFFICER',
-    ORG_ADMIN = 'ORG_ADMIN'
-}
+export type UserRole = string;
+
+export const UserRole = {
+    EMA_OFFICER: 'EMA_OFFICER',
+    STAKEHOLDER: 'STAKEHOLDER',
+    SUPER_ADMIN: 'SUPER_ADMIN',
+    ICS_OFFICER: 'ICS_OFFICER',
+    NISS_OFFICER: 'NISS_OFFICER',
+    INSA_OFFICER: 'INSA_OFFICER',
+    CUSTOMS_OFFICER: 'CUSTOMS_OFFICER',
+    AU_ADMIN: 'AU_ADMIN',
+    IMMIGRATION_OFFICER: 'IMMIGRATION_OFFICER',
+    MEDIA_EQUIPMENT_VERIFIER: 'MEDIA_EQUIPMENT_VERIFIER',
+    DRONE_CLEARANCE_OFFICER: 'DRONE_CLEARANCE_OFFICER',
+    EMBASSY_OFFICER: 'EMBASSY_OFFICER',
+    ORG_ADMIN: 'ORG_ADMIN',
+    CLIENT: 'CLIENT'
+} as const;
 
 export interface Permission {
     key: string;
@@ -34,7 +37,7 @@ interface User {
     id: string;
     name: string;
     email: string;
-    role: UserRole;
+    role: string;
     roleName?: string;
     workflowStepKey?: string;
     gate?: string;
@@ -46,7 +49,7 @@ interface User {
 
 interface AuthContextType {
     user: User | null;
-    login: (email: string, role: UserRole, permissions?: Permission[], fullName?: string, roleName?: string, id?: string, workflowStepKey?: string, organization?: Organization, authorizedWorkflowSteps?: any[], requirePasswordChange?: boolean) => void;
+    login: (email: string, role: string, permissions?: Permission[], fullName?: string, roleName?: string, id?: string, workflowStepKey?: string, organization?: Organization, authorizedWorkflowSteps?: any[], requirePasswordChange?: boolean) => void;
     logout: () => void;
     isAuthenticated: boolean;
     checkPermission: (permissionKey: string) => boolean;
