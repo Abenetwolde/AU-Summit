@@ -97,7 +97,7 @@ export function EntryWorkflowDashboard() {
     const handleExport = async (format: 'PDF' | 'EXCEL') => {
         try {
             const token = localStorage.getItem('managment_token');
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+            const baseUrl = import.meta.env.VITE_API_URL || 'https://api.arrivalclearance.gov.et/api/v1';
             const queryParams = new URLSearchParams({
                 format,
                 ...(search && { search }),
