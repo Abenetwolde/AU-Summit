@@ -218,7 +218,7 @@ export default function AdminDashboard() {
                             <div>
                                 <p className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-1">Entry Workflow</p>
                                 <h3 className="text-3xl font-bold text-slate-800">
-                                    {entryExitStats?.entry.total} <span className="text-lg text-slate-400 font-medium">Total Apps</span>
+                                    {entryExitStats?.entry.total} <span className="text-lg text-slate-400 font-medium">Total Applications</span>
                                 </h3>
                             </div>
                             <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${entryExitStats?.entry.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
@@ -252,7 +252,7 @@ export default function AdminDashboard() {
                             <div>
                                 <p className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-1">Exit Workflow</p>
                                 <h3 className="text-3xl font-bold text-slate-800">
-                                    {entryExitStats?.exit.total} <span className="text-lg text-slate-400 font-medium">Total Apps</span>
+                                    {entryExitStats?.exit.total} <span className="text-lg text-slate-400 font-medium">Total Applications</span>
                                 </h3>
                             </div>
                             <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${entryExitStats?.exit.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>

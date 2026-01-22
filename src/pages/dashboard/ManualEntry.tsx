@@ -634,7 +634,7 @@ export default function ManualEntry() {
                                         if (!equipments.some(e => e.isDrone)) addEquipment('drone', true);
                                     }}
                                 >
-                                    Yes, I am
+                                    Yes
                                 </Button>
                                 <Button
                                     type="button"
@@ -645,7 +645,7 @@ export default function ManualEntry() {
                                         setEquipments(equipments.filter(e => !e.isDrone));
                                     }}
                                 >
-                                    No, I am not
+                                    No
                                 </Button>
                             </div>
                         </CardContent>
@@ -669,7 +669,7 @@ export default function ManualEntry() {
                                     className={`h-12 text-base font-semibold transition-all ${watch('declaration_status' as any) ? "ring-2 ring-primary ring-offset-2" : ""}`}
                                     onClick={() => setValue('declaration_status' as any, true)}
                                 >
-                                    Yes, I am
+                                    Yes
                                 </Button>
                                 <Button
                                     type="button"
@@ -680,7 +680,7 @@ export default function ManualEntry() {
                                         setEquipments(equipments.filter(e => e.isDrone));
                                     }}
                                 >
-                                    No, I am not
+                                    No
                                 </Button>
                             </div>
                         </CardContent>
