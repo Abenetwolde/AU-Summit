@@ -7,6 +7,7 @@ import {
     useDeleteOrganizationUserMutation,
     useGetOrganizationRolesQuery,
     useGetOrganizationsQuery,
+    useGetEmbassiesQuery,
     User,
     Role
 } from '../../store/services/api';
@@ -58,7 +59,8 @@ export function OrganizationUsers() {
         fullName: '',
         email: '',
         password: '',
-        roleId: ''
+        roleId: '',
+        embassyId: ''
     });
 
     const [selectedOrgId, setSelectedOrgId] = useState<number | undefined>();
@@ -76,6 +78,11 @@ export function OrganizationUsers() {
     }, {
         skip: isSuperAdmin && !selectedOrgId
     });
+
+    const { data: embassies } = useGetEmbassiesQuery();
+
+    const selectedOrgName = organizations?.find(o => o.id === selectedOrgId)?.name || (authUser as any)?.organization?.name || '';
+    const isEmbassyOrg = selectedOrgName.toLowerCase().includes('embassy');
 
     const { data: roles } = useGetOrganizationRolesQuery(isSuperAdmin ? selectedOrgId : undefined, {
         skip: isSuperAdmin && !selectedOrgId
@@ -99,12 +106,13 @@ export function OrganizationUsers() {
                 email: formData.email,
                 password: formData.password,
                 roleId: Number(formData.roleId),
+                embassyId: formData.embassyId ? Number(formData.embassyId) : undefined,
                 organizationId: isSuperAdmin ? selectedOrgId : undefined
             }).unwrap();
 
             toast.success('User created successfully');
             setShowCreateModal(false);
-            setFormData({ fullName: '', email: '', password: '', roleId: '' });
+            setFormData({ fullName: '', email: '', password: '', roleId: '', embassyId: '' });
             refetch();
         } catch (error: any) {
             toast.error(error?.data?.error || 'Failed to create user');
@@ -123,6 +131,7 @@ export function OrganizationUsers() {
                     fullName: formData.fullName || undefined,
                     email: formData.email || undefined,
                     roleId: formData.roleId ? Number(formData.roleId) : undefined,
+                    embassyId: formData.embassyId ? Number(formData.embassyId) : undefined,
                     organizationId: isSuperAdmin ? selectedOrgId : undefined
                 }
             }).unwrap();
@@ -130,7 +139,7 @@ export function OrganizationUsers() {
             toast.success('User updated successfully');
             setShowEditModal(false);
             setSelectedUser(null);
-            setFormData({ fullName: '', email: '', password: '', roleId: '' });
+            setFormData({ fullName: '', email: '', password: '', roleId: '', embassyId: '' });
             refetch();
         } catch (error: any) {
             toast.error(error?.data?.error || 'Failed to update user');
@@ -160,7 +169,8 @@ export function OrganizationUsers() {
             fullName: user.fullName,
             email: user.email,
             password: '',
-            roleId: user.roleId.toString()
+            roleId: user.roleId.toString(),
+            embassyId: user.embassyId?.toString() || ''
         });
         setShowEditModal(true);
     };
@@ -233,9 +243,13 @@ export function OrganizationUsers() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Roles</SelectItem>
-                                {roles?.filter(r => r.name !== 'CLIENT').map(role => (
+                                {roles?.filter(r => {
+                                    if (r.name === 'CLIENT') return false;
+                                    if (r.name === 'EMBASSY_OFFICER') return isEmbassyOrg;
+                                    return true;
+                                }).map(role => (
                                     <SelectItem key={role.id} value={role.id.toString()}>
-                                        {role.name}
+                                        {role.description || role.name}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -289,6 +303,11 @@ export function OrganizationUsers() {
                                                 <Shield className="w-3 h-3" />
                                                 {user.role?.name || 'N/A'}
                                             </Badge>
+                                            {user.embassy && (
+                                                <p className="text-[10px] text-muted-foreground mt-1">
+                                                    {user.embassy.name}
+                                                </p>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={user.status === 'ACTIVE' ? 'default' : 'secondary'}>
@@ -402,7 +421,11 @@ export function OrganizationUsers() {
                                     <SelectValue placeholder="Select a role" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {roles?.filter(r => r.name !== 'CLIENT').map(role => (
+                                    {roles?.filter(r => {
+                                        if (r.name === 'CLIENT') return false;
+                                        if (r.name === 'EMBASSY_OFFICER') return isEmbassyOrg;
+                                        return true;
+                                    }).map(role => (
                                         <SelectItem key={role.id} value={role.id.toString()}>
                                             {role.name}
                                         </SelectItem>
@@ -410,6 +433,28 @@ export function OrganizationUsers() {
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {(roles?.find(r => r.id === Number(formData.roleId))?.name === 'EMBASSY_OFFICER') && (
+                            <div>
+                                <Label htmlFor="embassyId">Linked Embassy</Label>
+                                <Select
+                                    value={formData.embassyId}
+                                    onValueChange={(val) => setFormData({ ...formData, embassyId: val })}
+                                    required
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select an embassy" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {embassies?.map(embassy => (
+                                            <SelectItem key={embassy.id} value={embassy.id.toString()}>
+                                                {embassy.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
                                 Cancel
@@ -459,7 +504,11 @@ export function OrganizationUsers() {
                                     <SelectValue placeholder="Select a role" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {roles?.map(role => (
+                                    {roles?.filter(r => {
+                                        if (r.name === 'CLIENT') return false;
+                                        if (r.name === 'EMBASSY_OFFICER') return isEmbassyOrg;
+                                        return true;
+                                    }).map(role => (
                                         <SelectItem key={role.id} value={role.id.toString()}>
                                             {role.name}
                                         </SelectItem>
@@ -467,6 +516,28 @@ export function OrganizationUsers() {
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {(roles?.find(r => r.id === Number(formData.roleId))?.name === 'EMBASSY_OFFICER') && (
+                            <div>
+                                <Label htmlFor="edit-embassyId">Linked Embassy</Label>
+                                <Select
+                                    value={formData.embassyId}
+                                    onValueChange={(val) => setFormData({ ...formData, embassyId: val })}
+                                    required
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select an embassy" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {embassies?.map(embassy => (
+                                            <SelectItem key={embassy.id} value={embassy.id.toString()}>
+                                                {embassy.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>
                                 Cancel

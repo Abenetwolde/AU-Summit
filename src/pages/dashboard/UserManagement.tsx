@@ -389,7 +389,10 @@ export function UserManagement() {
                 open={createModalOpen}
                 onOpenChange={setCreateModalOpen}
                 onConfirm={handleCreateUser}
-                roles={roles}
+                roles={roles.filter(r => {
+                    if (r.name === 'EMBASSY_OFFICER') return user?.role === UserRole.SUPER_ADMIN;
+                    return true;
+                })}
                 isLoading={isCreating}
             />
         </div>
