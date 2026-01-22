@@ -55,7 +55,7 @@ function App() {
                             <Route path="/verification/:id" element={<JournalistVerification />} />
 
                             {/* Main Unified Dashboard Route */}
-                            <Route element={<ProtectedRoute allowedRoles={Object.values(UserRole)} />}>
+                            <Route element={<ProtectedRoute />}>
                                 <Route path="/dashboard" element={<DashboardLayout />}>
                                     <Route index element={<Navigate to="admin" replace />} />
 
