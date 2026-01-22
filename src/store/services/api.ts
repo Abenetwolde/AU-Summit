@@ -9,6 +9,12 @@ export enum ApplicationStatus {
     IN_REVIEW = 'IN_REVIEW'
 }
 
+export interface RegistrationStats {
+    coverage: { name: string; value: number }[];
+    mediaType: { name: string; value: number }[];
+    totalApplications: number;
+}
+
 export interface Role {
     id: number;
     name: string;
@@ -766,7 +772,7 @@ export interface UpdateEquipmentStatusPayload {
 }
 
 // export const FILE_BASE_URL = 'https://cw761gt5-3000.uks1.devtunnels.ms';
-export const FILE_BASE_URL = 'http://localhost:3000';
+export const FILE_BASE_URL = 'http://172.20.136.19:5000';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -985,6 +991,10 @@ export const api = createApi({
     }),
     tagTypes: ['Role', 'Permission', 'Application', 'Form', 'User', 'Category', 'WorkflowStep', 'Invitation', 'Badge', 'EquipCatalog', 'Integration', 'APIProvider', 'Embassy', 'Country', 'Organization', 'EmailTemplate', 'LandingPage', 'Workflow', 'Notification', 'AirlineOffice'],
     endpoints: (builder) => ({
+        getRegistrationStats: builder.query<RegistrationStats, void>({
+            query: () => '/analytics/stats',
+            transformResponse: (response: { success: boolean, data: RegistrationStats }) => response.data,
+        }),
         login: builder.mutation<LoginResponse, any>({
             query: (credentials: any) => ({
                 url: '/auth/login',
@@ -2005,5 +2015,6 @@ export const {
     useCreateAirlineOfficeMutation,
     useUpdateAirlineOfficeMutation,
     useDeleteAirlineOfficeMutation,
+    useGetRegistrationStatsQuery,
 } = api;
 
