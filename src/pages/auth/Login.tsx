@@ -28,18 +28,18 @@ export function Login() {
                 localStorage.setItem('managment_token', token);
 
                 // Determine UserRole enum from API roleName string
-                let roleEnum = UserRole.EMA_OFFICER; // Default fallback for valid login with unknown string
-                switch (user.roleName) {
-                    case 'SUPER_ADMIN': roleEnum = UserRole.SUPER_ADMIN; break;
-                    case 'EMA_OFFICER': roleEnum = UserRole.EMA_OFFICER; break;
-                    case 'ICS_OFFICER': roleEnum = UserRole.ICS_OFFICER; break;
-                    case 'NISS_OFFICER': roleEnum = UserRole.NISS_OFFICER; break;
-                    case 'INSA_OFFICER': roleEnum = UserRole.INSA_OFFICER; break;
-                    case 'CUSTOMS_OFFICER': roleEnum = UserRole.CUSTOMS_OFFICER; break;
-                    case 'AU_ADMIN': roleEnum = UserRole.AU_ADMIN; break;
-                    case 'AU_OFFICER': roleEnum = UserRole.AU_OFFICER; break;
-                    // Add other mappings as needed
-                }
+                let roleEnum: any = user.roleName; // Default fallback for valid login with unknown string
+                // switch (user.roleName) {
+                //     case 'SUPER_ADMIN': roleEnum = UserRole.SUPER_ADMIN; break;
+                //     case 'EMA_OFFICER': roleEnum = UserRole.EMA_OFFICER; break;
+                //     case 'ICS_OFFICER': roleEnum = UserRole.ICS_OFFICER; break;
+                //     case 'NISS_OFFICER': roleEnum = UserRole.NISS_OFFICER; break;
+                //     case 'INSA_OFFICER': roleEnum = UserRole.INSA_OFFICER; break;
+                //     case 'CUSTOMS_OFFICER': roleEnum = UserRole.CUSTOMS_OFFICER; break;
+                //     case 'AU_ADMIN': roleEnum = UserRole.AU_ADMIN; break;
+                //     case 'AU_OFFICER': roleEnum = UserRole.AU_OFFICER; break;
+                //     // Add other mappings as needed
+                // }
 
                 // Call context login to set state
                 const apiUser = user as any;
