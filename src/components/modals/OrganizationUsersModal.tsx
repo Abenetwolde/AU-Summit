@@ -52,11 +52,15 @@ export function OrganizationUsersModal({ open, onOpenChange, organization }: Org
 
     // Filter Roles for this Organization to create new users
     // Include roles specific to this org, OR global roles (null orgId)
-    const orgRoles = allRoles.filter(r =>
-        r.organizationId == Number(organization.id) || !r.organizationId
-    );
+    const orgRoles = allRoles.filter(r => {
+        // EMBASSY_OFFICER is special - only for Embassy organization
+        if (r.name === 'EMBASSY_OFFICER') {
+            return organization.name.toLowerCase().includes('embassy');
+        }
+        return r.organizationId == Number(organization.id) || !r.organizationId;
+    });
 
-    const filteredUsers = orgUsers.filter(u =>
+    const filteredUsers = orgUsers.filter((u: User) =>
         u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -75,13 +79,14 @@ export function OrganizationUsersModal({ open, onOpenChange, organization }: Org
         }
     };
 
-    const handleCreateUser = async (userData: { fullName: string; email: string; password: string; roleId: string }) => {
+    const handleCreateUser = async (userData: { fullName: string; email: string; password: string; roleId: string; embassyId?: string }) => {
         try {
             await createUser({
                 fullName: userData.fullName,
                 email: userData.email,
                 password: userData.password,
                 roleId: Number(userData.roleId),
+                embassyId: userData.embassyId ? Number(userData.embassyId) : undefined,
                 organizationId: Number(organization.id),
                 status: 'ACTIVE'
             }).unwrap();
@@ -137,7 +142,7 @@ export function OrganizationUsersModal({ open, onOpenChange, organization }: Org
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
-                                    {filteredUsers.map((user) => (
+                                    {filteredUsers.map((user: User) => (
                                         <tr key={user.id} className="group hover:bg-gray-50/50 transition-colors">
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-3">
@@ -157,6 +162,11 @@ export function OrganizationUsersModal({ open, onOpenChange, organization }: Org
                                                 <Badge variant="outline" className="bg-white font-normal">
                                                     {user.role?.name || user.roleName || 'N/A'}
                                                 </Badge>
+                                                {user.embassy && (
+                                                    <p className="text-[10px] text-gray-500 mt-0.5">
+                                                        {user.embassy.name}
+                                                    </p>
+                                                )}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${user.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'

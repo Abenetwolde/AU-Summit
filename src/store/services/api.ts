@@ -1789,7 +1789,7 @@ export const api = createApi({
             transformResponse: (response: any) => response.data,
             providesTags: ['User'],
         }),
-        createOrganizationUser: builder.mutation<User, { fullName: string; email: string; password: string; roleId: number; organizationId?: number }>({
+        createOrganizationUser: builder.mutation<User, { fullName: string; email: string; password: string; roleId: number; organizationId?: number; embassyId?: number }>({
             query: (body) => ({
                 url: '/organization/users',
                 method: 'POST',
@@ -1798,7 +1798,7 @@ export const api = createApi({
             transformResponse: (response: any) => response.data,
             invalidatesTags: ['User'],
         }),
-        updateOrganizationUser: builder.mutation<User, { id: number; data: { fullName?: string; email?: string; roleId?: number; status?: 'ACTIVE' | 'INACTIVE'; organizationId?: number } }>({
+        updateOrganizationUser: builder.mutation<User, { id: number; data: { fullName?: string; email?: string; roleId?: number; status?: 'ACTIVE' | 'INACTIVE'; organizationId?: number; embassyId?: number } }>({
             query: ({ id, data }) => ({
                 url: `/organization/users/${id}`,
                 method: 'PUT',
