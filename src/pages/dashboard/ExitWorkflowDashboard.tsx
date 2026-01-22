@@ -152,26 +152,26 @@ export function ExitWorkflowDashboard() {
     return (
         <div className="p-6 space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <Button
                         variant="ghost"
                         onClick={() => navigate('/dashboard')}
-                        className="mb-4 gap-2"
+                        className="mb-2 sm:mb-4 gap-2 px-0 hover:bg-transparent"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         Back to Dashboard
                     </Button>
-                    <h1 className="text-3xl font-bold tracking-tight text-purple-900">Exit Approvals</h1>
-                    <p className="text-muted-foreground mt-1">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-purple-900">Exit Approvals</h1>
+                    <p className="text-muted-foreground mt-1 text-sm sm:text-base">
                         Manage applications in the exit approval phase
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 sm:flex gap-2">
                     <Button
                         variant="outline"
                         onClick={() => handleExport('EXCEL')}
-                        className="gap-2 border-green-600 text-green-700 hover:bg-green-50"
+                        className="gap-2 border-green-600 text-green-700 hover:bg-green-50 w-full sm:w-auto text-xs sm:text-sm"
                     >
                         <Download className="w-4 h-4" />
                         Export Excel
@@ -179,7 +179,7 @@ export function ExitWorkflowDashboard() {
                     <Button
                         variant="outline"
                         onClick={() => handleExport('PDF')}
-                        className="gap-2 border-red-600 text-red-700 hover:bg-red-50"
+                        className="gap-2 border-red-600 text-red-700 hover:bg-red-50 w-full sm:w-auto text-xs sm:text-sm"
                     >
                         <FileText className="w-4 h-4" />
                         Export PDF
@@ -193,7 +193,7 @@ export function ExitWorkflowDashboard() {
                     <CardTitle className="text-sm font-medium text-purple-900">Filters</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
@@ -205,35 +205,34 @@ export function ExitWorkflowDashboard() {
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
                             <SelectTrigger>
-                                <SelectValue placeholder="All Statuses" />
+                                <SelectValue placeholder="Status: Pending" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="PENDING">Pending </SelectItem>
-                                <SelectItem value="IN_REVIEW">In Review </SelectItem>
                                 <SelectItem value="APPROVED">Approved </SelectItem>
                                 <SelectItem value="REJECTED">Rejected </SelectItem>
                                 <SelectItem value="EXITED">Exited</SelectItem>
                             </SelectContent>
                         </Select>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                             <div className="relative flex-1">
                                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                 <Input
                                     type="date"
                                     value={startDate}
                                     onChange={(e) => setStartDate(e.target.value)}
-                                    className="pl-9"
+                                    className="pl-9 w-full"
                                     placeholder="Start Date"
                                 />
                             </div>
-                            <span className="text-muted-foreground">to</span>
+                            <span className="text-muted-foreground text-center text-sm">to</span>
                             <div className="relative flex-1">
                                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                 <Input
                                     type="date"
                                     value={endDate}
                                     onChange={(e) => setEndDate(e.target.value)}
-                                    className="pl-9"
+                                    className="pl-9 w-full"
                                     placeholder="End Date"
                                 />
                             </div>
@@ -271,7 +270,7 @@ export function ExitWorkflowDashboard() {
                         <div className="text-center py-12 text-red-600">
                             Error loading applications. Please try again.
                         </div>
-                    ) : data?.applications?.length === 0 ? (
+                    ) : (data?.applications?.length === 0) ? (
                         <div className="text-center py-12 text-muted-foreground">
                             No applications found in exit workflow.
                         </div>
