@@ -31,6 +31,7 @@ export interface Permission {
     description: null | string;
     grantedRoles: number[];
     category?: string;
+    categoryId?: number | string | null;
 }
 
 export interface Category {
@@ -771,8 +772,8 @@ export interface UpdateEquipmentStatusPayload {
     notes?: string;
 }
 
-export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
-// export const FILE_BASE_URL = 'http://localhost:3000';
+// export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
+export const FILE_BASE_URL = 'http://localhost:5000';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;

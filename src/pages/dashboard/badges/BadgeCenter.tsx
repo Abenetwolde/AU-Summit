@@ -6,8 +6,11 @@ import { Button } from '@/components/ui/button';
 import { BadgeDesigner } from './components/BadgeDesigner';
 import { BadgeConfigList } from './components/BadgeConfigList';
 import { BadgeGallery } from './components/BadgeGallery';
+import { useAuth } from '@/auth/context';
 
 export function BadgeCenter() {
+    const {user}=useAuth()
+    const readOnly = user?.role === 'PMO';
     const [activeTab, setActiveTab] = useState('configs');
     const [editingConfigId, setEditingConfigId] = useState<number | null>(null);
 
@@ -27,6 +30,7 @@ export function BadgeCenter() {
                             setActiveTab('designer');
                         }}
                         className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 transition-all active:scale-95 px-6 h-11 text-base font-bold"
+                        disabled={readOnly}
                     >
                         <Plus className="mr-2 h-5 w-5" />
                         Create New Config

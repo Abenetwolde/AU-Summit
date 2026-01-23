@@ -44,7 +44,7 @@ import { toast } from 'sonner';
 
 export function OrganizationUsers() {
     const { user: authUser } = useAuth();
-    const isSuperAdmin = authUser?.role === UserRole.SUPER_ADMIN;
+    const isSuperAdmin = authUser?.role === UserRole.PMO;
 
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');

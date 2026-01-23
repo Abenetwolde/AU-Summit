@@ -16,7 +16,8 @@ export const UserRole = {
     DRONE_CLEARANCE_OFFICER: 'DRONE_CLEARANCE_OFFICER',
     EMBASSY_OFFICER: 'EMBASSY_OFFICER',
     ORG_ADMIN: 'ORG_ADMIN',
-    CLIENT: 'CLIENT'
+    CLIENT: 'CLIENT',
+    PMO: 'PMO'
 } as const;
 
 export interface Permission {

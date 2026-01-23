@@ -121,7 +121,7 @@ function App() {
                                     </Route>
 
                                     {/* Super Admin Only Routes */}
-                                    <Route element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]} />}>
+                                    <Route element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.PMO]} />}>
                                         <Route path="email-templates" element={<EmailTemplates />} />
                                         <Route path="settings" element={<SystemSettings />} />
                                         <Route path="badge-center" element={<BadgeCenter />} />
@@ -131,7 +131,7 @@ function App() {
                                     </Route>
 
                                     {/* AU Admin Specific */}
-                                    <Route element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.AU_ADMIN]} />}>
+                                    <Route element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.PMO]} />}>
                                         <Route path="badge-management" element={<BadgeManagement />} />
                                         <Route path="badge-slip/:id" element={<BadgeSlipPreview />} />
                                     </Route>

@@ -16,6 +16,7 @@ import {
     Organization,
     getFileUrl
 } from '@/store/services/api';
+import { useAuth } from '@/auth/context';
 
 export function OrganizationManagement() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -30,6 +31,11 @@ export function OrganizationManagement() {
     const users = usersData?.users ?? [];
     const [createOrganization, { isLoading: isCreating }] = useCreateOrganizationMutation();
     const [updateOrganization, { isLoading: isUpdating }] = useUpdateOrganizationMutation();
+
+    const { checkPermission } = useAuth();
+    const canCreateOrg = checkPermission('organization:create');
+    const canUpdateOrg = checkPermission('organization:update');
+    const canDeleteOrg = checkPermission('organization:delete');
 
     // Form States
     const [formData, setFormData] = useState<{ name: string, description: string, logo: File | null }>({
@@ -62,6 +68,11 @@ export function OrganizationManagement() {
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        if (!canCreateOrg) {
+            toast.error("You don't have permission to create organizations");
+            return;
+        }
+
         const data = new FormData();
         data.append('name', formData.name);
         data.append('description', formData.description);
@@ -83,6 +94,11 @@ export function OrganizationManagement() {
         e.preventDefault();
         if (!selectedOrg) return;
 
+        if (!canUpdateOrg) {
+            toast.error("You don't have permission to update organizations");
+            return;
+        }
+
         const data = new FormData();
         data.append('name', formData.name);
         data.append('description', formData.description);
@@ -102,6 +118,10 @@ export function OrganizationManagement() {
     };
 
     const openEdit = (org: Organization) => {
+        if (!canUpdateOrg) {
+            toast.error("You don't have permission to edit organizations");
+            return;
+        }
         setSelectedOrg(org);
         setFormData({ name: org.name, description: org.description, logo: null }); // Logo file can't be prefilled
         setIsEditModalOpen(true);
@@ -123,9 +143,11 @@ export function OrganizationManagement() {
                     <h2 className="text-3xl font-bold font-sans text-gray-900">Organization Management</h2>
                     <p className="text-muted-foreground">Manage partner organizations and their access.</p>
                 </div>
-                <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700">
-                    <Plus className="h-4 w-4" /> Add Organization
-                </Button>
+                {canCreateOrg && (
+                    <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                        <Plus className="h-4 w-4" /> Add Organization
+                    </Button>
+                )}
             </div>
 
             {/* Statistics */}
@@ -191,22 +213,34 @@ export function OrganizationManagement() {
                                         <Building2 className="h-6 w-6 text-gray-400" />
                                     )}
                                 </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <MoreHorizontal className="h-4 w-4 text-gray-500" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => openEdit(org)}>
-                                            <Edit className="h-4 w-4 mr-2" /> Edit Details
-                                        </DropdownMenuItem>
+                                {(canUpdateOrg || canDeleteOrg) && (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                <MoreHorizontal className="h-4 w-4 text-gray-500" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            {canUpdateOrg && (
+                                                <DropdownMenuItem onClick={() => openEdit(org)}>
+                                                    <Edit className="h-4 w-4 mr-2" /> Edit Details
+                                                </DropdownMenuItem>
+                                            )}
 
-                                        <DropdownMenuItem className="text-red-600">
-                                            <Trash className="h-4 w-4 mr-2" /> Delete
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                            {canDeleteOrg && (
+                                                <DropdownMenuItem
+                                                    className="text-red-600"
+                                                    onClick={() => {
+                                                        // Implement delete logic if needed, or keeping it as placeholder for now since backend might not have it
+                                                        toast.info("Delete functionality coming soon");
+                                                    }}
+                                                >
+                                                    <Trash className="h-4 w-4 mr-2" /> Delete
+                                                </DropdownMenuItem>
+                                            )}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                )}
                             </div>
                             <h3 className="text-lg font-bold text-gray-900 mb-1">{org.name}</h3>
                             <p className="text-sm text-gray-500 mb-4 line-clamp-2">{org.description}</p>

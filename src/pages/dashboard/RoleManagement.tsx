@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Search, Plus, Filter, MoreHorizontal, Shield, Edit, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/auth/context';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
     useGetRolesQuery,
@@ -51,8 +52,16 @@ export function RoleManagement() {
     // Form Stats
     const [formData, setFormData] = useState({ name: '', description: '', organizationId: '' });
 
+    const { checkPermission } = useAuth();
+    const canCreateRole = checkPermission('role:create');
+    const canUpdateRole = checkPermission('role:update');
+
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!canCreateRole) {
+            toast.error("You don't have permission to create roles");
+            return;
+        }
         try {
             await createRole({
                 name: formData.name,
@@ -70,6 +79,10 @@ export function RoleManagement() {
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!currentRole) return;
+        if (!canUpdateRole) {
+            toast.error("You don't have permission to update roles");
+            return;
+        }
         try {
             await updateRole({
                 id: currentRole.id,
@@ -89,6 +102,10 @@ export function RoleManagement() {
     };
 
     const openEdit = (role: Role) => {
+        if (!canUpdateRole) {
+            toast.error("You don't have permission to edit roles");
+            return;
+        }
         setCurrentRole(role);
         setFormData({
             name: role.name,
@@ -109,22 +126,24 @@ export function RoleManagement() {
                     <h2 className="text-3xl font-bold font-sans text-gray-900">Role Management</h2>
                     <p className="text-muted-foreground">Define roles and assign them to organizations.</p>
                 </div>
-                <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700">
-                    <Plus className="h-4 w-4" /> Create Role
-                </Button>
+                {canCreateRole && (
+                    <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                        <Plus className="h-4 w-4" /> Create Role
+                    </Button>
+                )}
             </div>
 
             {/* Filter */}
             <Card className="bg-white border-0 shadow-sm">
                 <CardContent className="p-6">
                     <div className="flex items-end justify-between gap-4">
-                        <div className="flex-1 max-w-md">
+                        <div className="flex-1 max-md">
                             <Label className="text-gray-500 text-xs uppercase font-bold">Search</Label>
                             <div className="relative mt-1">
                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
+                                <input
                                     placeholder="Search roles..."
-                                    className="pl-9 bg-gray-50 border-gray-200"
+                                    className="w-full pl-9 pr-4 h-11 rounded-md border border-gray-200 bg-gray-50 text-sm focus:outline-none"
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
                                 />
@@ -146,18 +165,20 @@ export function RoleManagement() {
                                 <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                                     <Shield className="h-5 w-5 text-blue-600" />
                                 </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <MoreHorizontal className="h-4 w-4 text-gray-500" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => openEdit(role)}>
-                                            <Edit className="h-4 w-4 mr-2" /> Edit Role
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                {canUpdateRole && (
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                <MoreHorizontal className="h-4 w-4 text-gray-500" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => openEdit(role)}>
+                                                <Edit className="h-4 w-4 mr-2" /> Edit Role
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                )}
                             </div>
                             <h3 className="text-lg font-bold text-gray-900 mb-1">{role.name}</h3>
                             <p className="text-sm text-gray-500 mb-4 h-10 line-clamp-2">{role.description || 'No description'}</p>

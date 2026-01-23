@@ -36,6 +36,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGetFormsQuery, useDeleteFormMutation, Form } from '@/store/services/api';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { useAuth } from '@/auth/context';
 
 export default function FormList() {
     const navigate = useNavigate();
@@ -43,7 +44,16 @@ export default function FormList() {
     const [deleteForm] = useDeleteFormMutation();
     const [searchTerm, setSearchTerm] = useState('');
 
+    const { checkPermission } = useAuth();
+    const canCreateForm = checkPermission('form:create');
+    const canUpdateForm = checkPermission('form:update');
+    const canDeleteForm = checkPermission('form:delete');
+
     const handleDelete = async (id: number) => {
+        if (!canDeleteForm) {
+            toast.error("You don't have permission to delete forms");
+            return;
+        }
         if (confirm('Are you sure you want to delete this form? This action cannot be undone.')) {
             try {
                 await deleteForm(id).unwrap();
@@ -86,9 +96,11 @@ export default function FormList() {
                     <h1 className="text-3xl font-bold tracking-tight text-gray-900">Form Management</h1>
                     <p className="text-gray-500 mt-1">Create and manage application forms for accreditation and other processes.</p>
                 </div>
-                <Button onClick={() => navigate('/dashboard/forms/builder')} className="bg-black hover:bg-gray-800 text-white gap-2">
-                    <Plus className="h-4 w-4" /> Create New Form
-                </Button>
+                {canCreateForm && (
+                    <Button onClick={() => navigate('/dashboard/forms/builder')} className="bg-black hover:bg-gray-800 text-white gap-2">
+                        <Plus className="h-4 w-4" /> Create New Form
+                    </Button>
+                )}
             </div>
 
             <Card className="border-none shadow-sm bg-white">
@@ -152,24 +164,30 @@ export default function FormList() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" className="h-8 w-8 p-0">
-                                                            <span className="sr-only">Open menu</span>
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                        <DropdownMenuItem onClick={() => navigate(`/dashboard/forms/builder/${form.form_id}`)}>
-                                                            <Pencil className="mr-2 h-4 w-4" /> Edit
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(form.form_id)}>
-                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+                                                {(canUpdateForm || canDeleteForm) && (
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                <span className="sr-only">Open menu</span>
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                            {canUpdateForm && (
+                                                                <DropdownMenuItem onClick={() => navigate(`/dashboard/forms/builder/${form.form_id}`)}>
+                                                                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                                                                </DropdownMenuItem>
+                                                            )}
+                                                            <DropdownMenuSeparator />
+                                                            {canDeleteForm && (
+                                                                <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(form.form_id)}>
+                                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                                </DropdownMenuItem>
+                                                            )}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ))
