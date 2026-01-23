@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Search, Plus, Filter, MoreHorizontal, Shield, Edit, Loader2 } from 'lucide-react';
+import { Search, Plus, Filter, MoreHorizontal, Shield, Edit, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
     useGetRolesQuery,
     useCreateRoleMutation,
@@ -15,26 +16,40 @@ import {
     useGetOrganizationsQuery,
     Role
 } from '@/store/services/api';
+import { useEffect } from 'react';
 
 export function RoleManagement() {
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearch = useDebounce(searchTerm, 500);
+    const [page, setPage] = useState(1);
+    const limit = 30;
+
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [currentRole, setCurrentRole] = useState<Role | null>(null);
 
+    // Reset to page 1 when search changes
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch]);
+
     // API
-    const { data: roles = [], isLoading } = useGetRolesQuery();
+    const { data: rolesData, isLoading } = useGetRolesQuery({
+        page,
+        limit,
+        search: debouncedSearch
+    });
+
+    const roles = rolesData?.roles || [];
+    const totalPages = rolesData?.totalPages || 1;
+    const totalRoles = rolesData?.total || 0;
+
     const { data: organizations = [] } = useGetOrganizationsQuery();
     const [createRole, { isLoading: isCreating }] = useCreateRoleMutation();
     const [updateRole, { isLoading: isUpdating }] = useUpdateRoleMutation();
 
     // Form Stats
     const [formData, setFormData] = useState({ name: '', description: '', organizationId: '' });
-
-    const filteredRoles = roles.filter(role =>
-        role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (role.description && role.description.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -124,7 +139,7 @@ export function RoleManagement() {
 
             {/* Roles Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredRoles.map(role => (
+                {roles.map(role => (
                     <Card key={role.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
                         <CardContent className="p-6">
                             <div className="flex justify-between items-start mb-4">
@@ -156,6 +171,48 @@ export function RoleManagement() {
                     </Card>
                 ))}
             </div>
+
+            {/* Pagination controls */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-8 border-t pt-6">
+                    <p className="text-sm text-gray-500">
+                        Showing <span className="font-medium">{roles.length}</span> of <span className="font-medium">{totalRoles}</span> roles
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="gap-1"
+                        >
+                            <ChevronLeft className="h-4 w-4" /> Previous
+                        </Button>
+                        <div className="flex items-center gap-1">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                                <Button
+                                    key={p}
+                                    variant={page === p ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setPage(p)}
+                                    className="w-8 h-8 p-0"
+                                >
+                                    {p}
+                                </Button>
+                            ))}
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages}
+                            className="gap-1"
+                        >
+                            Next <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {/* Create Modal */}
             <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>

@@ -17,17 +17,22 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Role, useGetEmbassiesQuery } from '@/store/services/api';
+import { useAuth, UserRole } from '@/auth/context';
+import { Role, useGetRolesQuery, useGetEmbassiesQuery } from '@/store/services/api';
+import { Search, Loader2 } from 'lucide-react';
+import { useDebounce } from '@/hooks/useDebounce';
+import { useEffect } from 'react';
 
 interface CreateUserModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onConfirm: (userData: { fullName: string; email: string; password: string; roleId: string; embassyId?: string }) => void;
-    roles: Role[];
+    organizationId?: number;
     isLoading?: boolean;
 }
 
-export function CreateUserModal({ open, onOpenChange, onConfirm, roles, isLoading }: CreateUserModalProps) {
+export function CreateUserModal({ open, onOpenChange, onConfirm, organizationId, isLoading }: CreateUserModalProps) {
+    const { user: currentUser } = useAuth();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -36,9 +41,57 @@ export function CreateUserModal({ open, onOpenChange, onConfirm, roles, isLoadin
     const [embassyId, setEmbassyId] = useState('');
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
+    // Role Pagination & Search
+    const [roleSearch, setRoleSearch] = useState('');
+    const debouncedRoleSearch = useDebounce(roleSearch, 500);
+    const [rolePage, setRolePage] = useState(1);
+    const [aggregatedRoles, setAggregatedRoles] = useState<Role[]>([]);
+
+    const { data: rolesData, isLoading: isLoadingRoles, isFetching: isFetchingRoles } = useGetRolesQuery({
+        page: rolePage,
+        limit: 30,
+        search: debouncedRoleSearch,
+        organizationId: organizationId
+    });
+
+    useEffect(() => {
+        if (debouncedRoleSearch !== undefined || rolePage === 1) {
+            setRolePage(1);
+            setAggregatedRoles([]);
+        }
+    }, [debouncedRoleSearch]);
+
+    useEffect(() => {
+        if (rolesData?.roles) {
+            if (rolePage === 1) {
+                setAggregatedRoles(rolesData.roles);
+            } else {
+                setAggregatedRoles(prev => {
+                    const existingIds = new Set(prev.map(r => r.id));
+                    const newRoles = rolesData.roles.filter(r => !existingIds.has(r.id));
+                    return [...prev, ...newRoles];
+                });
+            }
+        }
+    }, [rolesData, rolePage]);
+
+    const roles = aggregatedRoles.filter(r => {
+        // Apply existing filters
+        if (r.name === 'CLIENT') return false;
+        if (r.name === 'EMBASSY_OFFICER' && currentUser?.role !== UserRole.SUPER_ADMIN) {
+            // If we are in user management, only Super Admin can create Embassy Officers
+            // If we are in OrganizationUsersModal, it might depend on the org type
+            // But let's keep it simple for now as per previous logic
+            return false;
+        }
+        return true;
+    });
+
+    const hasMoreRoles = rolesData ? rolePage < rolesData.totalPages : false;
+
     const { data: embassies = [] } = useGetEmbassiesQuery();
 
-    const selectedRole = roles.find(r => String(r.id) === roleId);
+    const selectedRole = aggregatedRoles.find(r => String(r.id) === roleId);
     const isEmbassyOfficer = selectedRole?.name === 'EMBASSY_OFFICER';
 
     const validate = () => {
@@ -131,16 +184,56 @@ export function CreateUserModal({ open, onOpenChange, onConfirm, roles, isLoadin
 
                     <div className="space-y-2">
                         <Label htmlFor="role">Role *</Label>
-                        <Select value={roleId} onValueChange={setRoleId}>
-                            <SelectTrigger id="role">
-                                <SelectValue placeholder="Select user role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {roles?.length > 0 ? roles.filter(r => r.name !== 'CLIENT').map(r => (
-                                    <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
-                                )) : <SelectItem value="none" disabled>No roles available</SelectItem>}
-                            </SelectContent>
-                        </Select>
+                        <div className="space-y-2">
+                            <div className="relative">
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search roles..."
+                                    value={roleSearch}
+                                    onChange={(e) => setRoleSearch(e.target.value)}
+                                    className="pl-8 h-9 text-sm"
+                                />
+                            </div>
+                            <Select value={roleId} onValueChange={setRoleId}>
+                                <SelectTrigger id="role">
+                                    <SelectValue placeholder={isLoadingRoles && rolePage === 1 ? "Loading roles..." : "Select user role"} />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[300px]">
+                                    {roles?.length > 0 ? (
+                                        <>
+                                            {roles.map(r => (
+                                                <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                                            ))}
+                                            {hasMoreRoles && (
+                                                <div className="p-2 border-t">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="w-full text-xs h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            setRolePage(p => p + 1);
+                                                        }}
+                                                        disabled={isFetchingRoles}
+                                                    >
+                                                        {isFetchingRoles ? (
+                                                            <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                                        ) : (
+                                                            'Load more roles...'
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <SelectItem value="none" disabled>
+                                            {isLoadingRoles ? "Loading..." : "No roles found"}
+                                        </SelectItem>
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
                         {errors.role && <p className="text-xs text-red-600">{errors.role}</p>}
                     </div>
 
