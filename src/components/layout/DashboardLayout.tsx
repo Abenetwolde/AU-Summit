@@ -186,20 +186,37 @@ export function DashboardLayout() {
 
             {/* Manual Client Entry */}
             {checkPermission('application:manual-entry') && (
-              <NavLink
-                to={`${basePath}/manual-entry`}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-[#e6f4ea] text-primary'
-                      : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
-                  )
-                }
-              >
-                <UserPlus className="h-5 w-5" />
-                Manual Client Entry
-              </NavLink>
+              <>
+                <NavLink
+                  to={`${basePath}/manual-entry`}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-[#e6f4ea] text-primary'
+                        : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                    )
+                  }
+                >
+                  <UserPlus className="h-5 w-5" />
+                  Manual Client Entry
+                </NavLink>
+
+                <NavLink
+                  to={`${basePath}/manual-applications`}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-[#e6f4ea] text-primary'
+                        : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                    )
+                  }
+                >
+                  <UserCog className="h-5 w-5" />
+                  Manual Applications
+                </NavLink>
+              </>
             )}
 
             {/* Accredited Journalists */}

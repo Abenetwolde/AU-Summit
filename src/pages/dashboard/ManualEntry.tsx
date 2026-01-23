@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -49,7 +49,9 @@ import {
     useCreateManualApplicationMutation,
     useGetFormsQuery,
     useGetCountriesQuery,
-    useGetFormByIdQuery
+    useGetFormByIdQuery,
+    useGetApplicationByIdQuery,
+    useUpdateManualApplicationMutation
 } from '@/store/services/api';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -100,7 +102,14 @@ const equipmentTypes = [
 
 export default function ManualEntry() {
     const navigate = useNavigate();
-    const [createManualApplication, { isLoading }] = useCreateManualApplicationMutation();
+    const [searchParams] = useSearchParams();
+    const editId = searchParams.get('edit');
+
+    const { data: editApplication, isFetching: isFetchingApplication } = useGetApplicationByIdQuery(Number(editId), { skip: !editId });
+    const [updateManualApplication, { isLoading: isUpdating }] = useUpdateManualApplicationMutation();
+
+    const [createManualApplication, { isLoading: isCreating }] = useCreateManualApplicationMutation();
+    const isLoading = isCreating || isUpdating; // Unified loading state
     const { data: formsData, isLoading: isLoadingForms } = useGetFormsQuery();
     const { data: countries, isLoading: isLoadingCountries } = useGetCountriesQuery();
 
@@ -127,6 +136,55 @@ export default function ManualEntry() {
     const [files, setFiles] = useState<Record<string, File[]>>({});
     const [equipments, setEquipments] = useState<EquipmentItem[]>([]);
 
+    // Populate form for Edit Mode
+    useEffect(() => {
+        if (editApplication) {
+            setValue('fullName', editApplication.user?.fullName || '');
+            setValue('email', editApplication.user?.email || '');
+            setValue('formId', String(editApplication.formId));
+            if (editApplication.applyingFromCountryId) {
+                setValue('applyingFromCountryId', String(editApplication.applyingFromCountryId));
+            }
+            setValue('externalPlatform', editApplication.user?.externalPlatform || 'Manual Entry');
+
+            // Populate dynamic fields
+            if (editApplication.formData) {
+                Object.entries(editApplication.formData).forEach(([key, val]) => {
+                    if (key !== 'equipments' && key !== 'manually_added' && key !== 'added_at' && key !== 'files') {
+                        setValue(key, val);
+                    }
+                });
+            }
+
+            // Populate equipments
+            if (editApplication.equipment && editApplication.equipment.length > 0) {
+                const mappedEquipments: EquipmentItem[] = editApplication.equipment.map((eq: any) => ({
+                    id: String(eq.id), // Use provided ID
+                    type: eq.type?.toLowerCase() || 'other',
+                    description: eq.description || '',
+                    model: eq.model || '',
+                    serialNumber: eq.serialNumber || '',
+                    quantity: Number(eq.quantity || 1),
+                    value: Number(eq.value || 0),
+                    currency: eq.currency || 'USD',
+                    isDrone: !!eq.isDrone
+                }));
+                setEquipments(mappedEquipments);
+
+                // Set drone/declaration status
+                const hasDrone = mappedEquipments.some(e => e.isDrone || e.type === 'drone');
+                const hasEquip = mappedEquipments.length > 0;
+
+                if (hasDrone) {
+                    setValue('has_drone' as any, true);
+                    setValue('declaration_status' as any, true);
+                } else if (hasEquip) {
+                    setValue('declaration_status' as any, true);
+                }
+            }
+        }
+    }, [editApplication, setValue]);
+
     const validateDynamicField = (name: string, value: any, field?: any) => {
         // Find field definition if not provided
         if (!field && fullForm) {
@@ -143,7 +201,13 @@ export default function ManualEntry() {
         let error = '';
         if (field.is_required) {
             if (field.field_type === 'file') {
-                if (!files[name] || files[name].length === 0) {
+                // Check if file is in local state OR in existing application documents
+                const hasLocalFile = files[name] && files[name].length > 0;
+                const hasServerFile = editApplication?.documents?.some((doc: any) =>
+                    doc.filePath && doc.filePath.includes(name)
+                );
+
+                if (!hasLocalFile && !(editId && hasServerFile)) {
                     error = field.validation_criteria?.errorMessage || `${field.label} is required`;
                 }
             } else if (value === undefined || value === null || value === '') {
@@ -177,10 +241,12 @@ export default function ManualEntry() {
         fields.forEach((field: any) => {
             if (field.field_type === 'file' && field.is_required) {
                 const currentFiles = files[field.field_name];
+                // Check server files if editing
+                const hasServerFile = editId && editApplication?.documents?.some((doc: any) => doc.filePath && doc.filePath.includes(field.field_name));
 
-                // Only validate if the field has been interacted with (present in files state)
+                // Only validate if the field has been interacted with or we are submitting
                 if (currentFiles !== undefined) {
-                    if (currentFiles.length > 0) {
+                    if (currentFiles.length > 0 || hasServerFile) {
                         clearErrors(field.field_name as any);
                     } else {
                         setError(field.field_name as any, {
@@ -191,7 +257,7 @@ export default function ManualEntry() {
                 }
             }
         });
-    }, [files, fullForm, setError, clearErrors]);
+    }, [files, fullForm, setError, clearErrors, editId, editApplication]);
 
     const handleFileChange = (name: string, fileList: FileList | null) => {
         if (fileList && fileList.length > 0) {
@@ -304,7 +370,8 @@ export default function ManualEntry() {
                 ...dynamicData,
                 registration_notes: values.registrationNotes,
                 manually_added: true,
-                added_at: new Date().toISOString(),
+                added_at: editId ? undefined : new Date().toISOString(), // Only set added_at on creation
+                updated_at: editId ? new Date().toISOString() : undefined
             };
 
             formData.append('form_data', JSON.stringify(formContent));
@@ -317,12 +384,18 @@ export default function ManualEntry() {
                 });
             });
 
-            await createManualApplication(formData).unwrap();
-            toast.success('Manual client entry successful!');
-            navigate('/dashboard/journalists');
+            if (editId) {
+                await updateManualApplication({ id: Number(editId), data: formData }).unwrap();
+                toast.success('Application updated successfully!');
+                navigate('/dashboard/manual-applications');
+            } else {
+                await createManualApplication(formData).unwrap();
+                toast.success('Manual client entry successful!');
+                navigate('/dashboard/journalists');
+            }
         } catch (err: any) {
             console.error('Manual entry failed:', err);
-            toast.error(err.data?.message || err.message || 'Failed to create manual entry');
+            toast.error(err.data?.message || err.message || 'Failed to submit application');
         }
     };
 
@@ -534,6 +607,12 @@ export default function ManualEntry() {
                     </div>
                 );
             case 'file':
+                // Filter documents that contain the field name in their file path
+                const serverFiles = editId && editApplication?.documents?.filter((doc: any) =>
+                    doc.filePath && doc.filePath.includes(field_name)
+                ) || [];
+                const hasServerFiles = serverFiles.length > 0;
+
                 return (
                     <div key={field_name} className="space-y-3">
                         <Label className="text-sm font-medium">{label} {is_required && '*'}</Label>
@@ -561,14 +640,43 @@ export default function ManualEntry() {
                             </p>
                         )}
 
-                        {files[field_name] && files[field_name].length > 0 && (
+                        {/* Server Files Display */}
+                        {hasServerFiles && (
                             <div className="space-y-2 bg-slate-50 p-3 rounded-md border border-slate-100">
-                                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Attached Files ({files[field_name].length})</h4>
+                                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Existing Files ({serverFiles.length})</h4>
+                                <div className="grid gap-2">
+                                    {serverFiles.map((file: any) => {
+                                        const fileName = file.filePath.split('/').pop() || file.filePath.split('\\').pop() || 'File';
+                                        const fileExt = fileName.split('.').pop()?.toUpperCase() || 'FILE';
+                                        return (
+                                            <div key={file.id} className="flex items-center justify-between p-2 bg-white rounded border border-slate-200 shadow-sm text-sm group">
+                                                <div className="flex items-center gap-2 overflow-hidden">
+                                                    <div className="h-8 w-8 rounded bg-blue-50 flex items-center justify-center shrink-0 text-blue-500 font-bold text-xs uppercase">
+                                                        {fileExt}
+                                                    </div>
+                                                    <div className="flex flex-col overflow-hidden">
+                                                        <a href={file.filePath} target="_blank" rel="noopener noreferrer" className="truncate font-medium text-slate-700 hover:text-blue-600 hover:underline" title={fileName}>
+                                                            {fileName}
+                                                        </a>
+                                                        <span className="text-xs text-slate-400">Uploaded {new Date(file.createdAt).toLocaleDateString()}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-xs italic text-gray-400 px-2">Saved</div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {files[field_name] && files[field_name].length > 0 && (
+                            <div className="space-y-2 bg-emerald-50/50 p-3 rounded-md border border-emerald-100">
+                                <h4 className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">New Uploads ({files[field_name].length})</h4>
                                 <div className="grid gap-2">
                                     {files[field_name].map((file, i) => (
-                                        <div key={i} className="flex items-center justify-between p-2 bg-white rounded border border-slate-200 shadow-sm text-sm group">
+                                        <div key={i} className="flex items-center justify-between p-2 bg-white rounded border border-emerald-100 shadow-sm text-sm group">
                                             <div className="flex items-center gap-2 overflow-hidden">
-                                                <FileText className="h-4 w-4 text-blue-500 shrink-0" />
+                                                <FileText className="h-4 w-4 text-emerald-500 shrink-0" />
                                                 <span className="truncate font-medium text-slate-700" title={file.name}>{file.name}</span>
                                                 <span className="text-xs text-slate-400 shrink-0">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
                                             </div>

@@ -98,6 +98,15 @@ export interface ApplicationApproval {
     workflowStep?: WorkflowStep;
 }
 
+export interface Document {
+    id: number;
+    applicationId: number;
+    type: 'PASS' | 'VISA_LETTER' | 'CLEARANCE';
+    filePath: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface Application {
     id: number;
     userId: number;
@@ -125,6 +134,7 @@ export interface Application {
         id: number;
         fullName: string;
         email: string;
+        externalPlatform?: string;
     };
     form: {
         form_id: number;
@@ -133,6 +143,8 @@ export interface Application {
     };
     equipment: Equipment[];
     approvals?: ApplicationApproval[];
+    documents?: Document[];
+    applyingFromCountryId?: number | null;
 }
 
 export interface Organization {
@@ -771,8 +783,8 @@ export interface UpdateEquipmentStatusPayload {
     notes?: string;
 }
 
-export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
-// export const FILE_BASE_URL = 'http://localhost:3000';
+// export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
+export const FILE_BASE_URL = 'http://localhost:3000';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -1008,27 +1020,7 @@ export const api = createApi({
                 body: data,
             }),
         }),
-        getRoles: builder.query<Role[], void>({
-            query: () => '/roles',
-            transformResponse: (response: RolesResponse) => response.data.roles,
-            providesTags: ['Role'],
-        }),
-        createRole: builder.mutation<Role, Partial<Role>>({
-            query: (body) => ({
-                url: '/roles',
-                method: 'POST',
-                body,
-            }),
-            invalidatesTags: ['Role'],
-        }),
-        updateRole: builder.mutation<Role, { id: number, data: Partial<Role> }>({
-            query: ({ id, data }) => ({
-                url: `/roles/${id}`,
-                method: 'PUT',
-                body: data,
-            }),
-            invalidatesTags: ['Role'],
-        }),
+
 
         // Notifications
         getNotifications: builder.query<NotificationsResponse, { page?: number; limit?: number }>({
@@ -1392,6 +1384,27 @@ export const api = createApi({
                 body,
             }),
             invalidatesTags: ['Application', 'User'],
+        }),
+        getManualApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string }>({
+            query: ({ page = 1, limit = 10, search = '' }) => `/applications?page=${page}&limit=${limit}&search=${search}&is_manual=true`,
+            transformResponse: (response: ApplicationsResponse) => response.data,
+            providesTags: ['Application'],
+        }),
+        updateApplication: builder.mutation<Application, { id: number; data: any }>({
+            query: ({ id, data }) => ({
+                url: `/applications/${id}`,
+                method: 'PUT',
+                body: data,
+            }),
+            invalidatesTags: (_result, _error, { id }) => [{ type: 'Application', id }, 'Application'],
+        }),
+        updateManualApplication: builder.mutation<Application, { id: number; data: any }>({
+            query: ({ id, data }) => ({
+                url: `/applications/${id}/manual-update`,
+                method: 'PUT',
+                body: data,
+            }),
+            invalidatesTags: (_result, _error, { id }) => [{ type: 'Application', id }, 'Application'],
         }),
         // Organizations
         getOrganizations: builder.query<Organization[], void>({
@@ -1815,6 +1828,40 @@ export const api = createApi({
             }),
             invalidatesTags: ['User'],
         }),
+
+        // Roles Endpoints
+        getRoles: builder.query<{ roles: Role[]; total: number; currentPage: number; totalPages: number }, { page?: number; limit?: number; search?: string } | void>({
+            query: (params) => {
+                if (!params) return '/roles';
+                const { page = 1, limit = 30, search } = params;
+                const queryParams = new URLSearchParams({
+                    page: page.toString(),
+                    limit: limit.toString(),
+                });
+                if (search) queryParams.append('search', search);
+                return `/roles?${queryParams.toString()}`;
+            },
+            transformResponse: (response: any) => response.data || response,
+            providesTags: ['Role'],
+        }),
+        createRole: builder.mutation<Role, { name: string; description?: string; organizationId?: number | null }>({
+            query: (body) => ({
+                url: '/roles',
+                method: 'POST',
+                body,
+            }),
+            transformResponse: (response: any) => response.data,
+            invalidatesTags: ['Role'],
+        }),
+        updateRole: builder.mutation<Role, { id: number; data: { name?: string; description?: string; organizationId?: number | null } }>({
+            query: ({ id, data }) => ({
+                url: `/roles/${id}`,
+                method: 'PUT',
+                body: data,
+            }),
+            transformResponse: (response: any) => response.data,
+            invalidatesTags: ['Role'],
+        }),
         getOrganizationRoles: builder.query<Role[], number | void>({
             query: (organizationId) => {
                 const url = '/organization/users/roles/available';
@@ -2015,11 +2062,15 @@ export const {
     useDeleteOrganizationUserMutation,
     useGetOrganizationRolesQuery,
 
+
     // Airline Office Hooks
     useGetAirlineOfficesQuery,
     useCreateAirlineOfficeMutation,
     useUpdateAirlineOfficeMutation,
     useDeleteAirlineOfficeMutation,
     useGetRegistrationStatsQuery,
+    useGetManualApplicationsQuery,
+    useUpdateApplicationMutation,
+    useUpdateManualApplicationMutation,
 } = api;
 
