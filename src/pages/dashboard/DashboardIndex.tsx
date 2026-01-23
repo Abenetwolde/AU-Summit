@@ -5,7 +5,7 @@ import AdminDashboard from './AdminDashboard';
 export default function DashboardIndex() {
     const { user } = useAuth();
 
-    if (user?.role === UserRole.SUPER_ADMIN) {
+    if (user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.PMO) {
         return <SuperAdminDashboard />;
     }
 

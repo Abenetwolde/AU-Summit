@@ -49,7 +49,7 @@ export function EmailTemplates() {
 
     const { user } = useAuth();
     // Assuming NISS_OFFICER is read-only based on previous context, or use permission system if available
-    const isReadOnly = user?.role === 'NISS_OFFICER';
+    const isReadOnly = user?.role === 'PMO';
 
     const templates = data?.templates || [];
     const pagination = data?.pagination;
@@ -166,15 +166,16 @@ export function EmailTemplates() {
                     <h2 className="text-3xl font-bold font-sans text-gray-900">Email Templates</h2>
                     <p className="text-sm text-gray-500 mt-1">Manage automated system emails, triggers, and attachments</p>
                 </div>
-                {!isReadOnly && (
+                {/* {!isReadOnly && ( */}
                     <Button
                         onClick={handleCreate}
                         className="bg-[#009b4d] hover:bg-[#007a3d] gap-2 shadow-sm font-bold"
+                        disabled={isReadOnly}
                     >
                         <Plus className="h-4 w-4" />
                         Create Template
                     </Button>
-                )}
+                {/* )} */}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

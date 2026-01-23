@@ -694,39 +694,64 @@ return (
             </CardContent>
           </Card>
 
-          {/* Role Distribution */}
-          <Card className="border-0 shadow-sm h-full">
-            <CardHeader className="pb-3 border-b border-slate-50">
-              <CardTitle>Role Distribution</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="h-[360px] flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={adminCharts.roleDistribution.map((role, i) => ({
-                        name: `${role.roleName.replace('_', ' ')} (${role.count})`,
-                        value: role.count,
-                        color: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][i % 5]
-                      }))}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={95}
-                      dataKey="value"
-                      label={({ name }) => name.split(' (')[0]}
-                      labelLine={false}
-                    >
-                      {adminCharts.roleDistribution.map((_, i) => (
-                        <Cell key={`cell-${i}`} fill={['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6'][i % 5]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.96)', borderRadius: '12px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }} />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: '13px', fontWeight: 500 }} layout="horizontal" verticalAlign="bottom" />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+   {/* Role Distribution */}
+<Card className="border-0 shadow-sm h-full">
+  <CardHeader className="pb-3 border-b border-slate-50">
+    <CardTitle>Role Distribution</CardTitle>
+  </CardHeader>
+
+  <CardContent className="p-6">
+    <div className="h-[360px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          layout="vertical"
+          data={adminCharts.roleDistribution.map((role, i) => ({
+            name: role.roleName.replace('_', ' '),
+            count: role.count,
+            fill: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][i % 5],
+          }))}
+          margin={{ top: 20, right: 30, left: 40, bottom: 20 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+
+          {/* X axis is numeric now */}
+          <XAxis
+            type="number"
+            tick={{ fontSize: 12, fill: '#475569' }}
+            allowDecimals={false}
+          />
+
+          {/* Y axis holds role names */}
+          <YAxis
+            type="category"
+            dataKey="name"
+            tick={{ fontSize: 12, fill: '#475569' }}
+            width={120}
+          />
+
+          <Tooltip
+            contentStyle={{
+              backgroundColor: 'rgba(255,255,255,0.96)',
+              borderRadius: '12px',
+              border: 'none',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+            }}
+          />
+
+          <Bar dataKey="count" radius={[0, 6, 6, 0]}>
+            {adminCharts.roleDistribution.map((_, i) => (
+              <Cell
+                key={`cell-${i}`}
+                fill={['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][i % 5]}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  </CardContent>
+</Card>
+
         </div>
 
         {/* Stakeholder Status Breakdown */}

@@ -18,12 +18,18 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAuth } from '@/auth/context';
 
 export default function EmbassyManagement() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedEmbassy, setSelectedEmbassy] = useState<Embassy | null>(null);
+
+    const { checkPermission } = useAuth();
+    const canCreateEmbassy = checkPermission('embassy:create');
+    const canUpdateEmbassy = checkPermission('embassy:update');
+    const canDeleteEmbassy = checkPermission('embassy:delete');
 
     // API Hooks
     const { data: embassies = [], isLoading: isEmbassyLoading } = useGetEmbassiesQuery();
@@ -50,6 +56,10 @@ export default function EmbassyManagement() {
     // Handlers
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!canCreateEmbassy) {
+            toast.error("You don't have permission to create embassies");
+            return;
+        }
         try {
             await createEmbassy(formData).unwrap();
             toast.success("Embassy created successfully");
@@ -64,6 +74,11 @@ export default function EmbassyManagement() {
         e.preventDefault();
         if (!selectedEmbassy) return;
 
+        if (!canUpdateEmbassy) {
+            toast.error("You don't have permission to update embassies");
+            return;
+        }
+
         try {
             await updateEmbassy({ id: selectedEmbassy.id, data: formData }).unwrap();
             toast.success("Embassy updated successfully");
@@ -75,6 +90,10 @@ export default function EmbassyManagement() {
     };
 
     const handleDelete = async (id: number) => {
+        if (!canDeleteEmbassy) {
+            toast.error("You don't have permission to delete embassies");
+            return;
+        }
         if (!window.confirm("Are you sure you want to delete this embassy?")) return;
         try {
             await deleteEmbassy(id).unwrap();
@@ -96,6 +115,10 @@ export default function EmbassyManagement() {
     };
 
     const openEditModal = (embassy: Embassy) => {
+        if (!canUpdateEmbassy) {
+            toast.error("You don't have permission to edit embassies");
+            return;
+        }
         setSelectedEmbassy(embassy);
         setFormData({
             name: embassy.name,
@@ -123,9 +146,11 @@ export default function EmbassyManagement() {
                     <h1 className="text-2xl font-bold tracking-tight">Embassy Management</h1>
                     <p className="text-muted-foreground">Manage embassies and their overseeing countries.</p>
                 </div>
-                <Button onClick={() => { resetForm(); setIsCreateModalOpen(true); }}>
-                    <Plus className="mr-2 h-4 w-4" /> Add Embassy
-                </Button>
+                {canCreateEmbassy && (
+                    <Button onClick={() => { resetForm(); setIsCreateModalOpen(true); }}>
+                        <Plus className="mr-2 h-4 w-4" /> Add Embassy
+                    </Button>
+                )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -159,21 +184,27 @@ export default function EmbassyManagement() {
                                             <p className="text-sm text-muted-foreground mt-1">{embassy.address}</p>
                                         </div>
                                     </div>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => openEditModal(embassy)}>
-                                                <Edit className="mr-2 h-4 w-4" /> Edit
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(embassy.id)}>
-                                                <Trash className="mr-2 h-4 w-4" /> Delete
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                    {(canUpdateEmbassy || canDeleteEmbassy) && (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                {canUpdateEmbassy && (
+                                                    <DropdownMenuItem onClick={() => openEditModal(embassy)}>
+                                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {canDeleteEmbassy && (
+                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(embassy.id)}>
+                                                        <Trash className="mr-2 h-4 w-4" /> Delete
+                                                    </DropdownMenuItem>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
