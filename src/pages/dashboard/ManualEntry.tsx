@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -25,14 +25,33 @@ import {
     Radio,
     DollarSign,
     ShieldCheck,
-    CheckCircle2
+    CheckCircle2,
+    Check,
+    ChevronsUpDown
 } from 'lucide-react';
+
+import { cn } from "@/lib/utils";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 
 import {
     useCreateManualApplicationMutation,
     useGetFormsQuery,
     useGetCountriesQuery,
-    useGetFormByIdQuery
+    useGetFormByIdQuery,
+    useGetApplicationByIdQuery,
+    useUpdateManualApplicationMutation
 } from '@/store/services/api';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -83,7 +102,14 @@ const equipmentTypes = [
 
 export default function ManualEntry() {
     const navigate = useNavigate();
-    const [createManualApplication, { isLoading }] = useCreateManualApplicationMutation();
+    const [searchParams] = useSearchParams();
+    const editId = searchParams.get('edit');
+
+    const { data: editApplication, isFetching: isFetchingApplication } = useGetApplicationByIdQuery(Number(editId), { skip: !editId });
+    const [updateManualApplication, { isLoading: isUpdating }] = useUpdateManualApplicationMutation();
+
+    const [createManualApplication, { isLoading: isCreating }] = useCreateManualApplicationMutation();
+    const isLoading = isCreating || isUpdating; // Unified loading state
     const { data: formsData, isLoading: isLoadingForms } = useGetFormsQuery();
     const { data: countries, isLoading: isLoadingCountries } = useGetCountriesQuery();
 
@@ -110,6 +136,55 @@ export default function ManualEntry() {
     const [files, setFiles] = useState<Record<string, File[]>>({});
     const [equipments, setEquipments] = useState<EquipmentItem[]>([]);
 
+    // Populate form for Edit Mode
+    useEffect(() => {
+        if (editApplication) {
+            setValue('fullName', editApplication.user?.fullName || '');
+            setValue('email', editApplication.user?.email || '');
+            setValue('formId', String(editApplication.formId));
+            if (editApplication.applyingFromCountryId) {
+                setValue('applyingFromCountryId', String(editApplication.applyingFromCountryId));
+            }
+            setValue('externalPlatform', editApplication.user?.externalPlatform || 'Manual Entry');
+
+            // Populate dynamic fields
+            if (editApplication.formData) {
+                Object.entries(editApplication.formData).forEach(([key, val]) => {
+                    if (key !== 'equipments' && key !== 'manually_added' && key !== 'added_at' && key !== 'files') {
+                        setValue(key, val);
+                    }
+                });
+            }
+
+            // Populate equipments
+            if (editApplication.equipment && editApplication.equipment.length > 0) {
+                const mappedEquipments: EquipmentItem[] = editApplication.equipment.map((eq: any) => ({
+                    id: String(eq.id), // Use provided ID
+                    type: eq.type?.toLowerCase() || 'other',
+                    description: eq.description || '',
+                    model: eq.model || '',
+                    serialNumber: eq.serialNumber || '',
+                    quantity: Number(eq.quantity || 1),
+                    value: Number(eq.value || 0),
+                    currency: eq.currency || 'USD',
+                    isDrone: !!eq.isDrone
+                }));
+                setEquipments(mappedEquipments);
+
+                // Set drone/declaration status
+                const hasDrone = mappedEquipments.some(e => e.isDrone || e.type === 'drone');
+                const hasEquip = mappedEquipments.length > 0;
+
+                if (hasDrone) {
+                    setValue('has_drone' as any, true);
+                    setValue('declaration_status' as any, true);
+                } else if (hasEquip) {
+                    setValue('declaration_status' as any, true);
+                }
+            }
+        }
+    }, [editApplication, setValue]);
+
     const validateDynamicField = (name: string, value: any, field?: any) => {
         // Find field definition if not provided
         if (!field && fullForm) {
@@ -126,7 +201,13 @@ export default function ManualEntry() {
         let error = '';
         if (field.is_required) {
             if (field.field_type === 'file') {
-                if (!files[name] || files[name].length === 0) {
+                // Check if file is in local state OR in existing application documents
+                const hasLocalFile = files[name] && files[name].length > 0;
+                const hasServerFile = editApplication?.documents?.some((doc: any) =>
+                    doc.filePath && doc.filePath.includes(name)
+                );
+
+                if (!hasLocalFile && !(editId && hasServerFile)) {
                     error = field.validation_criteria?.errorMessage || `${field.label} is required`;
                 }
             } else if (value === undefined || value === null || value === '') {
@@ -148,10 +229,56 @@ export default function ManualEntry() {
         }
     };
 
+    // Real-time file validation
+    useEffect(() => {
+        if (!fullForm) return;
+
+        const fields = [
+            ...(fullForm.categories?.flatMap((c: any) => c.fields) || []),
+            ...(fullForm.uncategorizedFields || [])
+        ];
+
+        fields.forEach((field: any) => {
+            if (field.field_type === 'file' && field.is_required) {
+                const currentFiles = files[field.field_name];
+                // Check server files if editing
+                const hasServerFile = editId && editApplication?.documents?.some((doc: any) => doc.filePath && doc.filePath.includes(field.field_name));
+
+                // Only validate if the field has been interacted with or we are submitting
+                if (currentFiles !== undefined) {
+                    if (currentFiles.length > 0 || hasServerFile) {
+                        clearErrors(field.field_name as any);
+                    } else {
+                        setError(field.field_name as any, {
+                            type: 'manual',
+                            message: field.validation_criteria?.errorMessage || `${field.label} is required`
+                        });
+                    }
+                }
+            }
+        });
+    }, [files, fullForm, setError, clearErrors, editId, editApplication]);
+
     const handleFileChange = (name: string, fileList: FileList | null) => {
-        if (fileList) {
-            setFiles(prev => ({ ...prev, [name]: Array.from(fileList) }));
+        if (fileList && fileList.length > 0) {
+            setFiles(prev => {
+                const existing = prev[name] || [];
+                const newFiles = Array.from(fileList);
+                // Prevent duplicate files by name and size for basic deduping
+                const uniqueNewFiles = newFiles.filter(nf =>
+                    !existing.some(ef => ef.name === nf.name && ef.size === nf.size)
+                );
+                return { ...prev, [name]: [...existing, ...uniqueNewFiles] };
+            });
         }
+    };
+
+    const removeFile = (name: string, index: number, field: any) => {
+        setFiles(prev => {
+            const existing = prev[name] || [];
+            const updated = existing.filter((_, i) => i !== index);
+            return { ...prev, [name]: updated };
+        });
     };
 
     const addEquipment = (type: string = 'camera', isDrone: boolean = false) => {
@@ -243,7 +370,8 @@ export default function ManualEntry() {
                 ...dynamicData,
                 registration_notes: values.registrationNotes,
                 manually_added: true,
-                added_at: new Date().toISOString(),
+                added_at: editId ? undefined : new Date().toISOString(), // Only set added_at on creation
+                updated_at: editId ? new Date().toISOString() : undefined
             };
 
             formData.append('form_data', JSON.stringify(formContent));
@@ -256,12 +384,18 @@ export default function ManualEntry() {
                 });
             });
 
-            await createManualApplication(formData).unwrap();
-            toast.success('Manual client entry successful!');
-            navigate('/dashboard/journalists');
+            if (editId) {
+                await updateManualApplication({ id: Number(editId), data: formData }).unwrap();
+                toast.success('Application updated successfully!');
+                navigate('/dashboard/manual-applications');
+            } else {
+                await createManualApplication(formData).unwrap();
+                toast.success('Manual client entry successful!');
+                navigate('/dashboard/journalists');
+            }
         } catch (err: any) {
             console.error('Manual entry failed:', err);
-            toast.error(err.data?.message || err.message || 'Failed to create manual entry');
+            toast.error(err.data?.message || err.message || 'Failed to submit application');
         }
     };
 
@@ -318,8 +452,73 @@ export default function ManualEntry() {
 
     const renderField = (field: any) => {
         const { field_name, label, field_type, is_required, field_options } = field;
+
+        // Skip rendering for boolean fields that are handled by custom UI
+        if (field_name === 'has_drone' || field_name === 'declaration_status') {
+            return null;
+        }
+
         const value = watch(field_name) || '';
         const error = (errors as any)[field_name];
+
+        // Check if this is the Nationality field
+        if (field_name.toLowerCase() === 'nationality') {
+            return (
+                <div key={field_name} className="space-y-2">
+                    <Label className="text-sm font-medium">{label} {is_required && '*'}</Label>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                    "w-full justify-between h-11 font-normal",
+                                    !value && "text-muted-foreground",
+                                    error && "border-destructive ring-destructive"
+                                )}
+                            >
+                                {value
+                                    ? countries?.find((country: any) => country.name === value)?.name
+                                    : `Select ${label.toLowerCase()}...`}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                                <CommandInput placeholder={`Search ${label.toLowerCase()}...`} />
+                                <CommandList>
+                                    <CommandEmpty>No country found.</CommandEmpty>
+                                    <CommandGroup>
+                                        {countries?.map((country: any) => (
+                                            <CommandItem
+                                                key={country.id}
+                                                value={country.name}
+                                                onSelect={(currentValue) => {
+                                                    setValue(field_name as any, currentValue, { shouldValidate: true, shouldDirty: true });
+                                                }}
+                                            >
+                                                <Check
+                                                    className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        value === country.name ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                />
+                                                {country.name}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                    {error && (
+                        <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1 mt-1">
+                            {error.message}
+                        </p>
+                    )}
+                </div>
+            );
+        }
 
         switch (field_type) {
             case 'textarea':
@@ -408,33 +607,89 @@ export default function ManualEntry() {
                     </div>
                 );
             case 'file':
+                // Filter documents that contain the field name in their file path
+                const serverFiles = editId && editApplication?.documents?.filter((doc: any) =>
+                    doc.filePath && doc.filePath.includes(field_name)
+                ) || [];
+                const hasServerFiles = serverFiles.length > 0;
+
                 return (
-                    <div key={field_name} className="space-y-2">
+                    <div key={field_name} className="space-y-3">
                         <Label className="text-sm font-medium">{label} {is_required && '*'}</Label>
-                        <div className="flex items-center gap-2">
+
+                        <div className={`border-2 border-dashed rounded-lg p-6 hover:bg-slate-50 transition-colors text-center cursor-pointer relative ${error ? "border-destructive bg-destructive/5" : "border-slate-200"}`}>
                             <Input
                                 type="file"
                                 multiple
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                 onChange={(e) => {
                                     handleFileChange(field_name, e.target.files);
-                                    // Trigger validation for files manually
-                                    setTimeout(() => validateDynamicField(field_name, value, field), 100);
+                                    e.target.value = ''; // Reset input to allow selecting same file again
                                 }}
-                                className={`cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 ${error ? "border-destructive ring-destructive" : ""}`}
                             />
+                            <div className="flex flex-col items-center gap-2 pointer-events-none">
+                                <UploadCloud className="h-8 w-8 text-slate-400" />
+                                <p className="text-sm text-slate-600 font-medium">Click to upload files</p>
+                                <p className="text-xs text-slate-400">Supported formats: PDF, IMG (Max 5MB)</p>
+                            </div>
                         </div>
+
                         {error && (
-                            <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1 mt-1">
-                                {error.message}
+                            <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1 mt-1 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" /> {error.message}
                             </p>
                         )}
-                        {files[field_name] && (
-                            <div className="flex flex-wrap gap-2 mt-2">
-                                {files[field_name].map((file, i) => (
-                                    <span key={i} className="text-[10px] bg-blue-50 text-blue-700 px-2 py-1 rounded-md border border-blue-100 flex items-center gap-1">
-                                        <FileText className="h-3 w-3" /> {file.name}
-                                    </span>
-                                ))}
+
+                        {/* Server Files Display */}
+                        {hasServerFiles && (
+                            <div className="space-y-2 bg-slate-50 p-3 rounded-md border border-slate-100">
+                                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Existing Files ({serverFiles.length})</h4>
+                                <div className="grid gap-2">
+                                    {serverFiles.map((file: any) => {
+                                        const fileName = file.filePath.split('/').pop() || file.filePath.split('\\').pop() || 'File';
+                                        const fileExt = fileName.split('.').pop()?.toUpperCase() || 'FILE';
+                                        return (
+                                            <div key={file.id} className="flex items-center justify-between p-2 bg-white rounded border border-slate-200 shadow-sm text-sm group">
+                                                <div className="flex items-center gap-2 overflow-hidden">
+                                                    <div className="h-8 w-8 rounded bg-blue-50 flex items-center justify-center shrink-0 text-blue-500 font-bold text-xs uppercase">
+                                                        {fileExt}
+                                                    </div>
+                                                    <div className="flex flex-col overflow-hidden">
+                                                        <a href={file.filePath} target="_blank" rel="noopener noreferrer" className="truncate font-medium text-slate-700 hover:text-blue-600 hover:underline" title={fileName}>
+                                                            {fileName}
+                                                        </a>
+                                                        <span className="text-xs text-slate-400">Uploaded {new Date(file.createdAt).toLocaleDateString()}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-xs italic text-gray-400 px-2">Saved</div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {files[field_name] && files[field_name].length > 0 && (
+                            <div className="space-y-2 bg-emerald-50/50 p-3 rounded-md border border-emerald-100">
+                                <h4 className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">New Uploads ({files[field_name].length})</h4>
+                                <div className="grid gap-2">
+                                    {files[field_name].map((file, i) => (
+                                        <div key={i} className="flex items-center justify-between p-2 bg-white rounded border border-emerald-100 shadow-sm text-sm group">
+                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                <FileText className="h-4 w-4 text-emerald-500 shrink-0" />
+                                                <span className="truncate font-medium text-slate-700" title={file.name}>{file.name}</span>
+                                                <span className="text-xs text-slate-400 shrink-0">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeFile(field_name, i, field)}
+                                                className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-colors"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -613,78 +868,6 @@ export default function ManualEntry() {
                         </CardContent>
                     </Card>
 
-                    <Card className="border-none shadow-xl bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-200">
-                        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-gray-100 pb-4">
-                            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                                <Radio className="h-5 w-5 text-primary" />
-                                Drone Equipment
-                            </CardTitle>
-                            <CardDescription>
-                                Will you be bringing drone equipment?
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <Button
-                                    type="button"
-                                    variant={watch('has_drone' as any) ? "default" : "outline"}
-                                    className={`h-12 text-base font-semibold transition-all ${watch('has_drone' as any) ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                                    onClick={() => {
-                                        setValue('has_drone' as any, true);
-                                        if (!equipments.some(e => e.isDrone)) addEquipment('drone', true);
-                                    }}
-                                >
-                                    Yes
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={watch('has_drone' as any) === false ? "default" : "outline"}
-                                    className={`h-12 text-base font-semibold transition-all ${watch('has_drone' as any) === false ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                                    onClick={() => {
-                                        setValue('has_drone' as any, false);
-                                        setEquipments(equipments.filter(e => !e.isDrone));
-                                    }}
-                                >
-                                    No
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-none shadow-xl bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-200">
-                        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-gray-100 pb-4">
-                            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                                <Camera className="h-5 w-5 text-primary" />
-                                Professional Media Equipment
-                            </CardTitle>
-                            <CardDescription>
-                                Are you bringing professional media equipment?
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <Button
-                                    type="button"
-                                    variant={watch('declaration_status' as any) ? "default" : "outline"}
-                                    className={`h-12 text-base font-semibold transition-all ${watch('declaration_status' as any) ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                                    onClick={() => setValue('declaration_status' as any, true)}
-                                >
-                                    Yes
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={watch('declaration_status' as any) === false ? "default" : "outline"}
-                                    className={`h-12 text-base font-semibold transition-all ${watch('declaration_status' as any) === false ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                                    onClick={() => {
-                                        setValue('declaration_status' as any, false);
-                                        setEquipments(equipments.filter(e => e.isDrone));
-                                    }}
-                                >
-                                    No
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
 
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
                         <h3 className="text-amber-800 font-bold text-sm mb-1 flex items-center gap-2">
@@ -704,17 +887,26 @@ export default function ManualEntry() {
                                 </div>
                             ) : (
                                 <>
-                                    {fullForm?.categories?.map((category: any) => (
-                                        <Card key={category.category_id} className="border-none shadow-lg bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-100">
-                                            <CardHeader className="bg-gray-50/50 py-3 border-b flex flex-row items-center gap-2">
-                                                <div className="h-2 w-2 rounded-full bg-primary" />
-                                                <CardTitle className="text-sm font-bold text-gray-700 uppercase tracking-wider">{category.name}</CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="p-6 grid gap-6 md:grid-cols-2">
-                                                {category.fields?.map((field: any) => renderField(field))}
-                                            </CardContent>
-                                        </Card>
-                                    ))}
+                                    {fullForm?.categories?.map((category: any) => {
+                                        // Check if category has any visible fields
+                                        const visibleFields = category.fields?.filter((f: any) =>
+                                            f.field_name !== 'has_drone' && f.field_name !== 'declaration_status'
+                                        );
+
+                                        if (!visibleFields || visibleFields.length === 0) return null;
+
+                                        return (
+                                            <Card key={category.category_id} className="border-none shadow-lg bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-100">
+                                                <CardHeader className="bg-gray-50/50 py-3 border-b flex flex-row items-center gap-2">
+                                                    <div className="h-2 w-2 rounded-full bg-primary" />
+                                                    <CardTitle className="text-sm font-bold text-gray-700 uppercase tracking-wider">{category.name}</CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="p-6 grid gap-6 md:grid-cols-2">
+                                                    {category.fields?.map((field: any) => renderField(field))}
+                                                </CardContent>
+                                            </Card>
+                                        );
+                                    })}
 
                                     {fullForm?.uncategorizedFields?.length > 0 && (
                                         <Card className="border-none shadow-lg bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-100">
@@ -727,6 +919,79 @@ export default function ManualEntry() {
                                             </CardContent>
                                         </Card>
                                     )}
+
+                                    <Card className="border-none shadow-xl bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-200">
+                                        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-gray-100 pb-4">
+                                            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                                                <Radio className="h-5 w-5 text-primary" />
+                                                Drone Equipment
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Will you be bringing drone equipment?
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="p-6">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <Button
+                                                    type="button"
+                                                    variant={watch('has_drone' as any) ? "default" : "outline"}
+                                                    className={`h-12 text-base font-semibold transition-all ${watch('has_drone' as any) ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                                                    onClick={() => {
+                                                        setValue('has_drone' as any, true);
+                                                        if (!equipments.some(e => e.isDrone)) addEquipment('drone', true);
+                                                    }}
+                                                >
+                                                    Yes
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant={watch('has_drone' as any) === false ? "default" : "outline"}
+                                                    className={`h-12 text-base font-semibold transition-all ${watch('has_drone' as any) === false ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                                                    onClick={() => {
+                                                        setValue('has_drone' as any, false);
+                                                        setEquipments(equipments.filter(e => !e.isDrone));
+                                                    }}
+                                                >
+                                                    No
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+
+                                    <Card className="border-none shadow-xl bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-200">
+                                        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-gray-100 pb-4">
+                                            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                                                <Camera className="h-5 w-5 text-primary" />
+                                                Professional Media Equipment
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Are you bringing professional media equipment?
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="p-6">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <Button
+                                                    type="button"
+                                                    variant={watch('declaration_status' as any) ? "default" : "outline"}
+                                                    className={`h-12 text-base font-semibold transition-all ${watch('declaration_status' as any) ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                                                    onClick={() => setValue('declaration_status' as any, true)}
+                                                >
+                                                    Yes
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant={watch('declaration_status' as any) === false ? "default" : "outline"}
+                                                    className={`h-12 text-base font-semibold transition-all ${watch('declaration_status' as any) === false ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                                                    onClick={() => {
+                                                        setValue('declaration_status' as any, false);
+                                                        setEquipments(equipments.filter(e => e.isDrone));
+                                                    }}
+                                                >
+                                                    No
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
 
                                     <Card className="border-none shadow-lg bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-100">
                                         <CardHeader className="bg-gray-50/50 py-3 border-b flex flex-row items-center justify-between">

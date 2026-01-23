@@ -35,7 +35,8 @@ export function OrganizationUsersModal({ open, onOpenChange, organization }: Org
 
     // API
     const { data: allUsers = [], isLoading: isLoadingUsers } = useGetUsersQuery();
-    const { data: allRoles = [] } = useGetRolesQuery();
+    const { data: rolesData } = useGetRolesQuery();
+    const allRoles = rolesData?.roles || [];
     const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
     const [updateUser] = useUpdateUserMutation();
 
@@ -224,7 +225,7 @@ export function OrganizationUsersModal({ open, onOpenChange, organization }: Org
                 open={isCreateUserOpen}
                 onOpenChange={setIsCreateUserOpen}
                 onConfirm={handleCreateUser}
-                roles={orgRoles}
+                organizationId={Number(organization.id)}
                 isLoading={isCreating}
             />
         </>

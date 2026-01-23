@@ -324,7 +324,8 @@ function WorkflowBuilderContent() {
     const [deleteStep] = useDeleteWorkflowStepMutation();
     const [bulkUpdate, { isLoading: isSaving }] = useBulkUpdateWorkflowStepsMutation();
 
-    const { data: roles } = useGetRolesQuery();
+    const { data: rolesData } = useGetRolesQuery();
+    const roles = rolesData?.roles || [];
     const { data: forms } = useGetFormsQuery();
     const { data: emailTemplatesData } = useGetEmailTemplatesQuery({ limit: 100 });
     const emailTemplates = emailTemplatesData?.templates || [];
