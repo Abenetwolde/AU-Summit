@@ -148,10 +148,54 @@ export default function ManualEntry() {
         }
     };
 
+    // Real-time file validation
+    useEffect(() => {
+        if (!fullForm) return;
+
+        const fields = [
+            ...(fullForm.categories?.flatMap((c: any) => c.fields) || []),
+            ...(fullForm.uncategorizedFields || [])
+        ];
+
+        fields.forEach((field: any) => {
+            if (field.field_type === 'file' && field.is_required) {
+                const currentFiles = files[field.field_name];
+
+                // Only validate if the field has been interacted with (present in files state)
+                if (currentFiles !== undefined) {
+                    if (currentFiles.length > 0) {
+                        clearErrors(field.field_name as any);
+                    } else {
+                        setError(field.field_name as any, {
+                            type: 'manual',
+                            message: field.validation_criteria?.errorMessage || `${field.label} is required`
+                        });
+                    }
+                }
+            }
+        });
+    }, [files, fullForm, setError, clearErrors]);
+
     const handleFileChange = (name: string, fileList: FileList | null) => {
-        if (fileList) {
-            setFiles(prev => ({ ...prev, [name]: Array.from(fileList) }));
+        if (fileList && fileList.length > 0) {
+            setFiles(prev => {
+                const existing = prev[name] || [];
+                const newFiles = Array.from(fileList);
+                // Prevent duplicate files by name and size for basic deduping
+                const uniqueNewFiles = newFiles.filter(nf =>
+                    !existing.some(ef => ef.name === nf.name && ef.size === nf.size)
+                );
+                return { ...prev, [name]: [...existing, ...uniqueNewFiles] };
+            });
         }
+    };
+
+    const removeFile = (name: string, index: number, field: any) => {
+        setFiles(prev => {
+            const existing = prev[name] || [];
+            const updated = existing.filter((_, i) => i !== index);
+            return { ...prev, [name]: updated };
+        });
     };
 
     const addEquipment = (type: string = 'camera', isDrone: boolean = false) => {
@@ -409,32 +453,53 @@ export default function ManualEntry() {
                 );
             case 'file':
                 return (
-                    <div key={field_name} className="space-y-2">
+                    <div key={field_name} className="space-y-3">
                         <Label className="text-sm font-medium">{label} {is_required && '*'}</Label>
-                        <div className="flex items-center gap-2">
+
+                        <div className={`border-2 border-dashed rounded-lg p-6 hover:bg-slate-50 transition-colors text-center cursor-pointer relative ${error ? "border-destructive bg-destructive/5" : "border-slate-200"}`}>
                             <Input
                                 type="file"
                                 multiple
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                 onChange={(e) => {
                                     handleFileChange(field_name, e.target.files);
-                                    // Trigger validation for files manually
-                                    setTimeout(() => validateDynamicField(field_name, value, field), 100);
+                                    e.target.value = ''; // Reset input to allow selecting same file again
                                 }}
-                                className={`cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 ${error ? "border-destructive ring-destructive" : ""}`}
                             />
+                            <div className="flex flex-col items-center gap-2 pointer-events-none">
+                                <UploadCloud className="h-8 w-8 text-slate-400" />
+                                <p className="text-sm text-slate-600 font-medium">Click to upload files</p>
+                                <p className="text-xs text-slate-400">Supported formats: PDF, IMG (Max 5MB)</p>
+                            </div>
                         </div>
+
                         {error && (
-                            <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1 mt-1">
-                                {error.message}
+                            <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1 mt-1 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" /> {error.message}
                             </p>
                         )}
-                        {files[field_name] && (
-                            <div className="flex flex-wrap gap-2 mt-2">
-                                {files[field_name].map((file, i) => (
-                                    <span key={i} className="text-[10px] bg-blue-50 text-blue-700 px-2 py-1 rounded-md border border-blue-100 flex items-center gap-1">
-                                        <FileText className="h-3 w-3" /> {file.name}
-                                    </span>
-                                ))}
+
+                        {files[field_name] && files[field_name].length > 0 && (
+                            <div className="space-y-2 bg-slate-50 p-3 rounded-md border border-slate-100">
+                                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Attached Files ({files[field_name].length})</h4>
+                                <div className="grid gap-2">
+                                    {files[field_name].map((file, i) => (
+                                        <div key={i} className="flex items-center justify-between p-2 bg-white rounded border border-slate-200 shadow-sm text-sm group">
+                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                <FileText className="h-4 w-4 text-blue-500 shrink-0" />
+                                                <span className="truncate font-medium text-slate-700" title={file.name}>{file.name}</span>
+                                                <span className="text-xs text-slate-400 shrink-0">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeFile(field_name, i, field)}
+                                                className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-colors"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>
