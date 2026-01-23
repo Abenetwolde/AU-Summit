@@ -25,8 +25,25 @@ import {
     Radio,
     DollarSign,
     ShieldCheck,
-    CheckCircle2
+    CheckCircle2,
+    Check,
+    ChevronsUpDown
 } from 'lucide-react';
+
+import { cn } from "@/lib/utils";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 
 import {
     useCreateManualApplicationMutation,
@@ -370,6 +387,65 @@ export default function ManualEntry() {
 
         const value = watch(field_name) || '';
         const error = (errors as any)[field_name];
+
+        // Check if this is the Nationality field
+        if (field_name.toLowerCase() === 'nationality') {
+            return (
+                <div key={field_name} className="space-y-2">
+                    <Label className="text-sm font-medium">{label} {is_required && '*'}</Label>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                    "w-full justify-between h-11 font-normal",
+                                    !value && "text-muted-foreground",
+                                    error && "border-destructive ring-destructive"
+                                )}
+                            >
+                                {value
+                                    ? countries?.find((country: any) => country.name === value)?.name
+                                    : `Select ${label.toLowerCase()}...`}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                                <CommandInput placeholder={`Search ${label.toLowerCase()}...`} />
+                                <CommandList>
+                                    <CommandEmpty>No country found.</CommandEmpty>
+                                    <CommandGroup>
+                                        {countries?.map((country: any) => (
+                                            <CommandItem
+                                                key={country.id}
+                                                value={country.name}
+                                                onSelect={(currentValue) => {
+                                                    setValue(field_name as any, currentValue, { shouldValidate: true, shouldDirty: true });
+                                                }}
+                                            >
+                                                <Check
+                                                    className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        value === country.name ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                />
+                                                {country.name}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                    {error && (
+                        <p className="text-sm text-destructive animate-in fade-in-0 slide-in-from-top-1 mt-1">
+                            {error.message}
+                        </p>
+                    )}
+                </div>
+            );
+        }
 
         switch (field_type) {
             case 'textarea':
