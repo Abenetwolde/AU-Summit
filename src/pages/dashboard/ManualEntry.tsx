@@ -362,6 +362,12 @@ export default function ManualEntry() {
 
     const renderField = (field: any) => {
         const { field_name, label, field_type, is_required, field_options } = field;
+
+        // Skip rendering for boolean fields that are handled by custom UI
+        if (field_name === 'has_drone' || field_name === 'declaration_status') {
+            return null;
+        }
+
         const value = watch(field_name) || '';
         const error = (errors as any)[field_name];
 
@@ -678,78 +684,6 @@ export default function ManualEntry() {
                         </CardContent>
                     </Card>
 
-                    <Card className="border-none shadow-xl bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-200">
-                        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-gray-100 pb-4">
-                            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                                <Radio className="h-5 w-5 text-primary" />
-                                Drone Equipment
-                            </CardTitle>
-                            <CardDescription>
-                                Will you be bringing drone equipment?
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <Button
-                                    type="button"
-                                    variant={watch('has_drone' as any) ? "default" : "outline"}
-                                    className={`h-12 text-base font-semibold transition-all ${watch('has_drone' as any) ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                                    onClick={() => {
-                                        setValue('has_drone' as any, true);
-                                        if (!equipments.some(e => e.isDrone)) addEquipment('drone', true);
-                                    }}
-                                >
-                                    Yes
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={watch('has_drone' as any) === false ? "default" : "outline"}
-                                    className={`h-12 text-base font-semibold transition-all ${watch('has_drone' as any) === false ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                                    onClick={() => {
-                                        setValue('has_drone' as any, false);
-                                        setEquipments(equipments.filter(e => !e.isDrone));
-                                    }}
-                                >
-                                    No
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-none shadow-xl bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-200">
-                        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-gray-100 pb-4">
-                            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                                <Camera className="h-5 w-5 text-primary" />
-                                Professional Media Equipment
-                            </CardTitle>
-                            <CardDescription>
-                                Are you bringing professional media equipment?
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <Button
-                                    type="button"
-                                    variant={watch('declaration_status' as any) ? "default" : "outline"}
-                                    className={`h-12 text-base font-semibold transition-all ${watch('declaration_status' as any) ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                                    onClick={() => setValue('declaration_status' as any, true)}
-                                >
-                                    Yes
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant={watch('declaration_status' as any) === false ? "default" : "outline"}
-                                    className={`h-12 text-base font-semibold transition-all ${watch('declaration_status' as any) === false ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                                    onClick={() => {
-                                        setValue('declaration_status' as any, false);
-                                        setEquipments(equipments.filter(e => e.isDrone));
-                                    }}
-                                >
-                                    No
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
 
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
                         <h3 className="text-amber-800 font-bold text-sm mb-1 flex items-center gap-2">
@@ -769,17 +703,26 @@ export default function ManualEntry() {
                                 </div>
                             ) : (
                                 <>
-                                    {fullForm?.categories?.map((category: any) => (
-                                        <Card key={category.category_id} className="border-none shadow-lg bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-100">
-                                            <CardHeader className="bg-gray-50/50 py-3 border-b flex flex-row items-center gap-2">
-                                                <div className="h-2 w-2 rounded-full bg-primary" />
-                                                <CardTitle className="text-sm font-bold text-gray-700 uppercase tracking-wider">{category.name}</CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="p-6 grid gap-6 md:grid-cols-2">
-                                                {category.fields?.map((field: any) => renderField(field))}
-                                            </CardContent>
-                                        </Card>
-                                    ))}
+                                    {fullForm?.categories?.map((category: any) => {
+                                        // Check if category has any visible fields
+                                        const visibleFields = category.fields?.filter((f: any) =>
+                                            f.field_name !== 'has_drone' && f.field_name !== 'declaration_status'
+                                        );
+
+                                        if (!visibleFields || visibleFields.length === 0) return null;
+
+                                        return (
+                                            <Card key={category.category_id} className="border-none shadow-lg bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-100">
+                                                <CardHeader className="bg-gray-50/50 py-3 border-b flex flex-row items-center gap-2">
+                                                    <div className="h-2 w-2 rounded-full bg-primary" />
+                                                    <CardTitle className="text-sm font-bold text-gray-700 uppercase tracking-wider">{category.name}</CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="p-6 grid gap-6 md:grid-cols-2">
+                                                    {category.fields?.map((field: any) => renderField(field))}
+                                                </CardContent>
+                                            </Card>
+                                        );
+                                    })}
 
                                     {fullForm?.uncategorizedFields?.length > 0 && (
                                         <Card className="border-none shadow-lg bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-100">
@@ -792,6 +735,79 @@ export default function ManualEntry() {
                                             </CardContent>
                                         </Card>
                                     )}
+
+                                    <Card className="border-none shadow-xl bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-200">
+                                        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-gray-100 pb-4">
+                                            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                                                <Radio className="h-5 w-5 text-primary" />
+                                                Drone Equipment
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Will you be bringing drone equipment?
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="p-6">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <Button
+                                                    type="button"
+                                                    variant={watch('has_drone' as any) ? "default" : "outline"}
+                                                    className={`h-12 text-base font-semibold transition-all ${watch('has_drone' as any) ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                                                    onClick={() => {
+                                                        setValue('has_drone' as any, true);
+                                                        if (!equipments.some(e => e.isDrone)) addEquipment('drone', true);
+                                                    }}
+                                                >
+                                                    Yes
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant={watch('has_drone' as any) === false ? "default" : "outline"}
+                                                    className={`h-12 text-base font-semibold transition-all ${watch('has_drone' as any) === false ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                                                    onClick={() => {
+                                                        setValue('has_drone' as any, false);
+                                                        setEquipments(equipments.filter(e => !e.isDrone));
+                                                    }}
+                                                >
+                                                    No
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+
+                                    <Card className="border-none shadow-xl bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-200">
+                                        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-gray-100 pb-4">
+                                            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                                                <Camera className="h-5 w-5 text-primary" />
+                                                Professional Media Equipment
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Are you bringing professional media equipment?
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="p-6">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <Button
+                                                    type="button"
+                                                    variant={watch('declaration_status' as any) ? "default" : "outline"}
+                                                    className={`h-12 text-base font-semibold transition-all ${watch('declaration_status' as any) ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                                                    onClick={() => setValue('declaration_status' as any, true)}
+                                                >
+                                                    Yes
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant={watch('declaration_status' as any) === false ? "default" : "outline"}
+                                                    className={`h-12 text-base font-semibold transition-all ${watch('declaration_status' as any) === false ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                                                    onClick={() => {
+                                                        setValue('declaration_status' as any, false);
+                                                        setEquipments(equipments.filter(e => e.isDrone));
+                                                    }}
+                                                >
+                                                    No
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
 
                                     <Card className="border-none shadow-lg bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-100">
                                         <CardHeader className="bg-gray-50/50 py-3 border-b flex flex-row items-center justify-between">
