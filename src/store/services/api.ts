@@ -989,18 +989,30 @@ export const getFileUrl = (path?: string | null): string => {
 
 
 
+const baseQuery = fetchBaseQuery({
+    baseUrl: `${FILE_BASE_URL}/api/v1`,
+    prepareHeaders: (headers) => {
+        const dynamicToken = localStorage.getItem('managment_token');
+        if (dynamicToken && dynamicToken !== 'null' && dynamicToken !== 'undefined') {
+            headers.set('authorization', `Bearer ${dynamicToken}`);
+        }
+        return headers;
+    },
+});
+
+const baseQueryWithReauth = async (args: any, api: any, extraOptions: any) => {
+    let result = await baseQuery(args, api, extraOptions);
+    if (result.error && result.error.status === 401) {
+        localStorage.removeItem('managment_user');
+        localStorage.removeItem('managment_token');
+        window.location.href = '/login';
+    }
+    return result;
+};
+
 export const api = createApi({
     reducerPath: 'api',
-    baseQuery: fetchBaseQuery({
-        baseUrl: `${FILE_BASE_URL}/api/v1`,
-        prepareHeaders: (headers) => {
-            const dynamicToken = localStorage.getItem('managment_token');
-            if (dynamicToken && dynamicToken !== 'null' && dynamicToken !== 'undefined') {
-                headers.set('authorization', `Bearer ${dynamicToken}`);
-            }
-            return headers;
-        },
-    }),
+    baseQuery: baseQueryWithReauth,
     tagTypes: ['Role', 'Permission', 'Application', 'Form', 'User', 'Category', 'WorkflowStep', 'Invitation', 'Badge', 'EquipCatalog', 'Integration', 'APIProvider', 'Embassy', 'Country', 'Organization', 'EmailTemplate', 'LandingPage', 'Workflow', 'Notification', 'AirlineOffice'],
     endpoints: (builder) => ({
         getRegistrationStats: builder.query<RegistrationStats, void>({
