@@ -110,7 +110,7 @@ export const OfficerPerformance: React.FC<OfficerPerformanceProps> = ({ data, is
 
                 {/* Efficiency Summary */}
                 <Card className="p-6 bg-slate-900 text-white border-0 shadow-lg shadow-slate-900/10">
-                    <h3 className="text-lg font-bold mb-6">Efficiency Leaderboard</h3>
+                    <h3 className="text-lg font-bold text-black mb-6">Efficiency Leaderboard</h3>
                     <div className="space-y-4">
                         {[...items].sort((a, b) => b.successRate - a.successRate).slice(0, 5).map((item, i) => (
                             <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
@@ -119,7 +119,7 @@ export const OfficerPerformance: React.FC<OfficerPerformanceProps> = ({ data, is
                                         #{i + 1}
                                     </div>
                                     <div className="max-w-[120px]">
-                                        <p className="text-sm font-bold text-white truncate">{item.name}</p>
+                                        <p className="text-sm font-bold text-black truncate">{item.name}</p>
                                         <p className="text-[10px] text-slate-400 font-medium truncate">
                                             {viewMode === 'officer' ? (item as any).role : 'Organization Unit'}
                                         </p>
