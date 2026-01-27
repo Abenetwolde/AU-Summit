@@ -144,48 +144,130 @@ export function exportJournalistsToPDF(journalists: any[]) {
     doc.save(filename);
 }
 
+
 /**
- * Export Dashboard Analytics to CSV
+ * Comprehensive Dashboard Export Interfaces
  */
-export function exportDashboardAnalyticsToCSV(title: string, kpis: any, charts: any) {
-    const csvRows = [];
-    csvRows.push([title]);
+export interface DashboardExportData {
+    kpis: Record<string, { label: string; value: any; percentage?: number; trend?: string }>;
+    charts: {
+        timeSeries?: any[];
+        statusDistribution?: any[];
+        roleDistribution?: any[];
+        registrationStats?: {
+            coverage: any[];
+            mediaType: any[];
+        };
+    };
+    geographicDistribution?: any[];
+    officerPerformance?: any[];
+    stakeholderPerformance?: {
+        stakeholder: string;
+        averageTime: string;
+        trend: any[];
+    }[];
+}
+
+/**
+ * Capture a DOM element as a base64 image string
+ */
+export async function captureElement(elementId: string): Promise<string | null> {
+    const html2canvas = (await import('html2canvas')).default;
+    const element = document.getElementById(elementId);
+    if (!element) return null;
+
+    try {
+        const canvas = await html2canvas(element, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+        });
+        return canvas.toDataURL('image/png');
+    } catch (error) {
+        console.error(`Failed to capture element ${elementId}:`, error);
+        return null;
+    }
+}
+
+/**
+ * Export Dashboard Analytics to CSV (Comprehensive)
+ */
+export function exportDashboardAnalyticsToCSV(title: string, data: DashboardExportData) {
+    const csvRows: any[][] = [];
+    csvRows.push([title.toUpperCase()]);
     csvRows.push([`Generated: ${new Date().toLocaleString()}`]);
     csvRows.push([]);
 
-    // KPIs
-    csvRows.push(['KEY METRICS']);
-    csvRows.push(['Metric', 'Value', 'Relative %']);
-    Object.values(kpis).forEach((kpi: any) => {
-        csvRows.push([kpi.label, kpi.value, `${kpi.percentage || 0}%`]);
+    // 1. Key Metrics
+    csvRows.push(['SECTION: KEY PERFORMANCE INDICATORS']);
+    csvRows.push(['Metric', 'Value', 'Percentage', 'Trend']);
+    Object.values(data.kpis).forEach(kpi => {
+        csvRows.push([kpi.label, kpi.value, kpi.percentage ? `${kpi.percentage}%` : 'N/A', kpi.trend || 'N/A']);
     });
     csvRows.push([]);
 
-    // Chart Data - Time Series
-    if (charts.timeSeries) {
-        csvRows.push(['APPLICATION TRENDS (TIME SERIES)']);
+    // 2. Application Trends
+    if (data.charts.timeSeries?.length) {
+        csvRows.push(['SECTION: APPLICATION SUBMISSION TRENDS']);
         csvRows.push(['Date', 'Count']);
-        charts.timeSeries.forEach((item: any) => {
-            csvRows.push([item.date, item.count]);
-        });
+        data.charts.timeSeries.forEach(item => csvRows.push([item.date, item.count]));
         csvRows.push([]);
     }
 
-    // Chart Data - Status
-    if (charts.statusDistribution) {
-        csvRows.push(['STATUS DISTRIBUTION']);
+    // 3. Status Distribution
+    if (data.charts.statusDistribution?.length) {
+        csvRows.push(['SECTION: STATUS DISTRIBUTION']);
         csvRows.push(['Status', 'Count']);
-        charts.statusDistribution.forEach((item: any) => {
-            csvRows.push([item.status || item.name, item.count || item.value]);
-        });
+        data.charts.statusDistribution.forEach(item => csvRows.push([item.status || item.name, item.count || item.value]));
+        csvRows.push([]);
     }
 
-    const csvContent = csvRows.map(row => row.join(',')).join('\n');
+    // 4. Role Distribution
+    if (data.charts.roleDistribution?.length) {
+        csvRows.push(['SECTION: ROLE DISTRIBUTION']);
+        csvRows.push(['Role', 'Count']);
+        data.charts.roleDistribution.forEach(item => csvRows.push([item.roleName || item.name, item.count || item.value]));
+        csvRows.push([]);
+    }
+
+    // 5. Geographic Distribution
+    if (data.geographicDistribution?.length) {
+        csvRows.push(['SECTION: GEOGRAPHIC DISTRIBUTION']);
+        csvRows.push(['Country', 'Application Count', 'ISO Code']);
+        data.geographicDistribution.forEach(item => csvRows.push([item.name, item.count, item.code]));
+        csvRows.push([]);
+    }
+
+    // 6. Officer Performance
+    if (data.officerPerformance?.length) {
+        csvRows.push(['SECTION: OFFICER PERFORMANCE']);
+        csvRows.push(['Officer Name', 'Email', 'Assigned', 'Approved', 'Rejected', 'Avg Time (min)']);
+        data.officerPerformance.forEach(item => csvRows.push([
+            item.fullName,
+            item.email,
+            item.totalHandled,
+            item.approvedCount,
+            item.rejectedCount,
+            item.avgProcessingTime
+        ]));
+        csvRows.push([]);
+    }
+
+    // 7. Registration Stats (Coverage)
+    if (data.charts.registrationStats?.coverage.length) {
+        csvRows.push(['SECTION: REGISTRATION BY COVERAGE TYPE']);
+        csvRows.push(['Type', 'Count']);
+        data.charts.registrationStats.coverage.forEach(item => csvRows.push([item.name, item.value]));
+        csvRows.push([]);
+    }
+
+    const csvContent = csvRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `${title.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `${title.toLowerCase().replace(/\s+/g, '_')}_full_report.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -193,100 +275,147 @@ export function exportDashboardAnalyticsToCSV(title: string, kpis: any, charts: 
 }
 
 /**
- * Export Dashboard Analytics to PDF
+ * Export Dashboard Analytics to PDF (Comprehensive with Charts)
  */
-export function exportDashboardAnalyticsToPDF(title: string, kpis: any, charts: any) {
+export async function exportDashboardAnalyticsToPDF(
+    title: string,
+    data: DashboardExportData,
+    chartImages?: Record<string, string | null>
+) {
     const doc = new jsPDF();
-    const filename = generateFilename(title.toLowerCase().replace(/\s+/g, '_'), 'pdf');
+    const AU_GREEN = [0, 155, 77] as [number, number, number];
+    const SLATE_800 = [30, 41, 59] as [number, number, number];
 
-    // Title
-    doc.setFontSize(18);
-    doc.setTextColor(0, 155, 77); // AU Green
-    doc.text(title, 14, 15);
-
-    // Date
+    // Header
+    doc.setFillColor(...AU_GREEN);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.text(title, 14, 25);
     doc.setFontSize(10);
-    doc.setTextColor(100, 116, 139); // Slate 500
-    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 33);
 
-    let y = 35;
+    let y = 50;
 
-    // KPIs Table
-    doc.setFontSize(14);
-    doc.setTextColor(30, 41, 59); // Slate 800
-    doc.text('Key Performance Indicators', 14, y);
-    y += 5;
+    // Helper to add a section title
+    const addSection = (text: string) => {
+        if (y > 240) { doc.addPage(); y = 20; }
+        doc.setFontSize(14);
+        doc.setTextColor(...SLATE_800);
+        doc.text(text, 14, y);
+        y += 6;
+    };
 
-    const kpiData = Object.values(kpis).map((kpi: any) => [
-        kpi.label,
-        String(kpi.value),
-        `${kpi.percentage || 0}%`,
-        kpi.trend || 'N/A'
-    ]);
+    // Helper to add an image if available
+    const addChartImage = (chartId: string, height: number = 60) => {
+        const imgData = chartImages?.[chartId];
+        if (imgData) {
+            if (y + height > 270) { doc.addPage(); y = 20; }
+            doc.addImage(imgData, 'PNG', 14, y, 180, height);
+            y += height + 10;
+        }
+    };
 
+    // 1. KPIs Section
+    addSection('Key Performance Indicators');
     autoTable(doc, {
         startY: y,
         head: [['Metric', 'Value', 'Relative %', 'Trend']],
-        body: kpiData,
-        headStyles: { fillColor: [0, 155, 77] },
+        body: Object.values(data.kpis).map(kpi => [
+            kpi.label,
+            String(kpi.value),
+            kpi.percentage ? `${kpi.percentage}%` : 'N/A',
+            kpi.trend || 'N/A'
+        ]),
+        headStyles: { fillColor: AU_GREEN },
+        margin: { left: 14 }
     });
-
     y = (doc as any).lastAutoTable.finalY + 15;
 
-    // Status Table
-    if (charts.statusDistribution) {
-        if (y > 200) { doc.addPage(); y = 20; }
-        doc.setFontSize(14);
-        doc.text('Status Distribution', 14, y);
-        y += 5;
-
-        const statusData = charts.statusDistribution.map((item: any) => [
-            item.status || item.name,
-            String(item.count || item.value)
-        ]);
-
+    // 2. Application Trends
+    if (data.charts.timeSeries?.length) {
+        addSection('Application Submission Trends');
+        addChartImage('chart-application-trends');
         autoTable(doc, {
             startY: y,
-            head: [['Status', 'Count']],
-            body: statusData,
-            headStyles: { fillColor: [0, 155, 77] },
+            head: [['Date', 'Applications']],
+            body: data.charts.timeSeries.slice(-10).map(item => [item.date, String(item.count)]), // Show last 10 for brevety
+            headStyles: { fillColor: AU_GREEN },
+            margin: { left: 14 }
         });
         y = (doc as any).lastAutoTable.finalY + 15;
     }
 
-    // Time Series Table
-    if (charts.timeSeries) {
-        if (y > 200) { doc.addPage(); y = 20; }
-        doc.setFontSize(14);
-        doc.text('Application Trends', 14, y);
-        y += 5;
-
-        const timeData = charts.timeSeries.map((item: any) => [
-            item.date,
-            String(item.count)
-        ]);
-
+    // 3. Status & Lifecycle
+    if (data.charts.statusDistribution?.length) {
+        addSection('Journalists Status Distribution');
+        addChartImage('chart-journalist-status', 80);
         autoTable(doc, {
             startY: y,
-            head: [['Date', 'Applications']],
-            body: timeData,
-            headStyles: { fillColor: [0, 155, 77] },
+            head: [['Status', 'Count']],
+            body: data.charts.statusDistribution.map(item => [item.status || item.name, String(item.count || item.value)]),
+            headStyles: { fillColor: AU_GREEN },
+            margin: { left: 14 }
         });
+        y = (doc as any).lastAutoTable.finalY + 15;
     }
 
-    // Footer with Page Numbers
+    // 4. Geographic Distribution
+    if (data.geographicDistribution?.length) {
+        addSection('Top Geographic Distribution');
+        addChartImage('chart-geographic-dist', 90);
+        autoTable(doc, {
+            startY: y,
+            head: [['Country', 'Total Applications', 'ISO Code']],
+            body: data.geographicDistribution.slice(0, 15).map(item => [item.name, String(item.count), item.code]),
+            headStyles: { fillColor: AU_GREEN },
+            margin: { left: 14 }
+        });
+        y = (doc as any).lastAutoTable.finalY + 15;
+    }
+
+    // 5. Registration Stats
+    if (data.charts.registrationStats) {
+        addSection('Registration by Coverage & Media Type');
+        addChartImage('chart-coverage-type', 80);
+        addChartImage('chart-media-type', 80);
+        y += 10;
+    }
+
+    // 6. Officer Performance
+    if (data.officerPerformance?.length) {
+        addSection('Officer Performance Metrics');
+        autoTable(doc, {
+            startY: y,
+            head: [['Officer', 'Handled', 'Approved', 'Rejected', 'Avg Time']],
+            body: data.officerPerformance.map(item => [
+                item.fullName,
+                String(item.totalHandled),
+                String(item.approvedCount),
+                String(item.rejectedCount),
+                `${item.avgProcessingTime}m`
+            ]),
+            headStyles: { fillColor: AU_GREEN },
+            margin: { left: 14 }
+        });
+        y = (doc as any).lastAutoTable.finalY + 15;
+    }
+
+    // Footer
     const pageCount = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(8);
-        doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.width - 25, doc.internal.pageSize.height - 10);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`African Union Media Accreditation System - Confidential Report`, 14, 285);
+        doc.text(`Page ${i} of ${pageCount}`, 180, 285);
     }
 
-    doc.save(filename);
+    doc.save(`${title.toLowerCase().replace(/\s+/g, '_')}_full_report.pdf`);
 }
 
 /**
- * Export journalist detail to PDF
+ * Export journalist detail to PDF (Existing - keep)
  */
 export function exportJournalistDetailToPDF(journalist: any) {
     const doc = new jsPDF();
