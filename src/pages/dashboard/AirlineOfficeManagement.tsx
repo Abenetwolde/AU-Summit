@@ -18,7 +18,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useAuth } from '@/auth/context';
+import { useAuth, UserRole } from '@/auth/context';
 
 export default function AirlineOfficeManagement() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -26,10 +26,11 @@ export default function AirlineOfficeManagement() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedOffice, setSelectedOffice] = useState<AirlineOffice | null>(null);
 
-    const { checkPermission } = useAuth();
-    const canCreateAirline = checkPermission('airline:create');
-    const canUpdateAirline = checkPermission('airline:update');
-    const canDeleteAirline = checkPermission('airline:delete');
+    const { checkPermission, user } = useAuth();
+    const isManagementRole = user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.PMO;
+    const canCreateAirline = isManagementRole || checkPermission('airline:create');
+    const canUpdateAirline = isManagementRole || checkPermission('airline:update');
+    const canDeleteAirline = isManagementRole || checkPermission('airline:delete');
 
     // API Hooks
     const { data: offices = [], isLoading: isOfficesLoading } = useGetAirlineOfficesQuery();
