@@ -655,19 +655,6 @@ export function JournalistProfile() {
                             )}
                             {/* )} */}
 
-                            {isCustoms && (
-                                <>
-                                    <Button
-                                        className="w-full bg-[#009b4d] hover:bg-[#007a3d] font-bold shadow-md"
-                                        onClick={() => setShowSystemCheck(true)}
-                                    >
-                                        <Check className="h-4 w-4 mr-2" /> Approve Visa
-                                    </Button>
-                                    <Button className="w-full bg-red-100 hover:bg-red-200 text-red-600 font-bold shadow-none">
-                                        <X className="h-4 w-4 mr-2" /> Reject Application
-                                    </Button>
-                                </>
-                            )}
 
                             {!canApprove && (
                                 <div className="bg-gray-100 p-3 rounded-md text-sm text-gray-600 text-center">
@@ -701,8 +688,8 @@ export function JournalistProfile() {
                                     <div
                                         key={template.field_name}
                                         className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${selectedFields.includes(template.field_name)
-                                                ? 'border-red-200 bg-red-50 text-red-700'
-                                                : 'border-gray-200 hover:bg-gray-50'
+                                            ? 'border-red-200 bg-red-50 text-red-700'
+                                            : 'border-gray-200 hover:bg-gray-50'
                                             }`}
                                         onClick={() => {
                                             if (selectedFields.includes(template.field_name)) {
