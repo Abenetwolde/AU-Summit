@@ -26,6 +26,7 @@ import {
     Permission,
     Category
 } from '@/store/services/api';
+import { useAuth } from '@/auth/context';
 
 // --- Category Manager ---
 
@@ -39,8 +40,17 @@ function CategoryManager({ open, onOpenChange }: { open: boolean, onOpenChange: 
     const [newCat, setNewCat] = useState({ name: '', description: '' });
     const [view, setView] = useState<'list' | 'create' | 'edit'>('list');
 
+    const { checkPermission } = useAuth();
+    const canCreateCat = checkPermission('permission:category:create');
+    const canUpdateCat = checkPermission('permission:category:update');
+    const canDeleteCat = checkPermission('permission:category:delete');
+
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!canCreateCat) {
+            toast.error("You don't have permission to create categories");
+            return;
+        }
         try {
             await createCategory(newCat).unwrap();
             toast.success("Category created");
@@ -54,6 +64,10 @@ function CategoryManager({ open, onOpenChange }: { open: boolean, onOpenChange: 
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingCat) return;
+        if (!canUpdateCat) {
+            toast.error("You don't have permission to update categories");
+            return;
+        }
         try {
             await updateCategory({
                 id: editingCat.id,
@@ -68,6 +82,10 @@ function CategoryManager({ open, onOpenChange }: { open: boolean, onOpenChange: 
     };
 
     const handleDelete = async (id: number) => {
+        if (!canDeleteCat) {
+            toast.error("You don't have permission to delete categories");
+            return;
+        }
         if (!confirm("Are you sure? This might affect associated permissions.")) return;
         try {
             await deleteCategory(id).unwrap();
@@ -89,9 +107,11 @@ function CategoryManager({ open, onOpenChange }: { open: boolean, onOpenChange: 
                     {view === 'list' && (
                         <div className="space-y-4">
                             <div className="flex justify-end">
-                                <Button size="sm" onClick={() => setView('create')}>
-                                    <Plus className="mr-2 h-4 w-4" /> New Category
-                                </Button>
+                                {canCreateCat && (
+                                    <Button size="sm" onClick={() => setView('create')}>
+                                        <Plus className="mr-2 h-4 w-4" /> New Category
+                                    </Button>
+                                )}
                             </div>
                             <div className="border rounded-md">
                                 <Table className="min-w-full h-[900px]"  >
@@ -111,12 +131,16 @@ function CategoryManager({ open, onOpenChange }: { open: boolean, onOpenChange: 
                                                 <TableCell className="text-muted-foreground">{cat.description}</TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-2">
-                                                        <Button variant="ghost" size="icon" onClick={() => { setEditingCat(cat); setView('edit'); }}>
-                                                            <Edit className="h-4 w-4 text-blue-500" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(cat.id)}>
-                                                            <Trash2 className="h-4 w-4 text-red-500" />
-                                                        </Button>
+                                                        {canUpdateCat && (
+                                                            <Button variant="ghost" size="icon" onClick={() => { setEditingCat(cat); setView('edit'); }}>
+                                                                <Edit className="h-4 w-4 text-blue-500" />
+                                                            </Button>
+                                                        )}
+                                                        {canDeleteCat && (
+                                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(cat.id)}>
+                                                                <Trash2 className="h-4 w-4 text-red-500" />
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -190,6 +214,12 @@ export function PermissionManagement() {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
 
+    const { checkPermission } = useAuth();
+    const canTogglePerm = checkPermission('permission:toggle');
+    const canCreatePerm = checkPermission('permission:create');
+    const canDeletePerm = checkPermission('permission:delete');
+    const canManageCat = checkPermission('permission:category:create') || checkPermission('permission:category:update') || checkPermission('permission:category:delete');
+
     // Forms
     const [newResource, setNewResource] = useState({ label: '', key: '', categoryId: '', description: '' });
 
@@ -231,6 +261,10 @@ export function PermissionManagement() {
 
     // Handlers
     const handleToggle = async (roleId: number, perm: Permission, currentGranted: boolean) => {
+        if (!canTogglePerm) {
+            toast.error("You don't have permission to toggle permissions");
+            return;
+        }
         try {
             await togglePermission({
                 roleId,
@@ -244,6 +278,10 @@ export function PermissionManagement() {
     };
 
     const handleGroupToggle = async (roleId: number, perms: Permission[]) => {
+        if (!canTogglePerm) {
+            toast.error("You don't have permission to toggle permissions");
+            return;
+        }
         // Determine target state: if all are currently granted, we want to revoke all. Otherwise grant all.
         const allGranted = perms.every(p => p.grantedRoles.includes(roleId));
         const targetGranted = !allGranted;
@@ -268,13 +306,17 @@ export function PermissionManagement() {
 
     const handleCreateResource = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!canCreatePerm) {
+            toast.error("You don't have permission to create resources");
+            return;
+        }
         try {
             await createPermission({
                 key: newResource.key,
                 label: newResource.label,
                 description: newResource.description,
                 categoryId: newResource.categoryId || null
-            }).unwrap();
+            } as any).unwrap();
 
             toast.success("Permission created successfully");
             setIsCreateDialogOpen(false);
@@ -285,6 +327,10 @@ export function PermissionManagement() {
     };
 
     const handleDeletePermission = async (id: number) => {
+        if (!canDeletePerm) {
+            toast.error("You don't have permission to delete resources");
+            return;
+        }
         if (!confirm("Are you sure you want to delete this permission? This cannot be undone.")) return;
         try {
             await deletePermission(id).unwrap();
@@ -302,62 +348,66 @@ export function PermissionManagement() {
         <div className="space-y-6 w-full max-w-full p-6 flex flex-col h-screen" >
             <div className="flex justify-between items-center shrink-0">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Access Control Matrixx</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">Access Control Matrix</h1>
                     <p className="text-muted-foreground">Manage system resources and permissions via API.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" className="gap-2" onClick={() => setIsCategoryManagerOpen(true)}>
-                        <Settings className="h-4 w-4" /> Manage Categories
-                    </Button>
+                    {canManageCat && (
+                        <Button variant="outline" className="gap-2" onClick={() => setIsCategoryManagerOpen(true)}>
+                            <Settings className="h-4 w-4" /> Manage Categories
+                        </Button>
+                    )}
 
                     <CategoryManager open={isCategoryManagerOpen} onOpenChange={setIsCategoryManagerOpen} />
 
-                    <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="default" className="gap-2">
-                                <Plus className="h-4 w-4" /> Create Resource
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Create System Resource</DialogTitle>
-                                <DialogDescription>Define a new permission capability key.</DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={handleCreateResource} className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>Permission Label</Label>
-                                    <Input placeholder="e.g. Approve Purchases" value={newResource.label} onChange={e => setNewResource({ ...newResource, label: e.target.value })} required />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Permission Key</Label>
-                                    <Input placeholder="e.g. purchase:approve" value={newResource.key} onChange={e => setNewResource({ ...newResource, key: e.target.value })} required fontFamily="monospace" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Category</Label>
-                                    <Select value={newResource.categoryId} onValueChange={(val) => setNewResource({ ...newResource, categoryId: val })}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select Category" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {categoriesData?.map(cat => (
-                                                <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Description</Label>
-                                    <Input placeholder="Description" value={newResource.description} onChange={e => setNewResource({ ...newResource, description: e.target.value })} />
-                                </div>
-                                <DialogFooter>
-                                    <Button type="submit" disabled={isCreatingPerm}>
-                                        {isCreatingPerm && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Create Resource
-                                    </Button>
-                                </DialogFooter>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
+                    {canCreatePerm && (
+                        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="default" className="gap-2">
+                                    <Plus className="h-4 w-4" /> Create Resource
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Create System Resource</DialogTitle>
+                                    <DialogDescription>Define a new permission capability key.</DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleCreateResource} className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label>Permission Label</Label>
+                                        <Input placeholder="e.g. Approve Purchases" value={newResource.label} onChange={e => setNewResource({ ...newResource, label: e.target.value })} required />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Permission Key</Label>
+                                        <Input placeholder="e.g. purchase:approve" value={newResource.key} onChange={e => setNewResource({ ...newResource, key: e.target.value })} required className="font-mono" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Category</Label>
+                                        <Select value={newResource.categoryId} onValueChange={(val) => setNewResource({ ...newResource, categoryId: val })}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select Category" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {categoriesData?.map(cat => (
+                                                    <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Description</Label>
+                                        <Input placeholder="Description" value={newResource.description} onChange={e => setNewResource({ ...newResource, description: e.target.value })} />
+                                    </div>
+                                    <DialogFooter>
+                                        <Button type="submit" disabled={isCreatingPerm}>
+                                            {isCreatingPerm && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            Create Resource
+                                        </Button>
+                                    </DialogFooter>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+                    )}
 
                     <Button onClick={() => window.location.reload()} variant="ghost" size="icon">
                         <RotateCcw className="h-4 w-4" />
@@ -453,6 +503,7 @@ export function PermissionManagement() {
                                                                         checked={isAll || (isIndeterminate ? 'indeterminate' : false)}
                                                                         onCheckedChange={() => handleGroupToggle(role.id, perms)}
                                                                         className="h-4 w-4"
+                                                                        disabled={!canTogglePerm}
                                                                     />
                                                                 </div>
                                                             )}
@@ -481,6 +532,7 @@ export function PermissionManagement() {
                                                                     onCheckedChange={() => handleToggle(role.id, item, isChecked)}
                                                                     className={isChecked ? "data-[state=checked]:bg-emerald-500" : ""}
                                                                     aria-label={`Toggle ${item.key} for ${role.name}`}
+                                                                    disabled={!canTogglePerm}
                                                                 />
                                                             </div>
                                                         );

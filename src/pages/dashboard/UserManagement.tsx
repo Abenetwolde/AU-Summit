@@ -12,7 +12,8 @@ import {
     ChevronLeft,
     ChevronRight,
     ChevronsLeft,
-    ChevronsRight
+    ChevronsRight,
+    Plus
 } from 'lucide-react';
 import { CreateUserModal } from '@/components/modals/CreateUserModal';
 import { exportToCSV, exportToPDF } from '@/lib/export-utils';
@@ -36,7 +37,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 export function UserManagement() {
-    const { user } = useAuth();
+    const { user, checkPermission } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [activeTab, setActiveTab] = useState('all');
@@ -81,9 +82,14 @@ export function UserManagement() {
     const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
     const [updateUser] = useUpdateUserMutation();
 
-    const isReadOnly = user?.role === UserRole.NISS_OFFICER;
+    const canCreateUser = checkPermission('user:create');
+    const canDeleteUser = checkPermission('user:delete') || checkPermission('user:update');
 
     const handleCreateUser = async (userData: { fullName: string; email: string; password: string; roleId: string; embassyId?: string }) => {
+        if (!canCreateUser) {
+            toast.error("You don't have permission to create users");
+            return;
+        }
         try {
             await createUser({
                 fullName: userData.fullName,
@@ -102,6 +108,10 @@ export function UserManagement() {
     };
 
     const handleDeleteUser = async (userId: number) => {
+        if (!canDeleteUser) {
+            toast.error("You don't have permission to deactivate users");
+            return;
+        }
         if (confirm('Are you sure you want to deactivate this user?')) {
             try {
                 await updateUser({ id: userId, data: { status: 'INACTIVE' } }).unwrap();
@@ -172,9 +182,9 @@ export function UserManagement() {
                     <Button variant="outline" onClick={handleExportPDF} className="gap-2 h-10 border-gray-200 hover:bg-gray-50">
                         <Download className="h-4 w-4" /> Export PDF
                     </Button>
-                    {!isReadOnly && (
+                    {canCreateUser && (
                         <Button onClick={() => setCreateModalOpen(true)} className="bg-[#009b4d] hover:bg-[#007a3d] gap-2 h-10 shadow-sm transition-all active:scale-95">
-                            <UserPlus className="h-4 w-4" /> Create User
+                            <Plus className="h-4 w-4" /> Create User
                         </Button>
                     )}
                 </div>
@@ -250,7 +260,7 @@ export function UserManagement() {
                                     <th className="text-left py-4 px-6 tracking-wider">User Details</th>
                                     <th className="text-left py-4 px-6 tracking-wider">Role & Affiliation</th>
                                     <th className="text-left py-4 px-6 tracking-wider">Status</th>
-                                    {!isReadOnly && <th className="text-right py-4 px-6 tracking-wider">Actions</th>}
+                                    {canDeleteUser && <th className="text-right py-4 px-6 tracking-wider">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -308,7 +318,7 @@ export function UserManagement() {
                                                 {u.status}
                                             </span>
                                         </td>
-                                        {!isReadOnly && (
+                                        {canDeleteUser && (
                                             <td className="py-4 px-6 text-right">
                                                 <Button
                                                     variant="ghost"

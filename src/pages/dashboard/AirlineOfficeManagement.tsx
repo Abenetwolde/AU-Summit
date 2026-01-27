@@ -18,12 +18,18 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAuth } from '@/auth/context';
 
 export default function AirlineOfficeManagement() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedOffice, setSelectedOffice] = useState<AirlineOffice | null>(null);
+
+    const { checkPermission } = useAuth();
+    const canCreateAirline = checkPermission('airline:create');
+    const canUpdateAirline = checkPermission('airline:update');
+    const canDeleteAirline = checkPermission('airline:delete');
 
     // API Hooks
     const { data: offices = [], isLoading: isOfficesLoading } = useGetAirlineOfficesQuery();
@@ -52,6 +58,10 @@ export default function AirlineOfficeManagement() {
     // Handlers
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!canCreateAirline) {
+            toast.error("You don't have permission to create airline offices");
+            return;
+        }
         try {
             await createOffice(formData).unwrap();
             toast.success("Airline office created successfully");
@@ -66,6 +76,11 @@ export default function AirlineOfficeManagement() {
         e.preventDefault();
         if (!selectedOffice) return;
 
+        if (!canUpdateAirline) {
+            toast.error("You don't have permission to update airline offices");
+            return;
+        }
+
         try {
             await updateOffice({ id: selectedOffice.id, data: formData }).unwrap();
             toast.success("Airline office updated successfully");
@@ -77,6 +92,10 @@ export default function AirlineOfficeManagement() {
     };
 
     const handleDelete = async (id: number) => {
+        if (!canDeleteAirline) {
+            toast.error("You don't have permission to delete airline offices");
+            return;
+        }
         if (!window.confirm("Are you sure you want to delete this airline office?")) return;
         try {
             await deleteOffice(id).unwrap();
@@ -99,6 +118,10 @@ export default function AirlineOfficeManagement() {
     };
 
     const openEditModal = (office: AirlineOffice) => {
+        if (!canUpdateAirline) {
+            toast.error("You don't have permission to edit airline offices");
+            return;
+        }
         setSelectedOffice(office);
         setFormData({
             name: office.name,
@@ -127,9 +150,11 @@ export default function AirlineOfficeManagement() {
                     <h1 className="text-2xl font-bold tracking-tight">Airline Office Management</h1>
                     <p className="text-muted-foreground">Manage Ethiopian Airlines offices and their overseeing countries.</p>
                 </div>
-                <Button onClick={() => { resetForm(); setIsCreateModalOpen(true); }}>
-                    <Plus className="mr-2 h-4 w-4" /> Add Office
-                </Button>
+                {canCreateAirline && (
+                    <Button onClick={() => { resetForm(); setIsCreateModalOpen(true); }}>
+                        <Plus className="mr-2 h-4 w-4" /> Add Office
+                    </Button>
+                )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -165,21 +190,27 @@ export default function AirlineOfficeManagement() {
                                             </p>
                                         </div>
                                     </div>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => openEditModal(office)}>
-                                                <Edit className="mr-2 h-4 w-4" /> Edit
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(office.id)}>
-                                                <Trash className="mr-2 h-4 w-4" /> Delete
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                    {(canUpdateAirline || canDeleteAirline) && (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                {canUpdateAirline && (
+                                                    <DropdownMenuItem onClick={() => openEditModal(office)}>
+                                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                                    </DropdownMenuItem>
+                                                )}
+                                                {canDeleteAirline && (
+                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(office.id)}>
+                                                        <Trash className="mr-2 h-4 w-4" /> Delete
+                                                    </DropdownMenuItem>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">

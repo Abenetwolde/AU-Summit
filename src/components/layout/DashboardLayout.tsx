@@ -148,7 +148,7 @@ export function DashboardLayout() {
         <ScrollArea className="flex-1 px-4">
           <nav className="space-y-1.5 pr-2">
             {/* Dashboard */}
-            {user?.role && (
+            {user?.role&& (
               <NavLink
                 to="/dashboard/admin"
                 end
@@ -382,7 +382,7 @@ export function DashboardLayout() {
             )}
 
             {/* Embassy Management */}
-            {user?.role === UserRole.SUPER_ADMIN && (
+            {user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.PMO && (
               <NavLink
                 to={`${basePath}/embassies`}
                 className={({ isActive }) =>
@@ -400,7 +400,7 @@ export function DashboardLayout() {
             )}
 
             {/* Airline Office Management */}
-            {user?.role === UserRole.SUPER_ADMIN && (
+            {user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.PMO && (
               <NavLink
                 to={`${basePath}/airline-offices`}
                 className={({ isActive }) =>
@@ -436,7 +436,7 @@ export function DashboardLayout() {
             )}
 
             {/* Super Admin Specific Tools */}
-            {user?.role === UserRole.SUPER_ADMIN && (
+            {[UserRole.SUPER_ADMIN, UserRole.PMO].includes(user?.role) && (
               <>
                 <div className="pt-4 pb-2 px-4">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
@@ -511,7 +511,7 @@ export function DashboardLayout() {
             )}
 
             {/* Invitation Center – visible to more roles */}
-            {(user?.role === UserRole.SUPER_ADMIN ||
+            {(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.PMO ||
               checkPermission('application:view:approved')) && (
                 <NavLink
                   to={`${basePath}/invitations`}

@@ -36,7 +36,8 @@ export function EditUserModal({ open, onOpenChange, user, onConfirm }: EditUserM
     const [email, setEmail] = useState(user.email);
     const [role, setRole] = useState<UserRole>(user.role);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
-
+//   const {user}=useAuth()
+    const readOnly = user?.role === 'PMO';
     useEffect(() => {
         setName(user.name);
         setEmail(user.email);
@@ -121,7 +122,7 @@ export function EditUserModal({ open, onOpenChange, user, onConfirm }: EditUserM
                     <Button variant="outline" onClick={() => onOpenChange(false)}>
                         Cancel
                     </Button>
-                    <Button onClick={handleConfirm} className="bg-[#009b4d] hover:bg-[#007a3d]">
+                    <Button onClick={handleConfirm} disabled={readOnly} className="bg-[#009b4d] hover:bg-[#007a3d]">
                         Save Changes
                     </Button>
                 </DialogFooter>

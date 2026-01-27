@@ -64,6 +64,7 @@ import {
     useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useAuth } from '@/auth/context';
 
 interface SortableFieldProps {
     id: string;
@@ -138,6 +139,11 @@ export function FormEditor() {
 
     const [createForm, { isLoading: isCreating }] = useCreateFormMutation();
     const [updateForm, { isLoading: isUpdating }] = useUpdateFormMutation();
+
+    const { checkPermission } = useAuth();
+    const canCreateForm = checkPermission('form:create');
+    const canUpdateForm = checkPermission('form:update');
+    const canOperate = isEditMode ? canUpdateForm : canCreateForm;
 
     const [fields, setFields] = useState<FormField[]>([]);
     const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
@@ -252,6 +258,10 @@ export function FormEditor() {
     }, [isEditMode, existingForm, templates]);
 
     const addField = (type: FormField['type']) => {
+        if (!canOperate) {
+            toast.error("You don't have permission to modify this form");
+            return;
+        }
         const label = `New ${type} field`;
         const newField: FormField = {
             id: `new_${Math.random().toString(36).substr(2, 9)}`,
@@ -268,6 +278,10 @@ export function FormEditor() {
     };
 
     const removeField = (id: string) => {
+        if (!canOperate) {
+            toast.error("You don't have permission to modify this form");
+            return;
+        }
         setFields(fields.filter(f => f.id !== id));
         if (selectedFieldId === id) setSelectedFieldId(null);
     };
@@ -351,6 +365,14 @@ export function FormEditor() {
     };
 
     const handleSave = async () => {
+        if (isEditMode && !canUpdateForm) {
+            toast.error("You don't have permission to update forms");
+            return;
+        }
+        if (!isEditMode && !canCreateForm) {
+            toast.error("You don't have permission to create forms");
+            return;
+        }
         if (hasDuplicates) {
             toast.error("Form contains duplicate fields. Please fix errors before saving.");
             return;
@@ -428,7 +450,13 @@ export function FormEditor() {
                     <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-wider text-gray-500">Toolbox</CardTitle></CardHeader>
                     <CardContent className="grid grid-cols-2 lg:grid-cols-1 gap-2">
                         {FIELD_TYPES.map((ft) => (
-                            <Button key={ft.type} variant="outline" className="h-20 flex flex-col gap-2 border-dashed" onClick={() => addField(ft.type as FormField['type'])}>
+                            <Button
+                                key={ft.type}
+                                variant="outline"
+                                className="h-20 flex flex-col gap-2 border-dashed"
+                                onClick={() => addField(ft.type as FormField['type'])}
+                                disabled={!canOperate}
+                            >
                                 <ft.icon className="h-5 w-5" /> {ft.label}
                             </Button>
                         ))}
@@ -450,7 +478,7 @@ export function FormEditor() {
                                     <SelectItem value="VISA_SUPPORT">Visa Support</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Button size="sm" className="bg-black text-white gap-2" onClick={handleSave} disabled={isSaving || hasDuplicates}>
+                            <Button size="sm" className="bg-black text-white gap-2" onClick={handleSave} disabled={isSaving || hasDuplicates || !canOperate}>
                                 {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
                                 <Save className="h-4 w-4" /> Save Form
                             </Button>
@@ -687,9 +715,11 @@ export function FormEditor() {
 
                             <Separator className="my-4" />
 
-                            <Button variant="ghost" className="w-full text-red-600 hover:bg-red-50 gap-2" onClick={() => removeField(selectedField.id)}>
-                                <Trash2 className="h-4 w-4" /> Delete Field
-                            </Button>
+                            {canOperate && (
+                                <Button variant="ghost" className="w-full text-red-600 hover:bg-red-50 gap-2" onClick={() => removeField(selectedField.id)}>
+                                    <Trash2 className="h-4 w-4" /> Delete Field
+                                </Button>
+                            )}
                         </CardContent>
                     ) : (
                         <div className="h-64 flex items-center justify-center text-gray-400">Select a field to edit</div>

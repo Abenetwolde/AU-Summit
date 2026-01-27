@@ -50,6 +50,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/auth/context';
 
 export default function ApiManagement() {
     const [activeTab, setActiveTab] = useState('providers');
@@ -131,7 +132,8 @@ export default function ApiManagement() {
 
     const filteredProviders = providers.filter((p: ApiProvider) => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
     const filteredIntegrations = integrations.filter((i: IntegrationConfig) => i.endpoint.toLowerCase().includes(searchTerm.toLowerCase()) || i.provider?.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
+  const {user}=useAuth()
+    const readOnly = user?.role === 'PMO';
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -154,6 +156,7 @@ export default function ApiManagement() {
                         />
                     </div>
                     <Button
+                    disabled={readOnly}
                         className="rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
                         onClick={() => {
                             if (activeTab === 'providers') {

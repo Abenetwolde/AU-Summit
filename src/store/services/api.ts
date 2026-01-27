@@ -31,6 +31,7 @@ export interface Permission {
     description: null | string;
     grantedRoles: number[];
     category?: string;
+    categoryId?: number | string | null;
 }
 
 export interface Category {

@@ -368,7 +368,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Second Row: Org Distribution & Performance */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Performance Metric */}
                 <Card className="shadow-sm border-slate-100 flex flex-col justify-center items-center p-8 bg-slate-900 text-white overflow-hidden relative">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
@@ -382,31 +382,7 @@ export default function AdminDashboard() {
                     <p className="text-white/40 text-xs font-medium">Average across all your processed applications</p>
                 </Card>
 
-                {/* Organization Distribution */}
-                <Card className="lg:col-span-2 shadow-sm border-slate-100">
-                    <CardHeader>
-                        <CardTitle>Media Categories</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[250px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={analytics.chartData.orgDistribution} layout="vertical">
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                                    <XAxis type="number" axisLine={false} tickLine={false} hide />
-                                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} width={150} />
-                                    <Tooltip
-                                        cursor={{ fill: '#f8fafc' }}
-                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                    />
-                                    <Bar dataKey="value" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={20} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Officer Performance KPIs */}
+                   {/* Officer Performance KPIs */}
             <div className="animate-fade-in">
                 <div className="flex items-center justify-between mb-4">
                     <div>
@@ -416,6 +392,9 @@ export default function AdminDashboard() {
                 </div>
                 <OfficerPerformance data={officerKPIs} isLoading={isOfficerLoading} />
             </div>
+            </div>
+
+ 
 
             {/* Recent Activity Table */}
             <Card className="shadow-sm border-slate-100">
