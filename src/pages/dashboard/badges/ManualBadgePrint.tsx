@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGetApplicationsWithBadgeStatusQuery, useGenerateBadgeMutation, FILE_BASE_URL } from '@/store/services/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileCheck, Search, Loader2, User as UserIcon, Building2, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export function ManualBadgePrint() {
     const [page, setPage] = useState(1);
@@ -16,11 +17,18 @@ export function ManualBadgePrint() {
     const [statusFilter, setStatusFilter] = useState<'all' | 'generated' | 'ungenerated'>('all');
     const [printingId, setPrintingId] = useState<number | null>(null);
 
+    const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+    // Reset to page 1 when search or filter changes
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearchTerm, statusFilter]);
+
     // Fetch applications with badge status
     const { data, isLoading, refetch } = useGetApplicationsWithBadgeStatusQuery({
         page,
         limit,
-        search: searchTerm,
+        search: debouncedSearchTerm,
         status: statusFilter
     });
 
@@ -34,10 +42,31 @@ export function ManualBadgePrint() {
             toast.success(result.message || 'Badge generated successfully! Go to History tab to download it.');
         } catch (error: any) {
             console.error('Generation Error:', error);
-            toast.error(error.data?.error || 'Failed to generate badge');
+            toast.error(error.data?.error || error.message || 'Failed to generate badge');
         } finally {
             setPrintingId(null);
         }
+    };
+
+    const getProfilePhotoUrl = (photo: any) => {
+        if (!photo) return '';
+        const singlePath = Array.isArray(photo) ? photo[0] : photo;
+        if (typeof singlePath !== 'string') return '';
+        if (singlePath.startsWith('http')) return singlePath;
+
+        // Clean path and ensure absolute URL
+        const normalizedPath = singlePath.replace(/\\/g, '/');
+
+        // Check if it already has uploads/ prefix
+        if (normalizedPath.startsWith('uploads/')) {
+            return `${FILE_BASE_URL}/${normalizedPath}`;
+        }
+        if (normalizedPath.startsWith('/uploads/')) {
+            return `${FILE_BASE_URL}${normalizedPath}`;
+        }
+
+        // If it's just a filename or relative path, assume it belongs in uploads
+        return `${FILE_BASE_URL}/uploads/${normalizedPath.split('/').pop()}`;
     };
 
     const applications = data?.applications || [];
@@ -129,9 +158,21 @@ export function ManualBadgePrint() {
                                                     <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
                                                         {app.formData?.profile_photo ? (
                                                             <img
-                                                                src={`${FILE_BASE_URL}/uploads/${(Array.isArray(app.formData.profile_photo) ? app.formData.profile_photo[0] : app.formData.profile_photo).split(/[\\/]/).pop()}`}
+                                                                src={getProfilePhotoUrl(app.formData.profile_photo)}
                                                                 className="h-full w-full object-cover"
                                                                 alt={app.user.fullName}
+                                                                onError={(e) => {
+                                                                    const target = e.currentTarget;
+                                                                    target.style.display = 'none';
+                                                                    if (target.parentElement) {
+                                                                        target.parentElement.classList.add('bg-slate-200');
+                                                                        // Add a user icon as fallback if image fails
+                                                                        const icon = document.createElement('div');
+                                                                        icon.className = 'flex items-center justify-center h-full w-full';
+                                                                        icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user text-slate-400"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+                                                                        target.parentElement.appendChild(icon);
+                                                                    }
+                                                                }}
                                                             />
                                                         ) : (
                                                             <UserIcon className="h-5 w-5 text-slate-400" />
