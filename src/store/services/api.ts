@@ -1823,7 +1823,7 @@ export const api = createApi({
                 url: '/badges/bulk',
                 method: 'POST',
                 body,
-                responseHandler: (response) => response.blob(),
+                responseHandler: (response: any) => response.blob(),
             }),
         }),
         getBadgeHistory: builder.query<GeneratedBadge[], void>({

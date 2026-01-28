@@ -134,6 +134,7 @@ function App() {
                                         <Route path="api-management" element={<ApiManagement />} />
                                         <Route path="embassies" element={<EmbassyManagement />} />
                                         <Route path="airline-offices" element={<AirlineOfficeManagement />} />
+                                        <Route path="regional-offices" element={<AirlineOfficeManagement />} />
                                     </Route>
 
                                     {/* AU Admin Specific */}

@@ -18,7 +18,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useAuth } from '@/auth/context';
+import { useAuth, UserRole } from '@/auth/context';
 
 export default function EmbassyManagement() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -26,10 +26,11 @@ export default function EmbassyManagement() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedEmbassy, setSelectedEmbassy] = useState<Embassy | null>(null);
 
-    const { checkPermission } = useAuth();
-    const canCreateEmbassy = checkPermission('embassy:create');
-    const canUpdateEmbassy = checkPermission('embassy:update');
-    const canDeleteEmbassy = checkPermission('embassy:delete');
+    const { checkPermission, user } = useAuth();
+    const isManagementRole = user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.PMO;
+    const canCreateEmbassy = isManagementRole || checkPermission('embassy:create');
+    const canUpdateEmbassy = isManagementRole || checkPermission('embassy:update');
+    const canDeleteEmbassy = isManagementRole || checkPermission('embassy:delete');
 
     // API Hooks
     const { data: embassies = [], isLoading: isEmbassyLoading } = useGetEmbassiesQuery();
