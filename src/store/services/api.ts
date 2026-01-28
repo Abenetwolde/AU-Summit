@@ -413,6 +413,33 @@ export interface BadgeConfig {
     updatedAt: string;
 }
 
+export interface GeneratedBadge {
+    id: number;
+    applicationId: number;
+    application?: Application;
+    configId: number;
+    config?: BadgeConfig;
+    qrUrl: string;
+    status: 'pending' | 'generated' | 'failed';
+    filePath?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface ApplicationWithBadgeStatus extends Application {
+    hasBadge: boolean;
+    latestBadge?: GeneratedBadge | null;
+}
+
+export interface ApplicationsWithBadgeStatusResponse {
+    data: {
+        applications: ApplicationWithBadgeStatus[];
+        total: number;
+        currentPage: number;
+        totalPages: number;
+    };
+}
+
 export interface CreateBadgeConfigPayload {
     name: string;
     templateId: number;
@@ -784,8 +811,8 @@ export interface UpdateEquipmentStatusPayload {
     notes?: string;
 }
 
-export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
-// export const FILE_BASE_URL = 'http://localhost:3000';
+// export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
+export const FILE_BASE_URL = 'http://localhost:3000';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -1799,6 +1826,30 @@ export const api = createApi({
                 responseHandler: (response) => response.blob(),
             }),
         }),
+        getBadgeHistory: builder.query<GeneratedBadge[], void>({
+            query: () => '/badges/history',
+            transformResponse: (response: any) => response.data,
+            providesTags: ['Badge']
+        }),
+        downloadBadge: builder.mutation<Blob, number>({
+            query: (id) => ({
+                url: `/badges/download/${id}`,
+                method: 'GET',
+                responseHandler: (response) => response.blob(),
+            }),
+        }),
+        generateBadge: builder.mutation<{ success: boolean; message: string; data: any }, number>({
+            query: (id) => ({
+                url: `/badges/generate/${id}`,
+                method: 'POST',
+            }),
+            invalidatesTags: ['Badge', 'Application'],
+        }),
+        getApplicationsWithBadgeStatus: builder.query<ApplicationsWithBadgeStatusResponse['data'], { page?: number; limit?: number; search?: string; status?: 'all' | 'generated' | 'ungenerated' }>({
+            query: ({ page = 1, limit = 10, search = '', status = 'all' }) => `/badges/applications?page=${page}&limit=${limit}&search=${search}&status=${status}`,
+            transformResponse: (response: ApplicationsWithBadgeStatusResponse) => response.data,
+            providesTags: ['Badge', 'Application']
+        }),
 
         // Organization User Management (ORG_ADMIN)
         getOrganizationUsers: builder.query<{ users: User[]; total: number; currentPage: number; totalPages: number }, { page?: number; limit?: number; search?: string; roleId?: number; organizationId?: number }>({
@@ -2040,6 +2091,10 @@ export const {
     useGetBadgeProfileByHashQuery,
     useGetPublicBadgeProfileByAppIdQuery,
     useBulkGenerateBadgesMutation,
+    useGetBadgeHistoryQuery,
+    useDownloadBadgeMutation,
+    useGenerateBadgeMutation,
+    useGetApplicationsWithBadgeStatusQuery,
     // Dashboard Hooks
     useGetDashboardFormsQuery,
     useGetDashboardDataQuery,

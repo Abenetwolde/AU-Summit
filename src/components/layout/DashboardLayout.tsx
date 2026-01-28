@@ -382,40 +382,43 @@ export function DashboardLayout() {
             )}
 
             {/* Embassy Management */}
-            {user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.PMO && (
-              <NavLink
-                to={`${basePath}/embassies`}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-[#e6f4ea] text-primary'
-                      : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
-                  )
-                }
-              >
-                <Globe className="h-5 w-5" />
-                Embassy Management
-              </NavLink>
-            )}
+     {(user?.role === UserRole.SUPER_ADMIN ||
+  user?.role === UserRole.PMO) && (
+  <NavLink
+    to={`${basePath}/embassies`}
+    className={({ isActive }) =>
+      cn(
+        'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+        isActive
+          ? 'bg-[#e6f4ea] text-primary'
+          : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+      )
+    }
+  >
+    <Globe className="h-5 w-5" />
+    Embassy Management
+  </NavLink>
+)}
 
-            {/* Airline Office Management */}
-            {user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.PMO && (
-              <NavLink
-                to={`${basePath}/airline-offices`}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-[#e6f4ea] text-primary'
-                      : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
-                  )
-                }
-              >
-                <Plane className="h-5 w-5" />
-                Airline Office Management
-              </NavLink>
-            )}
+{/* Airline Office Management */}
+{(user?.role === UserRole.SUPER_ADMIN ||
+  user?.role === UserRole.PMO) && (
+  <NavLink
+    to={`${basePath}/airline-offices`}
+    className={({ isActive }) =>
+      cn(
+        'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+        isActive
+          ? 'bg-[#e6f4ea] text-primary'
+          : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+      )
+    }
+  >
+    <Plane className="h-5 w-5" />
+    Airline Office Management
+  </NavLink>
+)}
+
 
             {/* Roles */}
             {checkPermission('role:view:all') && (
