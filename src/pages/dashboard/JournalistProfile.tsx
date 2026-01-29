@@ -747,7 +747,7 @@ export function JournalistProfile() {
                         <Button variant="ghost" onClick={() => setShowRejectionDialog(false)}>Cancel</Button>
                         <Button
                             className="bg-red-600 hover:bg-red-700 text-white font-bold px-8 shadow-lg shadow-red-100"
-                            disabled={isStatusUpdating || selectedFields.length === 0}
+                            disabled={isStatusUpdating || (selectedFields.length === 0 && !notes.trim())}
                             onClick={() => {
                                 const rejectionDetails: Record<string, string> = {};
                                 selectedFields.forEach(field => {
