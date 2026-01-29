@@ -37,6 +37,7 @@ import { OrganizationUsers } from './pages/dashboard/OrganizationUsers';
 import AirlineOfficeManagement from './pages/dashboard/AirlineOfficeManagement';
 import ManualEntry from './pages/dashboard/ManualEntry';
 import { ManualApplications } from './pages/dashboard/ManualApplications';
+import { ManualBadgePrint } from './pages/dashboard/badges/ManualBadgePrint';
 
 function App() {
     useEffect(() => {
@@ -127,6 +128,9 @@ function App() {
                                         <Route path="email-templates" element={<EmailTemplates />} />
                                         <Route path="settings" element={<SystemSettings />} />
                                         <Route path="badge-center" element={<BadgeCenter />} />
+                                        <Route element={<ProtectedRoute requiredPermission="application:badge:manual-print" />}>
+                                            <Route path="badge-center/manual-print" element={<ManualBadgePrint />} />
+                                        </Route>
                                         <Route path="api-management" element={<ApiManagement />} />
                                         <Route path="embassies" element={<EmbassyManagement />} />
                                         <Route path="airline-offices" element={<AirlineOfficeManagement />} />

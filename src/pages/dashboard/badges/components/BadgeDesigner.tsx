@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { BadgeCheck, Save, Move, Trash2, Image as ImageIcon, QrCode, Type, Layout, Settings as SettingsIcon, User } from 'lucide-react';
+import { BadgeCheck, Save, Move, Trash2, Image as ImageIcon, QrCode, Type, Layout, Settings as SettingsIcon, User, Building2 } from 'lucide-react';
 import {
     useGetBadgeTemplatesQuery,
     useCreateBadgeConfigMutation,
@@ -67,9 +67,10 @@ export function BadgeDesigner({ onSave, configId }: { onSave?: () => void; confi
             setElements([
                 { id: 'logo', type: 'logo', x: selectedTemplate.width / 2 - 25, y: 30, width: 50, height: 50 },
                 { id: 'qr', type: 'qr', x: selectedTemplate.width / 2 - 40, y: selectedTemplate.height - 100, width: 80, height: 80 },
-                { id: 'user-name', type: 'text', x: 20, y: 150, width: selectedTemplate.width - 40, height: 30, placeholder: '{{userName}}', fontSize: 18, fontWeight: 'bold', content: 'FULL NAME' },
-                { id: 'user-title', type: 'text', x: 20, y: 180, width: selectedTemplate.width - 40, height: 20, placeholder: '{{title}}', fontSize: 12, content: 'JOB TITLE' },
-                { id: 'user-photo', type: 'photo', x: selectedTemplate.width / 2 - 45, y: 60, width: 90, height: 110 },
+                { id: 'user-name', type: 'text', x: 20, y: 150, width: selectedTemplate.width - 40, height: 30, placeholder: '{{userName}}', fontSize: 20, fontWeight: 'bold', content: 'FULL NAME' },
+                { id: 'user-org', type: 'text', x: 20, y: 180, width: selectedTemplate.width - 40, height: 20, placeholder: '{{organization}}', fontSize: 14, fontWeight: 'medium', content: 'ORGANIZATION' },
+                { id: 'user-title', type: 'text', x: 20, y: 200, width: selectedTemplate.width - 40, height: 20, placeholder: '{{title}}', fontSize: 12, content: 'JOB TITLE' },
+                { id: 'user-photo', type: 'photo', x: selectedTemplate.width / 2 - 45, y: 40, width: 90, height: 110 },
             ]);
             setPrimaryColor('#D4AF37');
         }
@@ -231,6 +232,9 @@ export function BadgeDesigner({ onSave, configId }: { onSave?: () => void; confi
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => handleAddElement('text', '{{title}}')} className="gap-2 text-[10px]">
                             <Type className="h-4 w-4" /> Title
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleAddElement('text', '{{organization}}')} className="gap-2 text-[10px]">
+                            <Building2 className="h-4 w-4" /> Org
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => handleAddElement('photo')} className="gap-2">
                             <ImageIcon className="h-4 w-4" /> Photo
