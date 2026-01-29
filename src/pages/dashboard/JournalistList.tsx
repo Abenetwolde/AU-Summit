@@ -24,7 +24,7 @@ export function JournalistList() {
     const { checkPermission, user } = useAuth();
 
     // Conditional API Query based on user role
-    const isSuperAdmin = user?.roleName === 'SUPER_ADMIN'||user?.roleName === 'PMO';
+    const isSuperAdmin = user?.roleName === 'SUPER_ADMIN' || user?.roleName === 'PMO';
 
     // Use workflow API for non-super-admin users
     const { data: workflowData, isLoading: isWorkflowLoading, isError: isWorkflowError } = useGetWorkflowApplicationsQuery(
@@ -285,7 +285,7 @@ export function JournalistList() {
                                         </td>
                                         <td className="p-4 align-middle hidden sm:table-cell">
                                             <div className="flex items-center gap-2 font-bold text-gray-700">
-                                                {countryName(country)}
+                                                {app.applyingFromCountry?.name || countryName(country)}
                                             </div>
                                         </td>
                                         <td className="p-4 align-middle font-bold text-gray-700">{passport}</td>

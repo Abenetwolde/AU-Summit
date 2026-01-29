@@ -263,7 +263,8 @@ export function JournalistProfile() {
         : (application.user?.fullName || 'Unknown');
 
     const roleTitle = formData.occupation || 'Journalist';
-    const country = formData.country || 'ET';
+    const country = application.applyingFromCountry?.code || formData.country || 'ET';
+    const fullCountryName = application.applyingFromCountry?.name || countryName(country);
 
     // Photo/Document Handling
     const getFiles = (field: any) => {
@@ -363,7 +364,7 @@ export function JournalistProfile() {
                                     </div>
                                     <div className="flex items-center justify-center sm:justify-start gap-2">
                                         <span className="text-lg leading-none">{getFlagEmoji(country)}</span>
-                                        <span>{countryName(country)}</span>
+                                        <span>{fullCountryName}</span>
                                     </div>
                                 </div>
                             </div>

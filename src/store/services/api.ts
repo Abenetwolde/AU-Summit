@@ -146,6 +146,7 @@ export interface Application {
     approvals?: ApplicationApproval[];
     documents?: Document[];
     applyingFromCountryId?: number | null;
+    applyingFromCountry?: Country;
 }
 
 export interface Organization {

@@ -202,7 +202,7 @@ export function AccreditedJournalists() {
                                     <td className="p-4 align-middle font-bold text-slate-800">{application.user.fullName}</td>
                                     <td className="p-4 align-middle hidden sm:table-cell">
                                         <span className="flex items-center gap-2 font-medium text-slate-600">
-                                            {countryName(application.formData.country)}
+                                            {application.applyingFromCountry?.name || countryName(application.formData.country)}
                                         </span>
                                     </td>
                                     <td className="p-4 align-middle hidden md:table-cell font-medium text-slate-600">{application.formData.passport_number}</td>
