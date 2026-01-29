@@ -19,10 +19,18 @@ import {
     Package,
     UploadCloud,
     Camera,
+    Video,
     Mic,
+    Headphones,
     Laptop,
+    Monitor,
+    HardDrive,
+    Battery,
+    Lightbulb,
+    Box,
     Tablet,
     Radio,
+    Cpu,
     DollarSign,
     ShieldCheck,
     CheckCircle2,
@@ -82,6 +90,7 @@ interface EquipmentItem {
     id: string;
     type: string;
     description: string;
+    specificName?: string; // Raw user input
     model?: string;
     serialNumber: string;
     quantity: number;
@@ -92,10 +101,18 @@ interface EquipmentItem {
 }
 
 const equipmentTypes = [
-    { value: "camera", label: "Camera & Lens", icon: Camera },
-    { value: "audio", label: "Audio/Mic", icon: Mic },
-    { value: "lighting", label: "Lighting", icon: Radio },
-    { value: "it", label: "Laptop/IT", icon: Laptop },
+    { value: "camera", label: "Camera Body", icon: Camera },
+    { value: "lens", label: "Lens/Optics", icon: Camera },
+    { value: "video", label: "Video/Record", icon: Video },
+    { value: "audio", label: "Audio/Mic/Headphones", icon: Headphones },
+    { value: "lighting", label: "Lighting/LED", icon: Lightbulb },
+    { value: "monitoring", label: "Monitor/EVF/Display", icon: Monitor },
+    { value: "storage", label: "Storage/HDD/SSD/Media", icon: HardDrive },
+    { value: "power", label: "Power/Battery/Charger", icon: Battery },
+    { value: "grip", label: "Tripod/Support/Grip", icon: Box },
+    { value: "it", label: "Laptop/Computer/IT", icon: Laptop },
+    { value: "comm", label: "Communication/Radio/Phone", icon: Radio },
+    { value: "production", label: "Production Gear", icon: Cpu },
     { value: "cash", label: "Cash/Currency", icon: DollarSign },
     { value: "other", label: "Other", icon: Tablet },
 ];
@@ -158,17 +175,28 @@ export default function ManualEntry() {
 
             // Populate equipments
             if (editApplication.equipment && editApplication.equipment.length > 0) {
-                const mappedEquipments: EquipmentItem[] = editApplication.equipment.map((eq: any) => ({
-                    id: String(eq.id), // Use provided ID
-                    type: eq.type?.toLowerCase() || 'other',
-                    description: eq.description || '',
-                    model: eq.model || '',
-                    serialNumber: eq.serialNumber || '',
-                    quantity: Number(eq.quantity || 1),
-                    value: Number(eq.value || 0),
-                    currency: eq.currency || 'USD',
-                    isDrone: !!eq.isDrone
-                }));
+                const mappedEquipments: EquipmentItem[] = editApplication.equipment.map((eq: any) => {
+                    const type = eq.type?.toLowerCase() || 'other';
+                    const typeLabel = equipmentTypes.find(t => t.value === type)?.label || type;
+                    // Try to extract specificName from description if it following the pattern "Label : Name"
+                    let specificName = eq.description || '';
+                    if (specificName.includes(' : ')) {
+                        specificName = specificName.split(' : ').slice(1).join(' : ');
+                    }
+
+                    return {
+                        id: String(eq.id),
+                        type,
+                        description: eq.description || '',
+                        specificName,
+                        model: eq.model || '',
+                        serialNumber: eq.serialNumber || '',
+                        quantity: Number(eq.quantity || 1),
+                        value: Number(eq.value || 0),
+                        currency: eq.currency || 'USD',
+                        isDrone: !!eq.isDrone
+                    };
+                });
                 setEquipments(mappedEquipments);
 
                 // Set drone/declaration status
@@ -282,10 +310,12 @@ export default function ManualEntry() {
     };
 
     const addEquipment = (type: string = 'camera', isDrone: boolean = false) => {
+        const typeLabel = equipmentTypes.find(t => t.value === type)?.label || 'Camera Body';
         const newItem: EquipmentItem = {
             id: crypto.randomUUID(),
             type,
-            description: '',
+            specificName: "",
+            description: `${typeLabel} : `,
             model: '',
             serialNumber: '',
             quantity: 1,
@@ -310,7 +340,21 @@ export default function ManualEntry() {
     };
 
     const updateEquipment = (id: string, updates: Partial<EquipmentItem>) => {
-        setEquipments(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+        setEquipments(prev => prev.map(eq => {
+            if (eq.id !== id) return eq;
+            const newEq = { ...eq, ...updates };
+
+            // Auto-update description if type or specificName changed
+            if (updates.type !== undefined || updates.specificName !== undefined) {
+                const typeLabel = equipmentTypes.find(t => t.value === newEq.type)?.label || newEq.type;
+                if (newEq.type === 'cash') {
+                    newEq.description = "CASH";
+                } else {
+                    newEq.description = `${typeLabel} : ${newEq.specificName || ""}`;
+                }
+            }
+            return newEq;
+        }));
     };
 
     const addEquipmentWithStatus = () => {
@@ -399,6 +443,24 @@ export default function ManualEntry() {
         }
     };
 
+    const onInvalid = (errors_data: any) => {
+        const errorFields = Object.keys(errors_data);
+        if (errorFields.length > 0) {
+            toast.error('Please fill all required fields correctly.');
+
+            // Scroll to the first error
+            const firstErrorField = errorFields[0];
+            const element = document.getElementsByName(firstErrorField)[0] ||
+                document.getElementById(firstErrorField) ||
+                document.querySelector(`[name="${firstErrorField}"]`);
+
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (element instanceof HTMLElement) element.focus();
+            }
+        }
+    };
+
     const getValidationRules = (field: any) => {
         const { label, is_required, validation_criteria, field_type } = field;
         const rules: any = {};
@@ -471,6 +533,8 @@ export default function ManualEntry() {
                             <Button
                                 variant="outline"
                                 role="combobox"
+                                id={field_name}
+                                name={field_name}
                                 className={cn(
                                     "w-full justify-between h-11 font-normal",
                                     !value && "text-muted-foreground",
@@ -545,6 +609,7 @@ export default function ManualEntry() {
                         <Label className="text-sm font-medium">{label} {is_required && '*'}</Label>
                         <Select
                             value={value}
+                            name={field_name}
                             onValueChange={(val) => {
                                 setValue(field_name as any, val, { shouldValidate: true, shouldDirty: true });
                             }}
@@ -621,6 +686,8 @@ export default function ManualEntry() {
                             <Input
                                 type="file"
                                 multiple
+                                id={field_name}
+                                name={field_name}
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                 onChange={(e) => {
                                     handleFileChange(field_name, e.target.files);
@@ -728,7 +795,7 @@ export default function ManualEntry() {
                 </div>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 <div className="lg:col-span-12 space-y-6">
                     <Card className="border-none shadow-xl bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-200">
                         <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-gray-100">
@@ -1025,13 +1092,6 @@ export default function ManualEntry() {
                                                                             const wasDrone = item.isDrone || item.type === "drone";
                                                                             const isDrone = val === "drone";
                                                                             const updates: Partial<EquipmentItem> = { type: val, isDrone };
-                                                                            if (val !== "cash") {
-                                                                                updates.value = 0;
-                                                                                updates.currency = "USD";
-                                                                            } else {
-                                                                                updates.quantity = 1;
-                                                                                updates.description = "CASH";
-                                                                            }
                                                                             updateEquipment(item.id, updates);
 
                                                                             if (isDrone) {
@@ -1073,8 +1133,8 @@ export default function ManualEntry() {
                                                                     <div className="md:col-span-2 space-y-2">
                                                                         <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Description</Label>
                                                                         <Input
-                                                                            value={item.description}
-                                                                            onChange={(e) => updateEquipment(item.id, { description: e.target.value })}
+                                                                            value={item.specificName || ""}
+                                                                            onChange={(e) => updateEquipment(item.id, { specificName: e.target.value })}
                                                                             placeholder="e.g. Sony A7S III w/ 24-70mm Lens"
                                                                             className="h-11 bg-white border-gray-200"
                                                                         />
@@ -1104,8 +1164,60 @@ export default function ManualEntry() {
                                                                     </div>
                                                                 )}
 
-                                                                <div className={`grid grid-cols-1 ${item.type === 'cash' ? 'md:grid-cols-3' : 'md:grid-cols-4'} gap-4 md:col-span-3`}>
-                                                                    {item.type !== 'cash' && (
+                                                                <div className={`grid grid-cols-1 ${item.type === 'cash' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4 md:col-span-3`}>
+                                                                    {item.type === 'cash' ? (
+                                                                        <>
+                                                                            <div className="space-y-2">
+                                                                                <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Value</Label>
+                                                                                <Input
+                                                                                    type="number"
+                                                                                    min="0"
+                                                                                    value={item.value}
+                                                                                    onChange={(e) => updateEquipment(item.id, { value: parseFloat(e.target.value) || 0 })}
+                                                                                    className="h-11 bg-white border-gray-200"
+                                                                                />
+                                                                            </div>
+
+                                                                            <div className="space-y-2">
+                                                                                <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Currency</Label>
+                                                                                <Select
+                                                                                    value={item.currency}
+                                                                                    onValueChange={(val) => updateEquipment(item.id, { currency: val })}
+                                                                                >
+                                                                                    <SelectTrigger className="h-11 bg-white border-gray-200">
+                                                                                        <SelectValue />
+                                                                                    </SelectTrigger>
+                                                                                    <SelectContent>
+                                                                                        <SelectItem value="USD">USD ($)</SelectItem>
+                                                                                        <SelectItem value="EUR">EUR (€)</SelectItem>
+                                                                                        <SelectItem value="GBP">GBP (£)</SelectItem>
+                                                                                        <SelectItem value="ETB">ETB (Br)</SelectItem>
+                                                                                        <SelectItem value="JPY">JPY (¥)</SelectItem>
+                                                                                        <SelectItem value="CNY">CNY (¥)</SelectItem>
+                                                                                        <SelectItem value="CHF">CHF (Fr)</SelectItem>
+                                                                                        <SelectItem value="CAD">CAD ($)</SelectItem>
+                                                                                        <SelectItem value="AUD">AUD ($)</SelectItem>
+                                                                                        <SelectItem value="AED">AED (د.إ)</SelectItem>
+                                                                                        <SelectItem value="SAR">SAR (﷼)</SelectItem>
+                                                                                        <SelectItem value="ZAR">ZAR (R)</SelectItem>
+                                                                                        <SelectItem value="other">Other</SelectItem>
+                                                                                    </SelectContent>
+                                                                                </Select>
+                                                                            </div>
+
+                                                                            {item.currency === "other" && (
+                                                                                <div className="space-y-2">
+                                                                                    <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Specify Currency</Label>
+                                                                                    <Input
+                                                                                        value={item.otherCurrency || ""}
+                                                                                        onChange={(e) => updateEquipment(item.id, { otherCurrency: e.target.value })}
+                                                                                        placeholder="e.g. INR"
+                                                                                        className="h-11 bg-white border-gray-200"
+                                                                                    />
+                                                                                </div>
+                                                                            )}
+                                                                        </>
+                                                                    ) : (
                                                                         <div className="space-y-2">
                                                                             <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Quantity</Label>
                                                                             <Input
@@ -1113,55 +1225,6 @@ export default function ManualEntry() {
                                                                                 min="1"
                                                                                 value={item.quantity}
                                                                                 onChange={(e) => updateEquipment(item.id, { quantity: parseInt(e.target.value) || 1 })}
-                                                                                className="h-11 bg-white border-gray-200"
-                                                                            />
-                                                                        </div>
-                                                                    )}
-
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Value</Label>
-                                                                        <Input
-                                                                            type="number"
-                                                                            value={item.value}
-                                                                            onChange={(e) => updateEquipment(item.id, { value: parseFloat(e.target.value) || 0 })}
-                                                                            className="h-11 bg-white border-gray-200"
-                                                                        />
-                                                                    </div>
-
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Currency</Label>
-                                                                        <Select
-                                                                            value={item.currency}
-                                                                            onValueChange={(val) => updateEquipment(item.id, { currency: val })}
-                                                                        >
-                                                                            <SelectTrigger className="h-11 bg-white border-gray-200">
-                                                                                <SelectValue />
-                                                                            </SelectTrigger>
-                                                                            <SelectContent>
-                                                                                <SelectItem value="USD">USD ($)</SelectItem>
-                                                                                <SelectItem value="EUR">EUR (€)</SelectItem>
-                                                                                <SelectItem value="GBP">GBP (£)</SelectItem>
-                                                                                <SelectItem value="ETB">ETB (Br)</SelectItem>
-                                                                                <SelectItem value="JPY">JPY (¥)</SelectItem>
-                                                                                <SelectItem value="CNY">CNY (¥)</SelectItem>
-                                                                                <SelectItem value="CHF">CHF (Fr)</SelectItem>
-                                                                                <SelectItem value="CAD">CAD ($)</SelectItem>
-                                                                                <SelectItem value="AUD">AUD ($)</SelectItem>
-                                                                                <SelectItem value="AED">AED (د.إ)</SelectItem>
-                                                                                <SelectItem value="SAR">SAR (﷼)</SelectItem>
-                                                                                <SelectItem value="ZAR">ZAR (R)</SelectItem>
-                                                                                <SelectItem value="other">Other</SelectItem>
-                                                                            </SelectContent>
-                                                                        </Select>
-                                                                    </div>
-
-                                                                    {item.currency === "other" && (
-                                                                        <div className="space-y-2">
-                                                                            <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Specify Currency</Label>
-                                                                            <Input
-                                                                                value={item.otherCurrency || ""}
-                                                                                onChange={(e) => updateEquipment(item.id, { otherCurrency: e.target.value })}
-                                                                                placeholder="e.g. INR"
                                                                                 className="h-11 bg-white border-gray-200"
                                                                             />
                                                                         </div>
@@ -1209,7 +1272,7 @@ export default function ManualEntry() {
                         <Button
                             type="submit"
                             className="px-8 h-12 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]"
-                            disabled={isLoading || !isValid}
+                            disabled={isLoading}
                         >
                             {isLoading ? (
                                 <>
@@ -1225,7 +1288,7 @@ export default function ManualEntry() {
                         </Button>
                     </div>
                 </div>
-            </form>
-        </div>
+            </form >
+        </div >
     );
 }
