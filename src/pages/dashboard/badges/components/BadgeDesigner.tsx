@@ -29,6 +29,9 @@ interface DesignerElement {
     fontSize?: number;
     fontWeight?: string;
     color?: string;
+    backgroundColor?: string;
+    borderRadius?: number;
+    opacity?: number;
     placeholder?: string; // e.g. '{{userName}}'
 }
 
@@ -114,9 +117,10 @@ export function BadgeDesigner({ onSave, configId }: { onSave?: () => void; confi
             type,
             x: 50,
             y: 50,
-            width: type === 'text' ? 150 : 80,
-            height: type === 'text' ? 30 : 80,
-            content: type === 'text' ? 'New Text' : undefined,
+            width: type === 'text' ? 150 : (type === 'header' ? 200 : 80),
+            height: type === 'text' ? 30 : (type === 'header' ? 40 : 80),
+            content: type === 'text' ? 'New Text' : (type === 'header' ? '' : undefined),
+            backgroundColor: type === 'header' ? '#f47424' : undefined,
             placeholder
         };
         setElements(prev => [...prev, newElement]);
@@ -237,7 +241,16 @@ export function BadgeDesigner({ onSave, configId }: { onSave?: () => void; confi
                             <Building2 className="h-4 w-4" /> Org
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => handleAddElement('photo')} className="gap-2">
-                            <ImageIcon className="h-4 w-4" /> Photo
+                            <User className="h-4 w-4" /> Photo
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleAddElement('header')} className="gap-2">
+                            <Layout className="h-4 w-4" /> Bar
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleAddElement('logo')} className="gap-2">
+                            <ImageIcon className="h-4 w-4" /> Logo/Flag
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleAddElement('qr')} className="gap-2">
+                            <QrCode className="h-4 w-4" /> QR Code
                         </Button>
                     </CardContent>
                 </Card>
@@ -294,9 +307,11 @@ export function BadgeDesigner({ onSave, configId }: { onSave?: () => void; confi
                                 fontFamily: selectedTemplate.name.includes('Premium') ? 'serif' : 'sans-serif'
                             }}
                         >
-                            {/* Branding Shell */}
-                            <div className="absolute top-0 left-0 right-0 h-[15px]" style={{ backgroundColor: primaryColor }}></div>
-                            <div className="absolute bottom-10 left-0 right-0 h-[15px]" style={{ backgroundColor: primaryColor }}></div>
+                            <style dangerouslySetInnerHTML={{ __html: selectedTemplate.cssStyles }} />
+                            <div
+                                className="absolute inset-0 z-0 pointer-events-none"
+                                dangerouslySetInnerHTML={{ __html: selectedTemplate.htmlContent.replace(/{{[^}]+}}/g, '') }}
+                            />
 
                             {/* Elements */}
                             {elements.map(el => (
@@ -316,6 +331,9 @@ export function BadgeDesigner({ onSave, configId }: { onSave?: () => void; confi
                                         fontSize: el.fontSize ? `${el.fontSize}px` : undefined,
                                         fontWeight: el.fontWeight || 'normal',
                                         color: el.color || 'inherit',
+                                        backgroundColor: el.backgroundColor || 'transparent',
+                                        borderRadius: el.borderRadius ? `${el.borderRadius}px` : undefined,
+                                        opacity: el.opacity !== undefined ? el.opacity : 1,
                                         textAlign: 'center'
                                     }}
                                 >
@@ -324,11 +342,12 @@ export function BadgeDesigner({ onSave, configId }: { onSave?: () => void; confi
                                         (el.type === 'qr' || el.type === 'logo' || el.type === 'photo') ? "bg-slate-200/20 border border-dashed border-slate-300" : ""
                                     )}>
                                         {el.type === 'logo' && (
-                                            el.content && el.content.startsWith('http')
+                                            el.content && (el.content.startsWith('http') || el.content.startsWith('data:'))
                                                 ? <img src={el.content} className="w-full h-full object-contain" alt="Logo" />
                                                 : <ImageIcon className="h-2/3 w-2/3 text-slate-400" />
                                         )}
                                         {el.type === 'qr' && <QrCode className="h-2/3 w-2/3 text-slate-600" />}
+                                        {el.type === 'header' && <Layout className="h-2/3 w-2/3 text-slate-300" />}
                                         {el.type === 'photo' && (
                                             el.content && el.content.startsWith('http')
                                                 ? <img src={el.content} className="w-full h-full object-cover" alt="User" />
@@ -445,6 +464,80 @@ export function BadgeDesigner({ onSave, configId }: { onSave?: () => void; confi
                                                     </SelectContent>
                                                 </Select>
                                             </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-xs">Background Color</Label>
+                                                <div className="flex gap-2">
+                                                    <Input
+                                                        type="color"
+                                                        value={selectedElement.backgroundColor || '#ffffff'}
+                                                        onChange={(e) => setElements(prev => prev.map(el =>
+                                                            el.id === selectedElementId ? { ...el, backgroundColor: e.target.value } : el
+                                                        ))}
+                                                        className="h-8 w-12 p-0 border-none"
+                                                    />
+                                                    <Input
+                                                        value={selectedElement.backgroundColor || '#ffffff'}
+                                                        onChange={(e) => setElements(prev => prev.map(el =>
+                                                            el.id === selectedElementId ? { ...el, backgroundColor: e.target.value } : el
+                                                        ))}
+                                                        className="h-8 text-xs"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-xs">Opacity ({Math.round((selectedElement.opacity !== undefined ? selectedElement.opacity : 1) * 100)}%)</Label>
+                                                <Slider
+                                                    value={[(selectedElement.opacity !== undefined ? selectedElement.opacity : 1) * 100]}
+                                                    min={0} max={100} step={1}
+                                                    onValueChange={([v]) => setElements(prev => prev.map(el => el.id === selectedElementId ? { ...el, opacity: v / 100 } : el))}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {selectedElement.type === 'header' && (
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs">Background Color</Label>
+                                                <div className="flex gap-2">
+                                                    <Input
+                                                        type="color"
+                                                        value={selectedElement.backgroundColor || '#f47424'}
+                                                        onChange={(e) => setElements(prev => prev.map(el =>
+                                                            el.id === selectedElementId ? { ...el, backgroundColor: e.target.value } : el
+                                                        ))}
+                                                        className="h-8 w-12 p-0 border-none"
+                                                    />
+                                                    <Input
+                                                        value={selectedElement.backgroundColor || '#f47424'}
+                                                        onChange={(e) => setElements(prev => prev.map(el =>
+                                                            el.id === selectedElementId ? { ...el, backgroundColor: e.target.value } : el
+                                                        ))}
+                                                        className="h-8 text-xs"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs">Opacity ({Math.round((selectedElement.opacity !== undefined ? selectedElement.opacity : 1) * 100)}%)</Label>
+                                                <Slider
+                                                    value={[(selectedElement.opacity !== undefined ? selectedElement.opacity : 1) * 100]}
+                                                    min={0} max={100} step={1}
+                                                    onValueChange={([v]) => setElements(prev => prev.map(el => el.id === selectedElementId ? { ...el, opacity: v / 100 } : el))}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {selectedElement.type === 'logo' && (
+                                        <div className="space-y-2">
+                                            <Label className="text-xs">Opacity ({Math.round((selectedElement.opacity !== undefined ? selectedElement.opacity : 1) * 100)}%)</Label>
+                                            <Slider
+                                                value={[(selectedElement.opacity !== undefined ? selectedElement.opacity : 1) * 100]}
+                                                min={0} max={100} step={1}
+                                                onValueChange={([v]) => setElements(prev => prev.map(el => el.id === selectedElementId ? { ...el, opacity: v / 100 } : el))}
+                                            />
                                         </div>
                                     )}
 
