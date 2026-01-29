@@ -141,6 +141,8 @@ export interface Application {
         form_id: number;
         name: string;
         type: string;
+        categories?: any[];
+        FormFields?: any[];
     };
     equipment: Equipment[];
     approvals?: ApplicationApproval[];

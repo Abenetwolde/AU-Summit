@@ -16,7 +16,8 @@ import {
     Equipment as EquipmentType,
     useUpdateEquipmentStatusMutation,
     getFileUrl,
-    useGetFormFieldTemplatesQuery
+    useGetFormFieldTemplatesQuery,
+    useGetApplicationByIdQuery
 } from '@/store/services/api';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
@@ -63,6 +64,14 @@ export function JournalistProfile() {
     const [showRejectionDialog, setShowRejectionDialog] = useState(false);
     const [selectedFields, setSelectedFields] = useState<string[]>([]);
     const [fieldNotes, setFieldNotes] = useState<Record<string, string>>({});
+
+    const { data: fetchedApplication, isLoading: applicationLoading } = useGetApplicationByIdQuery(Number(id), { skip: !id });
+
+    useEffect(() => {
+        if (fetchedApplication) {
+            setApplication(fetchedApplication);
+        }
+    }, [fetchedApplication]);
 
     useEffect(() => {
         if (location.state?.application) {
@@ -290,6 +299,70 @@ export function JournalistProfile() {
     // Find the relevant approval record for the current user based on authorized IDs AND Phase
     const currentPhase = location.state?.phase; // 'entry' or 'exit'
 
+    // Form rendering priority: 1. Specific Form definition attached to application, 2. Global Templates
+    const formCategories = application?.form?.categories;
+    const formUncategorizedFields = (application?.form as any)?.FormFields;
+
+    let displayCategories: { name: string; fields: any[] }[] = [];
+
+    if (formCategories && formCategories.length > 0) {
+        displayCategories = formCategories.map((cat: any) => ({
+            name: cat.name,
+            fields: (cat.fields || []).map((f: any) => ({
+                field_name: f.field_name,
+                field_type: f.field_type,
+                label: f.label,
+                display_order: f.display_order
+            }))
+        }));
+
+        if (formUncategorizedFields && formUncategorizedFields.length > 0) {
+            displayCategories.push({
+                name: 'Other Details',
+                fields: formUncategorizedFields.map((f: any) => ({
+                    field_name: f.field_name,
+                    field_type: f.field_type,
+                    label: f.label,
+                    display_order: f.display_order
+                }))
+            });
+        }
+    } else if (templates) {
+        // Fallback to legacy template-based grouping
+        const grouped = templates.reduce((acc: any, t: any) => {
+            const cat = t.category?.name || 'Other Details';
+            if (!acc[cat]) acc[cat] = [];
+            acc[cat].push({
+                field_name: t.field_name,
+                field_type: t.field_type,
+                label: t.label,
+                display_order: t.display_order
+            });
+            return acc;
+        }, {});
+
+        displayCategories = Object.entries(grouped).map(([name, fields]) => ({
+            name,
+            fields: fields as any[]
+        }));
+    }
+
+    // Filter out equipment category as it's handled separately, and sort
+    displayCategories = displayCategories
+        .filter(cat => cat.name.toLowerCase() !== 'equipment')
+        .sort((a, b) => {
+            // Try to maintain a reasonable default order if display_order isn't on category itself
+            const order: Record<string, number> = {
+                'Personal Details': 1,
+                'Travel & Passport': 2,
+                'Contact Information': 3,
+                'Media Profile & Documents': 4,
+                'Additional Information': 5,
+                'Legal & Agreements': 6
+            };
+            return (order[a.name] || 99) - (order[b.name] || 99);
+        });
+
     const userActionableApproval = approvals.find((a: any) => {
         const step = a.workflowStep || a.approvalWorkflowStep;
         if (!step) return false;
@@ -375,20 +448,13 @@ export function JournalistProfile() {
                     </Card>
 
                     {/* Tabs */}
-                    <Tabs defaultValue={templates && templates.length > 0 ? (templates[0]?.category?.name || 'Other Details') : "equipment"} className="w-full">
+                    <Tabs defaultValue={displayCategories.length > 0 ? displayCategories[0].name : "equipment"} className="w-full">
                         <div className="bg-white rounded-lg p-1 shadow-sm mb-4">
                             <TabsList className="w-full justify-start bg-transparent h-auto p-0 gap-6 border-b rounded-none px-4 flex-wrap">
                                 {/* Dynamic Tabs */}
-                                {templates && Object.keys(
-                                    templates.reduce((acc: any, t: any) => {
-                                        const cat = t.category?.name || 'Other Details';
-                                        if (cat.toLowerCase() === 'equipment') return acc;
-                                        acc[cat] = true;
-                                        return acc;
-                                    }, {})
-                                ).map((cat: string) => (
-                                    <TabsTrigger key={cat} value={cat} className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
-                                        <FileText className="h-4 w-4" /> {cat}
+                                {displayCategories.map((cat) => (
+                                    <TabsTrigger key={cat.name} value={cat.name} className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
+                                        <FileText className="h-4 w-4" /> {cat.name}
                                     </TabsTrigger>
                                 ))}
 
@@ -399,33 +465,24 @@ export function JournalistProfile() {
                         </div>
 
                         {/* Dynamic Content Tabs */}
-                        {Object.entries(
-                            (templates || []).reduce((acc: any, template: any) => {
-                                const catName = template.category?.name || 'Other Details';
-                                // Skip equipment category if it exists in templates, handled separately
-                                if (catName.toLowerCase() === 'equipment') return acc;
-                                if (!acc[catName]) acc[catName] = [];
-                                acc[catName].push(template);
-                                return acc;
-                            }, {})
-                        ).map(([categoryName, catTemplates]: [string, any]) => (
-                            <TabsContent key={categoryName} value={categoryName}>
+                        {displayCategories.map((category) => (
+                            <TabsContent key={category.name} value={category.name}>
                                 <Card className="bg-white border-0 shadow-sm">
                                     <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                        <CardTitle className="text-lg font-bold">{categoryName}</CardTitle>
+                                        <CardTitle className="text-lg font-bold">{category.name}</CardTitle>
                                         <FileText className="h-5 w-5 text-gray-500" />
                                     </CardHeader>
                                     <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-4">
-                                        {(catTemplates as any[])
-                                            .sort((a, b) => a.display_order - b.display_order)
-                                            .map((template) => {
-                                                const value = formData[template.field_name];
-                                                if (template.field_type === 'file') {
+                                        {category.fields
+                                            .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+                                            .map((field) => {
+                                                const value = formData[field.field_name];
+                                                if (field.field_type === 'file') {
                                                     const files = getFiles(value);
                                                     if (files.length === 0) return null;
                                                     return (
-                                                        <div key={template.field_name} className="col-span-1 sm:col-span-2 lg:col-span-4 mt-2">
-                                                            <p className="text-xs font-bold text-gray-400 uppercase mb-3">{template.label}</p>
+                                                        <div key={field.field_name} className="col-span-1 sm:col-span-2 lg:col-span-4 mt-2">
+                                                            <p className="text-xs font-bold text-gray-400 uppercase mb-3">{field.label}</p>
                                                             <div className="flex flex-wrap gap-4">
                                                                 {files.map((file: string, idx: number) => (
                                                                     <a
@@ -438,7 +495,7 @@ export function JournalistProfile() {
                                                                         <div className="h-full w-full flex flex-col items-center justify-center p-2">
                                                                             <FileText className="h-8 w-8 text-blue-400 mb-2" />
                                                                             <span className="text-[10px] text-gray-500 truncate w-full text-center px-2">
-                                                                                {template.label} {idx + 1}
+                                                                                {field.label} {idx + 1}
                                                                             </span>
                                                                         </div>
                                                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -451,8 +508,8 @@ export function JournalistProfile() {
                                                     );
                                                 }
                                                 return (
-                                                    <div key={template.field_name} className={template.field_type === 'textarea' ? 'col-span-1 sm:col-span-2 lg:col-span-4' : ''}>
-                                                        <p className="text-xs font-bold text-gray-400 uppercase">{template.label}</p>
+                                                    <div key={field.field_name} className={field.field_type === 'textarea' ? 'col-span-1 sm:col-span-2 lg:col-span-4' : ''}>
+                                                        <p className="text-xs font-bold text-gray-400 uppercase">{field.label}</p>
                                                         <p className="text-sm font-bold text-gray-900 mt-1">{value?.toString() || 'N/A'}</p>
                                                     </div>
                                                 );
