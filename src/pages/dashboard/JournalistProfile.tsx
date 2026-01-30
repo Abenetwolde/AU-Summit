@@ -385,9 +385,21 @@ export function JournalistProfile() {
         }
 
         // Phase check: If we know the phase, filter accordingly
-        if (currentPhase === 'entry') return step.isExitStep === false;
-        if (currentPhase === 'exit') return step.isExitStep === true;
+        // DEBUG: Phase Check
+        if (isAuthorized) {
+            console.log(`Step ${step.id} Authorized. Checking Phase: Current(${currentPhase}) vs StepExit(${step.isExitStep})`);
+        }
 
+        if (currentPhase === 'entry' && step.isExitStep !== false) {
+            if (isAuthorized) console.log('Filtered out by Entry phase check');
+            return false;
+        }
+        if (currentPhase === 'exit' && step.isExitStep !== true) {
+            if (isAuthorized) console.log('Filtered out by Exit phase check');
+            return false;
+        }
+
+        if (isAuthorized) console.log('Step matched and passed all checks!');
         return true; // Fallback if no phase specified
     });
 
