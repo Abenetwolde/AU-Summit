@@ -373,10 +373,10 @@ export function JournalistProfile() {
 
         // Strict check: User must be authorized for this specific step ID
         const isAuthorized = user?.authorizedWorkflowSteps?.some(s => {
-            const idMatch = s.id === step.id;
-            const formMatch = Number(s.formId) === Number(application.formId); // Normalize types
-            if (idMatch && !formMatch) console.warn(`Step ID ${step.id} matches but Form ID mismatch: User(${s.formId}) vs App(${application.formId})`);
-            return idMatch && formMatch;
+            const idMatch = Number(s.id) === Number(step.id);
+            // Form ID check removed as Step ID is globally unique [PK]
+            // const formMatch = Number(s.formId) === Number(application.formId); 
+            return idMatch;
         });
 
         if (!isAuthorized) {
@@ -399,11 +399,22 @@ export function JournalistProfile() {
 
     // Authorization
     const isExitPhase = relevantStep?.isExitStep;
-    const canApprove = isSuperAdmin || (
-        isExitPhase
-            ? checkPermission('application:manage-exit-workflow')
-            : checkPermission('application:approve:dynamic')
-    ) && !!userActionableApproval;
+
+    const canApprove = isSuperAdmin || !!userActionableApproval;
+
+    // DEBUG: Permission Check
+    // const hasDynamicApprove = checkPermission('application:approve:dynamic');
+    // const hasManageExit = checkPermission('application:manage-exit-workflow');
+    // console.log('DEBUG: canApprove breakdown:', {
+    //     isSuperAdmin,
+    //     isExitPhase,
+    //     hasDynamicApprove,
+    //     hasManageExit,
+    //     hasActionableApproval: !!userActionableApproval,
+    //     relevantStepId: relevantStep?.id,
+    //     userPermissionsCount: user?.permissions?.length,
+    //     userPermissions: user?.permissions?.map(p => p.key) 
+    // });
 
 
     return (
