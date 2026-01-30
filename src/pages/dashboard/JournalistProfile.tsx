@@ -435,28 +435,7 @@ export function JournalistProfile() {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="p-0 h-auto text-gray-500 hover:text-gray-900"
-                        onClick={() => navigate(-1)}
-                    >
-                        <ChevronLeft className="h-5 w-5" />
-                    </Button>
-                    <h2 className="text-3xl font-bold font-sans text-gray-900">Journalist Profile</h2>
-                </div>
-                <Button
-                    variant="outline"
-                    onClick={() => exportJournalistDetailToPDF(application as any)}
-                    className="gap-2"
-                >
-                    <Download className="h-4 w-4" />
-                    Export PDF
-                </Button>
-            </div>
+
 
             {/* Header */}
             <div className="flex items-center justify-between">
