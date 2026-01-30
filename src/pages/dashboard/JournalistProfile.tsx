@@ -348,23 +348,16 @@ export function JournalistProfile() {
 
         console.log(`[Step Authorization Trace] ✅ User is authorized for Step ID:${stepId} (${userAuthStep.name})`);
 
-        // 2. Application State Check
-        // Only allow action on PENDING or IN_REVIEW steps
-        if (a.status !== 'PENDING' && a.status !== 'IN_REVIEW') {
-            console.log(`[Step Authorization Trace] ❌ Step ${stepId} is already '${a.status}'. Not actionable.`);
-            return false;
-        }
+        // 2. Authorization Check only
+        // We no longer filter by status here, because we want to FIND the step 
+        // that belongs to the user so we can show "Approve/Reject" OR "Revoke".
 
-        // 3. Phase check: 
-        // We keep it simple: if authorized and PENDING, show it.
-        // The currentPhase filter is usually for the column view, but here we are in the Profile.
-
-        console.log(`[Step Authorization Trace] ⭐ MATCH FOUND! User can act on Step ${stepId}.`);
+        console.log(`[Step Authorization Trace] ⭐ MATCH FOUND! User can act on/view Step ${stepId}.`);
         return true;
     });
 
     // Determine current user's approval status for this application
-    const isStepApproved = userActionableApproval?.status === 'APPROVED';
+
 
     // Legacy support for relevantStep used in rendering
     const relevantStep = userActionableApproval?.workflowStep || (userActionableApproval as any)?.approvalWorkflowStep;
@@ -659,14 +652,14 @@ export function JournalistProfile() {
                                         className="min-h-[100px] text-sm"
                                     />
                                 </div>
-                                {isStepApproved ? (
+                                {['APPROVED', 'REJECTED'].includes(userActionableApproval?.status) ? (
                                     <Button
                                         variant="outline"
                                         className="w-full bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100 font-bold shadow-sm"
                                         onClick={() => handleDecision('PENDING')}
                                         disabled={isStatusUpdating}
                                     >
-                                        <X className="h-4 w-4 mr-2" /> Revoke Approval
+                                        <RotateCcw className="h-4 w-4 mr-2" /> Revoke Decision
                                     </Button>
                                 ) : (
                                     <div className="flex gap-2 w-full">
