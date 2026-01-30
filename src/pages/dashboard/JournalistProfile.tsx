@@ -367,10 +367,21 @@ export function JournalistProfile() {
         const step = a.workflowStep || a.approvalWorkflowStep;
         if (!step) return false;
 
-        // Strict check: User must be authorized for this specific step ID
-        const isAuthorized = user?.authorizedWorkflowSteps?.some(s => s.id === step.id && s.formId === application.formId);
+        // DEBUG: Trace authorization check
+        // console.log(`Checking Step ${step.id} (${step.key}) against user auth`);
 
-        if (!isAuthorized) return false;
+        // Strict check: User must be authorized for this specific step ID
+        const isAuthorized = user?.authorizedWorkflowSteps?.some(s => {
+            const idMatch = s.id === step.id;
+            const formMatch = Number(s.formId) === Number(application.formId); // Normalize types
+            // if (idMatch && !formMatch) console.warn(`Step ID ${step.id} matches but Form ID mismatch: User(${s.formId}) vs App(${application.formId})`);
+            return idMatch && formMatch;
+        });
+
+        if (!isAuthorized) {
+            // console.log(`User not authorized for Step ${step.id}`);
+            return false;
+        }
 
         // Phase check: If we know the phase, filter accordingly
         if (currentPhase === 'entry') return step.isExitStep === false;
