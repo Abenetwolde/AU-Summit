@@ -454,6 +454,25 @@ export function DashboardLayout() {
             )}
 
             {/* Super Admin Specific Tools */}
+
+            {/* Badge Center - Accessible by permission (Super Admin has implicit access) */}
+            {checkPermission('badge:center:manage') && (
+              <NavLink
+                to={`${basePath}/badge-center`}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-[#e6f4ea] text-primary'
+                      : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                  )
+                }
+              >
+                <BadgeCheck className="h-5 w-5" />
+                Badge Center
+              </NavLink>
+            )}
+
             {(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.PMO) && (
               <>
                 <div className="pt-4 pb-2 px-4">
@@ -478,21 +497,7 @@ export function DashboardLayout() {
                   Email Templates
                 </NavLink>
 
-                {/* Badge Center */}
-                <NavLink
-                  to={`${basePath}/badge-center`}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
-                      isActive
-                        ? 'bg-[#e6f4ea] text-primary'
-                        : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
-                    )
-                  }
-                >
-                  <BadgeCheck className="h-5 w-5" />
-                  Badge Center
-                </NavLink>
+
 
                 {/* API Management */}
                 <NavLink
