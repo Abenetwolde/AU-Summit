@@ -5,12 +5,14 @@ import {
   Users, CheckCircle, Clock, XCircle, ChevronDown,
   Filter, Building2, Volume2, Plane, Shield, TrendingUp, Factory,
   Package, LayoutDashboard, Eye, CalendarDays, Calendar,
-  Download as DownloadIcon, FileText as FileTextIcon
+  Download as DownloadIcon, FileText as FileTextIcon,
+  Plus, Minus
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, Legend, BarChart, Bar } from 'recharts';
-import { ComposableMap, Geographies, Geography } from "react-simple-maps";
+import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import en from 'react-phone-number-input/locale/en';
 import {
   useGetDashboardFormsQuery,
   useGetDashboardDataQuery,
@@ -254,6 +256,13 @@ export default function SuperAdminDashboard() {
       default: return Building2;
     }
   };
+
+  const getCountryName = (code: string) => {
+    if (!code) return 'Unknown';
+    const upper = code.toUpperCase().trim();
+    return en[upper as keyof typeof en] || code;
+  };
+
   const selectedPerformance = performanceData.find(
     p => p.stakeholder === selectedStakeholder
   );
@@ -590,54 +599,74 @@ export default function SuperAdminDashboard() {
             <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-slate-50">
               <CardTitle>Geographic Distribution</CardTitle>
               <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
-                <Button variant="ghost" size="icon" className="h-7 w-7 bg-white shadow-sm" onClick={handleZoomIn}>
-                  <ChevronDown className="h-3 w-3 rotate-180" />
+                <Button variant="ghost" size="icon" className="h-7 w-7 bg-white shadow-sm hover:bg-slate-50 text-blue-600 border border-slate-200" onClick={handleZoomIn}>
+                  <Plus className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-white/50" onClick={handleZoomOut}>
-                  <ChevronDown className="h-3 w-3" />
+                <Button variant="ghost" size="icon" className="h-7 w-7 bg-white shadow-sm hover:bg-slate-50 text-blue-600 border border-slate-200" onClick={handleZoomOut}>
+                  <Minus className="h-4 w-4" />
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="p-6">
               <div className="flex flex-col lg:flex-row gap-8">
-                <div className="h-[420px] lg:flex-1 relative bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 shadow-inner">
+                <div className="h-[480px] lg:flex-1 relative bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 shadow-inner">
                   <ComposableMap
                     projection="geoMercator"
-                    projectionConfig={{ scale: 160 * zoom, center: [20, 0] }}
                     style={{ width: "100%", height: "100%" }}
                   >
-                    <Geographies geography={GEO_URL}>
-                      {({ geographies }) => geographies.map((geo) => {
-                        const countryData = countryDataMap.get(geo.id);
-                        return (
-                          <Geography
-                            key={geo.rsmKey}
-                            geography={geo}
-                            onMouseEnter={() => setHoveredCountry(`${geo.properties.name}${countryData ? `: ${countryData.count}` : ''}`)}
-                            onMouseLeave={() => setHoveredCountry(null)}
-                            fill={countryData ? countryData.color : "#cbd5e1"}
-                            stroke="#ffffff"
-                            strokeWidth={0.5}
-                            style={{ default: { outline: "none" }, hover: { fill: "#94a3b8", outline: "none" }, pressed: { outline: "none" } }}
-                          />
-                        );
-                      })}
-                    </Geographies>
+                    <ZoomableGroup
+                      zoom={zoom}
+                      center={[20, 0]}
+                      onMoveEnd={({ zoom }) => setZoom(zoom)}
+                    >
+                      <Geographies geography={GEO_URL}>
+                        {({ geographies }) => geographies.map((geo) => {
+                          const countryData = countryDataMap.get(geo.id);
+                          return (
+                            <Geography
+                              key={geo.rsmKey}
+                              geography={geo}
+                              onMouseEnter={() => setHoveredCountry(`${geo.properties.name}${countryData ? `: ${countryData.count}` : ''}`)}
+                              onMouseLeave={() => setHoveredCountry(null)}
+                              fill={countryData ? countryData.color : "#cbd5e1"}
+                              stroke="#ffffff"
+                              strokeWidth={0.5}
+                              style={{ default: { outline: "none" }, hover: { fill: "#94a3b8", outline: "none" }, pressed: { outline: "none" } }}
+                            />
+                          );
+                        })}
+                      </Geographies>
+                    </ZoomableGroup>
                   </ComposableMap>
                   <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md shadow-lg border border-slate-100 rounded-xl px-4 py-2.5">
                     <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Selected</div>
-                    <div className="text-sm font-bold text-slate-900 mt-0.5">{hoveredCountry || "Hover a country"}</div>
+                    <div className="text-sm font-bold text-slate-900 mt-0.5 max-w-[200px] truncate">{hoveredCountry || "Hover a country"}</div>
                   </div>
                 </div>
 
                 <div className="lg:w-80 space-y-4">
                   <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Top Nationalities</div>
-                  <div className="h-[360px]">
+                  <div className="h-[420px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={dashboardData.countries.slice(0, 8)} layout="vertical" margin={{ left: -10, right: 20, top: 0, bottom: 0 }}>
+                      <BarChart data={dashboardData.countries.slice(0, 10)} layout="vertical" margin={{ left: -10, right: 20, top: 0, bottom: 0 }}>
                         <XAxis type="number" hide />
-                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }} width={90} />
-                        <Tooltip cursor={{ fill: 'transparent' }} />
+                        <YAxis
+                          dataKey="code"
+                          type="category"
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }}
+                          width={90}
+                          tickFormatter={(code) => {
+                            const name = getCountryName(code);
+                            return name.length > 5 ? name.substring(0, 5) + '...' : name;
+                          }}
+                        />
+                        <Tooltip
+                          cursor={{ fill: 'transparent' }}
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}
+                          formatter={(value, name, props) => [value, getCountryName(props.payload.code)]}
+                        />
                         <Bar dataKey="count" fill="#3b82f6" radius={[0, 6, 6, 0]} barSize={24} />
                       </BarChart>
                     </ResponsiveContainer>
