@@ -71,9 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const checkPermission = (permissionKey: string): boolean => {
-        if (!user || !user.permissions) return false;
-        // Super admin generally has all permissions, but based on strict requirement we check the list.
-        // If needed, we can add a bypass for SUPER_ADMIN here.
+        if (!user) return false;
+
+        // Super Admin and PMO have absolute control
+        if (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PMO) return true;
+
+        if (!user.permissions) return false;
         return user.permissions.some(p => p.key === permissionKey);
     };
 
