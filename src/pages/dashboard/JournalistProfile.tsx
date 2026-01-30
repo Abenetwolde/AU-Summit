@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,7 +34,7 @@ enum EquipmentStatus {
 export function JournalistProfile() {
     const { id } = useParams();
     const navigate = useNavigate();
-    // const location = useLocation(); // REMOVED dependency on location state
+    const location = useLocation();
     const { user, checkPermission } = useAuth();
     console.log(user);
 
@@ -113,24 +113,24 @@ export function JournalistProfile() {
 
         if (userActionableApproval) {
             // Priority: Use the specific approval record found for this form & user
-            const step = userActionableApproval.workflowStep || (userActionableApproval as any).approvalWorkflowStep;
-            effectiveStepId = step?.id || userActionableApproval.workflowStepId;
+            const step = (userActionableApproval as any).workflowStep || (userActionableApproval as any).approvalWorkflowStep;
+            effectiveStepId = step?.id || (userActionableApproval as any).workflowStepId;
         }
 
         console.log('Effective Step ID:', effectiveStepId);
 
         if (!effectiveStepId && isSuperAdmin) {
             // Fallback for Super Admin: Find the first PENDING approval to act on
-            const approvalsList = application.applicationApprovals || application.approvals || [];
+            const approvalsList = application.approvals || [];
             const pendingStep = approvalsList.find((a: any) => a.status === 'PENDING');
 
             if (pendingStep) {
-                const step = pendingStep.workflowStep || pendingStep.approvalWorkflowStep;
+                const step = (pendingStep as any).workflowStep || (pendingStep as any).approvalWorkflowStep;
                 effectiveStepId = step?.id;
             } else if (approvalsList.length > 0) {
                 // If no pending steps (e.g., all approved), act on the last one (e.g. to Revoke)
                 const lastStep = approvalsList[approvalsList.length - 1];
-                const step = lastStep.workflowStep || lastStep.approvalWorkflowStep;
+                const step = (lastStep as any).workflowStep || (lastStep as any).approvalWorkflowStep;
                 effectiveStepId = step?.id;
             }
         }
@@ -254,13 +254,13 @@ export function JournalistProfile() {
 
     // Role Match Logic
     const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN || user?.roleName === 'SUPER_ADMIN';
-    const approvals = application.applicationApprovals || application.approvals || [];
+    const approvals = application.approvals || [];
 
     const isCustoms = user?.role === UserRole.CUSTOMS_OFFICER;
     const canUpdateEquipment = checkPermission('verification:equipment:single:update');
 
     // Find the relevant approval record for the current user based on authorized IDs AND Phase
-    const currentPhase = location.state?.phase; // 'entry' or 'exit'
+    const currentPhase = (location.state as any)?.phase; // 'entry' or 'exit'
 
     // Form rendering priority: 1. Specific Form definition attached to application, 2. Global Templates
     const formCategories = application?.form?.categories;
@@ -327,7 +327,7 @@ export function JournalistProfile() {
         });
 
     const userActionableApproval = (application?.approvals || []).find((a: any) => {
-        const step = a.workflowStep || (a as any).approvalWorkflowStep;
+        const step = (a as any).workflowStep || (a as any).approvalWorkflowStep;
         if (!step) return false;
 
         const stepName = step.name || 'Unknown Step'; // Use 'a.workflowStep' and cast to 'any' for the legacy property to avoid lint errors while maintaining functionality.
@@ -360,7 +360,7 @@ export function JournalistProfile() {
 
 
     // Legacy support for relevantStep used in rendering
-    const relevantStep = userActionableApproval?.workflowStep || (userActionableApproval as any)?.approvalWorkflowStep;
+    const relevantStep = (userActionableApproval as any)?.workflowStep || (userActionableApproval as any)?.approvalWorkflowStep;
 
     // Authorization
     const isExitPhase = relevantStep?.isExitStep;
@@ -652,7 +652,7 @@ export function JournalistProfile() {
                                         className="min-h-[100px] text-sm"
                                     />
                                 </div>
-                                {['APPROVED', 'REJECTED'].includes(userActionableApproval?.status) ? (
+                                {userActionableApproval?.status && ['APPROVED', 'REJECTED'].includes(userActionableApproval.status) ? (
                                     <Button
                                         variant="outline"
                                         className="w-full bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100 font-bold shadow-sm"
@@ -695,7 +695,7 @@ export function JournalistProfile() {
                             </div>
 
                             {/* Exit Workflow Activation Button */}
-                            {application.status === 'APPROVED' && !approvals.some((a: any) => (a.workflowStep || a.approvalWorkflowStep)?.isExitStep) && (
+                            {application.status === 'APPROVED' && !approvals.some((a: any) => ((a as any).workflowStep || (a as any).approvalWorkflowStep)?.isExitStep) && (
                                 <div className="pt-4 border-t">
 
                                     <p className="text-[10px] text-center text-gray-400 mt-2">
@@ -743,9 +743,9 @@ export function JournalistProfile() {
                                             }`}
                                         onClick={() => {
                                             if (selectedFields.includes(template.field_name)) {
-                                                setSelectedFields(prev => prev.filter(f => f !== template.field_name));
+                                                setSelectedFields((prev: string[]) => prev.filter((f: string) => f !== template.field_name));
                                             } else {
-                                                setSelectedFields(prev => [...prev, template.field_name]);
+                                                setSelectedFields((prev: string[]) => [...prev, template.field_name]);
                                             }
                                         }}
                                     >
@@ -774,7 +774,7 @@ export function JournalistProfile() {
                                                 placeholder={`Explain why ${template?.label || fieldName} is being rejected...`}
                                                 className="bg-white"
                                                 value={fieldNotes[fieldName] || ''}
-                                                onChange={(e) => setFieldNotes(prev => ({ ...prev, [fieldName]: e.target.value }))}
+                                                onChange={(e) => setFieldNotes((prev: Record<string, string>) => ({ ...prev, [fieldName]: e.target.value }))}
                                             />
                                         </div>
                                     );
@@ -799,9 +799,9 @@ export function JournalistProfile() {
                             disabled={isStatusUpdating || (selectedFields.length === 0 && !notes.trim())}
                             onClick={() => {
                                 const rejectionDetails: Record<string, string> = {};
-                                selectedFields.forEach(field => {
-                                    const template = templates?.find(t => t.field_name === field);
-                                    rejectionDetails[template?.label || field] = fieldNotes[field] || 'Incorrect information provided.';
+                                selectedFields.forEach((fieldName: string) => {
+                                    const template = templates?.find(t => t.field_name === fieldName);
+                                    rejectionDetails[template?.label || fieldName] = fieldNotes[fieldName] || 'Incorrect information provided.';
                                 });
                                 handleDecision('REJECTED', rejectionDetails);
                             }}
