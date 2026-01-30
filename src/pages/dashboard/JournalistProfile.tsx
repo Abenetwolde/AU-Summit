@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,6 @@ import en from 'react-phone-number-input/locale/en';
 import { SystemCheckSuccess } from '@/components/SystemCheckSuccess';
 import { exportJournalistDetailToPDF } from '@/lib/export-utils';
 import { useAuth, UserRole } from '@/auth/context';
-import { MOCK_JOURNALISTS } from '@/data/mock';
 import {
     useApproveWorkflowStepMutation,
     useActivateExitWorkflowMutation,
@@ -35,7 +34,7 @@ enum EquipmentStatus {
 export function JournalistProfile() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const location = useLocation();
+    // const location = useLocation(); // REMOVED dependency on location state
     const { user, checkPermission } = useAuth();
     console.log(user);
 
@@ -49,7 +48,6 @@ export function JournalistProfile() {
     // Fetch dynamic form templates
     const { data: templates, isLoading: templatesLoading } = useGetFormFieldTemplatesQuery();
 
-    const [application, setApplication] = useState<any>(null);
     const [notes, setNotes] = useState('');
     const [showSystemCheck, setShowSystemCheck] = useState(false);
 
@@ -65,48 +63,36 @@ export function JournalistProfile() {
     const [selectedFields, setSelectedFields] = useState<string[]>([]);
     const [fieldNotes, setFieldNotes] = useState<Record<string, string>>({});
 
-    const { data: fetchedApplication, isLoading: applicationLoading } = useGetApplicationByIdQuery(Number(id), { skip: !id });
+    // Fetch application data solely by ID
+    const { data: application, isLoading: applicationLoading } = useGetApplicationByIdQuery(Number(id), {
+        skip: !id,
+        refetchOnMountOrArgChange: true
+    });
 
-    useEffect(() => {
-        if (fetchedApplication) {
-            setApplication(fetchedApplication);
-        }
-    }, [fetchedApplication]);
+    if (applicationLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="text-muted-foreground font-medium animate-pulse">Loading Application Details...</p>
+            </div>
+        );
+    }
 
-    useEffect(() => {
-        if (location.state?.application) {
-            setApplication(location.state.application);
-        } else {
-            // Robust Fallback to Mock Data to "restore static data" appearance if API data is missing
-            const mock = MOCK_JOURNALISTS.find(j => j.id === id);
-            if (mock) {
-                setApplication({
-                    id: mock.id,
-                    formData: {
-                        first_name: mock.fullname.split(' ')[0],
-                        last_name: mock.fullname.split(' ').slice(1).join(' '),
-                        occupation: mock.role,
-                        country: mock.country,
-                        passport_number: mock.passportNo,
-                        city: 'Addis Ababa', // Mock static
-                        email: 'journalist@example.com', // Mock static
-                        phone: mock.contact,
-                        citizenship: mock.country,
-                        arrival_date: '2024-01-20',
-                        departure_date: '2024-02-10',
-                        address_line_1: 'Bole Road',
-                        place_of_birth: 'London',
-                        airlines_and_flight_number: 'ET 701',
-                        accommodation_details: 'Skylight Hotel'
-                    },
-                    user: { fullName: mock.fullname },
-                    equipment: [],
-                    status: mock.status,
-                    createdAt: new Date().toISOString()
-                });
-            }
-        }
-    }, [location.state, id]);
+    if (!application) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <ShieldCheck className="h-16 w-16 text-gray-300" />
+                <h3 className="text-xl font-bold text-gray-900">Application Not Found</h3>
+                <p className="text-muted-foreground">The requested application could not be loaded.</p>
+                <Button variant="outline" onClick={() => navigate(-1)}>
+                    <ChevronLeft className="mr-2 h-4 w-4" /> Go Back
+                </Button>
+            </div>
+        );
+    }
+
+    // Removed manual useEffect for setting 'application' state -- direct usage of query data is preferred.
+    // Removed MOCK_JOURNALISTS fallback.
 
     const countryName = (code: string) => code ? (en[code as keyof typeof en] || code) : 'Unknown';
 
@@ -127,8 +113,8 @@ export function JournalistProfile() {
 
         if (userActionableApproval) {
             // Priority: Use the specific approval record found for this form & user
-            const step = userActionableApproval.workflowStep || userActionableApproval.approvalWorkflowStep;
-            effectiveStepId = step?.id;
+            const step = userActionableApproval.workflowStep || (userActionableApproval as any).approvalWorkflowStep;
+            effectiveStepId = step?.id || userActionableApproval.workflowStepId;
         }
 
         console.log('Effective Step ID:', effectiveStepId);
@@ -168,22 +154,7 @@ export function JournalistProfile() {
 
             toast.success(`Application ${status.toLowerCase()} successfully`);
 
-            // Optimistic Update: Update the specific approval in the list by ID
-            const updatedApprovals = (application.applicationApprovals || application.approvals || []).map((app: any) => {
-                const step = app.workflowStep || app.approvalWorkflowStep;
-                // Match by ID if we have it
-                if (step && step.id === effectiveStepId) {
-                    return { ...app, status, isResubmitted: false };
-                }
-                return app;
-            });
-
-            setApplication({
-                ...application,
-                approvals: updatedApprovals,
-                applicationApprovals: updatedApprovals,
-                status: status === 'APPROVED' ? application.status : 'REJECTED'
-            });
+            // Optimistic Update removed as application comes from RTK Query
             setNotes('');
             setShowRejectionDialog(false);
             setSelectedFields([]);
@@ -232,15 +203,7 @@ export function JournalistProfile() {
 
             toast.success(`Equipment ${status.toLowerCase()} successfully`);
 
-            // Update the equipment list in state
-            if (application && application.equipment) {
-                const updatedEquipment = application.equipment.map((item: EquipmentType) =>
-                    item.id === equipmentId
-                        ? { ...item, status, rejectionReason: payload.rejectionReason }
-                        : item
-                );
-                setApplication({ ...application, equipment: updatedEquipment });
-            }
+            // UI update handled by RTK Query invalidation
 
             // Reset and close dialog
             setSelectedEquipment(null);
@@ -363,55 +326,48 @@ export function JournalistProfile() {
             return (order[a.name] || 99) - (order[b.name] || 99);
         });
 
-    const userActionableApproval = approvals.find((a: any) => {
-        const step = a.workflowStep || a.approvalWorkflowStep;
+    const userActionableApproval = (application?.approvals || []).find((a: any) => {
+        const step = a.workflowStep || (a as any).approvalWorkflowStep;
         if (!step) return false;
 
+        const stepName = step.name || 'Unknown Step'; // Use 'a.workflowStep' and cast to 'any' for the legacy property to avoid lint errors while maintaining functionality.
         const stepId = step.id || a.workflowStepId;
+        const stepKey = step.key;
 
-        // DEBUG: Trace authorization check -- UNCOMMENTED FOR DEBUGGING
-        // console.log(`Checking Step ${stepId} (${step.key}, Exit:${step.isExitStep}) against user auth`);
-        // console.log('User Authorized Steps:', user?.authorizedWorkflowSteps);
+        // DEBUG: Detailed Trace for Authorization
+        console.log(`[Step Authorization Trace] Checking Step ID:${stepId} (${stepKey})`);
 
-        // Strict check: User must be authorized for this specific step ID
-        const isAuthorized = user?.authorizedWorkflowSteps?.some(s => {
-            const idMatch = Number(s.id) === Number(stepId);
-            // Form ID check removed as Step ID is globally unique [PK]
-            // const formMatch = Number(s.formId) === Number(application.formId); 
-            return idMatch;
-        });
+        // 1. Find the corresponding authorized step in user object
+        const userAuthStep = user?.authorizedWorkflowSteps?.find(s => Number(s.id) === Number(stepId));
 
-        if (!isAuthorized) {
-            console.log(`User not authorized for Step ${stepId}`);
+        if (!userAuthStep) {
+            console.log(`[Step Authorization Trace] ❌ User DOES NOT have Step ID:${stepId} in their authorizedWorkflowSteps.`);
+            // console.log(`[Step Authorization Trace] User's authorized step IDs:`, user?.authorizedWorkflowSteps?.map(s => s.id));
             return false;
         }
 
-        // Phase check: If we know the phase, filter accordingly
-        // DEBUG: Phase Check
-        if (isAuthorized) {
-            console.log(`Step ${stepId} Authorized. Checking Phase: Current(${currentPhase}) vs StepExit(${step.isExitStep})`);
+        console.log(`[Step Authorization Trace] ✅ User is authorized for Step ID:${stepId} (${userAuthStep.name})`);
+
+        // 2. Application State Check
+        // Only allow action on PENDING or IN_REVIEW steps
+        if (a.status !== 'PENDING' && a.status !== 'IN_REVIEW') {
+            console.log(`[Step Authorization Trace] ❌ Step ${stepId} is already '${a.status}'. Not actionable.`);
+            return false;
         }
 
-        // Phase check: If we know the phase, filter accordingly
-        // BUT if user is explicitly authorized for this step ID, allow it regardless of phase view (fix for read-only issue)
-        if (currentPhase === 'entry' && step.isExitStep !== false) {
-            if (isAuthorized) console.warn('Phase mismatch (Entry vs ExitStep) but user authorized. Allowing.');
-            else return false;
-        }
-        if (currentPhase === 'exit' && step.isExitStep !== true) {
-            if (isAuthorized) console.warn('Phase mismatch (Exit vs EntryStep) but user authorized. Allowing.');
-            else return false;
-        }
+        // 3. Phase check: 
+        // We keep it simple: if authorized and PENDING, show it.
+        // The currentPhase filter is usually for the column view, but here we are in the Profile.
 
-        if (isAuthorized) console.log('Step matched and passed all checks!');
-        return true; // Fallback if no phase specified
+        console.log(`[Step Authorization Trace] ⭐ MATCH FOUND! User can act on Step ${stepId}.`);
+        return true;
     });
 
     // Determine current user's approval status for this application
     const isStepApproved = userActionableApproval?.status === 'APPROVED';
 
     // Legacy support for relevantStep used in rendering
-    const relevantStep = userActionableApproval?.workflowStep || userActionableApproval?.approvalWorkflowStep;
+    const relevantStep = userActionableApproval?.workflowStep || (userActionableApproval as any)?.approvalWorkflowStep;
 
     // Authorization
     const isExitPhase = relevantStep?.isExitStep;

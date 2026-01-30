@@ -44,7 +44,7 @@ interface User {
     gate?: string;
     organization?: Organization;
     permissions?: Permission[]; // For storing API permissions
-    authorizedWorkflowSteps?: { id: number; formId: number; key: string; targetAudience: string }[]; // Full step details for authorization
+    authorizedWorkflowSteps?: { id: number; formId: number; key: string; name: string; targetAudience: string; isExitStep: boolean }[]; // Full step details for authorization
     requirePasswordChange?: boolean;
 }
 
