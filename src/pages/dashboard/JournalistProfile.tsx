@@ -367,19 +367,20 @@ export function JournalistProfile() {
         const step = a.workflowStep || a.approvalWorkflowStep;
         if (!step) return false;
 
-        // DEBUG: Trace authorization check
-        // console.log(`Checking Step ${step.id} (${step.key}) against user auth`);
+        // DEBUG: Trace authorization check -- UNCOMMENTED FOR DEBUGGING
+        console.log(`Checking Step ${step.id} (${step.key}, Exit:${step.isExitStep}) against user auth`);
+        console.log('User Authorized Steps:', user?.authorizedWorkflowSteps);
 
         // Strict check: User must be authorized for this specific step ID
         const isAuthorized = user?.authorizedWorkflowSteps?.some(s => {
             const idMatch = s.id === step.id;
             const formMatch = Number(s.formId) === Number(application.formId); // Normalize types
-            // if (idMatch && !formMatch) console.warn(`Step ID ${step.id} matches but Form ID mismatch: User(${s.formId}) vs App(${application.formId})`);
+            if (idMatch && !formMatch) console.warn(`Step ID ${step.id} matches but Form ID mismatch: User(${s.formId}) vs App(${application.formId})`);
             return idMatch && formMatch;
         });
 
         if (!isAuthorized) {
-            // console.log(`User not authorized for Step ${step.id}`);
+            console.log(`User not authorized for Step ${step.id}`);
             return false;
         }
 
