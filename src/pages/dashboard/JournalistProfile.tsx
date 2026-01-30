@@ -367,36 +367,40 @@ export function JournalistProfile() {
         const step = a.workflowStep || a.approvalWorkflowStep;
         if (!step) return false;
 
+        const stepId = step.id || a.workflowStepId;
+
         // DEBUG: Trace authorization check -- UNCOMMENTED FOR DEBUGGING
-        console.log(`Checking Step ${step.id} (${step.key}, Exit:${step.isExitStep}) against user auth`);
-        console.log('User Authorized Steps:', user?.authorizedWorkflowSteps);
+        // console.log(`Checking Step ${stepId} (${step.key}, Exit:${step.isExitStep}) against user auth`);
+        // console.log('User Authorized Steps:', user?.authorizedWorkflowSteps);
 
         // Strict check: User must be authorized for this specific step ID
         const isAuthorized = user?.authorizedWorkflowSteps?.some(s => {
-            const idMatch = Number(s.id) === Number(step.id);
+            const idMatch = Number(s.id) === Number(stepId);
             // Form ID check removed as Step ID is globally unique [PK]
             // const formMatch = Number(s.formId) === Number(application.formId); 
             return idMatch;
         });
 
         if (!isAuthorized) {
-            console.log(`User not authorized for Step ${step.id}`);
+            console.log(`User not authorized for Step ${stepId}`);
             return false;
         }
 
         // Phase check: If we know the phase, filter accordingly
         // DEBUG: Phase Check
         if (isAuthorized) {
-            console.log(`Step ${step.id} Authorized. Checking Phase: Current(${currentPhase}) vs StepExit(${step.isExitStep})`);
+            console.log(`Step ${stepId} Authorized. Checking Phase: Current(${currentPhase}) vs StepExit(${step.isExitStep})`);
         }
 
+        // Phase check: If we know the phase, filter accordingly
+        // BUT if user is explicitly authorized for this step ID, allow it regardless of phase view (fix for read-only issue)
         if (currentPhase === 'entry' && step.isExitStep !== false) {
-            if (isAuthorized) console.log('Filtered out by Entry phase check');
-            return false;
+            if (isAuthorized) console.warn('Phase mismatch (Entry vs ExitStep) but user authorized. Allowing.');
+            else return false;
         }
         if (currentPhase === 'exit' && step.isExitStep !== true) {
-            if (isAuthorized) console.log('Filtered out by Exit phase check');
-            return false;
+            if (isAuthorized) console.warn('Phase mismatch (Exit vs EntryStep) but user authorized. Allowing.');
+            else return false;
         }
 
         if (isAuthorized) console.log('Step matched and passed all checks!');
@@ -453,6 +457,31 @@ export function JournalistProfile() {
                     Export PDF
                 </Button>
             </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="p-0 h-auto text-gray-500 hover:text-gray-900"
+                        onClick={() => navigate(-1)}
+                    >
+                        <ChevronLeft className="h-5 w-5" />
+                    </Button>
+                    <h2 className="text-3xl font-bold font-sans text-gray-900">Journalist Profile</h2>
+                </div>
+                <Button
+                    variant="outline"
+                    onClick={() => exportJournalistDetailToPDF(application as any)}
+                    className="gap-2"
+                >
+                    <Download className="h-4 w-4" />
+                    Export PDF
+                </Button>
+            </div>
+
+            {/* Debug Panel Removed */}
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Main Content - Left */}
