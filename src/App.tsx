@@ -123,14 +123,17 @@ function App() {
                                         <Route path="forms/builder/:id" element={<FormEditor />} />
                                     </Route>
 
-                                    {/* Super Admin Only Routes */}
-                                    <Route element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.PMO]} />}>
-                                        <Route path="email-templates" element={<EmailTemplates />} />
-                                        <Route path="settings" element={<SystemSettings />} />
+                                    <Route element={<ProtectedRoute requiredPermission="badge:center:manage" />}>
                                         <Route path="badge-center" element={<BadgeCenter />} />
                                         <Route element={<ProtectedRoute requiredPermission="application:badge:manual-print" />}>
                                             <Route path="badge-center/manual-print" element={<ManualBadgePrint />} />
                                         </Route>
+                                    </Route>
+
+                                    {/* Super Admin Only Routes */}
+                                    <Route element={<ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.PMO]} />}>
+                                        <Route path="email-templates" element={<EmailTemplates />} />
+                                        <Route path="settings" element={<SystemSettings />} />
                                         <Route path="api-management" element={<ApiManagement />} />
                                         <Route path="embassies" element={<EmbassyManagement />} />
                                         <Route path="airline-offices" element={<AirlineOfficeManagement />} />
