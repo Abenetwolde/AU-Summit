@@ -973,6 +973,22 @@ export interface AdminAnalyticsData {
         actionAt: string;
         notes: string | null;
     }[];
+    mofaData?: {
+        embassyStats: {
+            name: string;
+            approved: number;
+            rejected: number;
+            pending: number;
+            total: number;
+        }[];
+        roleDistribution: {
+            name: string;
+            total: number;
+            pending: number;
+            approved: number;
+            rejected: number;
+        }[];
+    };
 }
 
 export interface AdminAnalyticsResponse {

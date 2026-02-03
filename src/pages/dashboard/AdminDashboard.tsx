@@ -223,6 +223,118 @@ export default function AdminDashboard() {
                 </Card>
             </div>
 
+            {/* MOFA Specific Sections */}
+            {analytics.mofaData && (
+                <div className="space-y-8 animate-slide-up mt-8" style={{ animationDelay: '0.1s' }}>
+                    {/* 1. Application Distribution by Role */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-bold text-slate-800">Ministry Reviewing Role Distribution</h2>
+                            <Badge variant="neutral" className="bg-indigo-50 text-indigo-700">Workflow Stages</Badge>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {analytics.mofaData.roleDistribution.map((role: any, i: number) => (
+                                <Card key={i} className="border-0 shadow-sm bg-white overflow-hidden relative group h-full">
+                                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
+                                        <User className="h-16 w-16" />
+                                    </div>
+                                    <CardContent className="p-6">
+                                        <div className="flex flex-col gap-4">
+                                            {/* Header */}
+                                            <div>
+                                                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1 truncate">
+                                                    {(role.name || 'Unknown Role').replace(/_/g, ' ')}
+                                                </p>
+                                                <div className="flex items-end gap-2">
+                                                    <h3 className="text-3xl font-bold text-slate-800">{role.total || 0}</h3>
+                                                    <span className="text-[10px] font-bold text-slate-400 mb-1.5 uppercase">Assigned</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Status Grid */}
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div className="bg-emerald-50 p-2 rounded-lg">
+                                                    <p className="text-emerald-600 text-[9px] font-black uppercase tracking-tighter mb-0.5">Approved</p>
+                                                    <p className="text-lg font-bold text-slate-800 leading-none">{role.approved}</p>
+                                                    <p className="text-[9px] font-bold text-emerald-600/70 mt-0.5">
+                                                        {role.total > 0 ? Math.round((role.approved / role.total) * 100) : 0}%
+                                                    </p>
+                                                </div>
+                                                <div className="bg-amber-50 p-2 rounded-lg">
+                                                    <p className="text-amber-600 text-[9px] font-black uppercase tracking-tighter mb-0.5">Pending</p>
+                                                    <p className="text-lg font-bold text-slate-800 leading-none">{role.pending}</p>
+                                                    <p className="text-[9px] font-bold text-amber-600/70 mt-0.5">Review</p>
+                                                </div>
+                                                <div className="bg-red-50 p-2 rounded-lg">
+                                                    <p className="text-red-600 text-[9px] font-black uppercase tracking-tighter mb-0.5">Rejected</p>
+                                                    <p className="text-lg font-bold text-slate-800 leading-none">{role.rejected}</p>
+                                                    <p className="text-[9px] font-bold text-red-600/70 mt-0.5">
+                                                        {role.total > 0 ? Math.round((role.rejected / role.total) * 100) : 0}%
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 2. Embassy Statistical Overview */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-bold text-slate-800">Embassy Statistical Overview</h2>
+                            <Badge variant="neutral" className="bg-blue-50 text-blue-700">Birds-eye View</Badge>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {analytics.mofaData.embassyStats.map((embassy, i) => {
+                                const data = [
+                                    { name: 'Approved', value: embassy.approved, color: '#10b981' },
+                                    { name: 'Rejected', value: embassy.rejected, color: '#ef4444' },
+                                    { name: 'Pending', value: embassy.pending, color: '#f59e0b' },
+                                ];
+                                return (
+                                    <Card key={i} className="border-0 shadow-sm bg-white hover:shadow-md transition-all overflow-hidden">
+                                        <CardHeader className="pb-2 border-b border-slate-50 flex flex-row items-center justify-between">
+                                            <CardTitle className="text-base truncate max-w-[200px]">{embassy.name}</CardTitle>
+                                            <div className="text-[10px] font-bold text-slate-400">TOTAL: {embassy.total}</div>
+                                        </CardHeader>
+                                        <CardContent className="p-4 flex items-center gap-4">
+                                            <div className="h-32 w-32 relative">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie data={data} cx="50%" cy="50%" innerRadius={35} outerRadius={40} paddingAngle={2} dataKey="value" stroke="none">
+                                                            {data.map((entry, idx) => <Cell key={`cell-${idx}`} fill={entry.color} />)}
+                                                        </Pie>
+                                                        <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', fontSize: '12px' }} />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                    <span className="text-lg font-bold text-slate-700">
+                                                        {embassy.total > 0 ? Math.round((embassy.approved / embassy.total) * 100) : 0}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 space-y-2">
+                                                {data.map((item, idx) => (
+                                                    <div key={idx} className="flex items-center justify-between text-xs">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                                                            <span className="text-slate-500 font-medium">{item.name}</span>
+                                                        </div>
+                                                        <span className="font-bold text-slate-800">{item.value}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Entry/Exit Workflow Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
                 {/* Entry Workflow */}
@@ -420,7 +532,6 @@ export default function AdminDashboard() {
                     <OfficerPerformance data={officerKPIs} isLoading={isOfficerLoading} />
                 </div>
             </div>
-
 
 
             {/* Recent Activity Table */}
