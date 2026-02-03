@@ -370,7 +370,7 @@ export default function AdminDashboard() {
             {/* Second Row: Org Distribution & Performance */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Performance Metric */}
-                <Card className="shadow-sm border-slate-100 flex flex-col justify-center items-center p-8 bg-slate-900 text-white overflow-hidden relative">
+                <Card className="shadow-sm border-slate-100 flex flex-col justify-center items-center p-8 bg-slate-900 text-white overflow-hidden relative h-[350px]">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
                     <div className="p-4 bg-white/10 rounded-2xl mb-4">
                         <Clock className="h-8 w-8 text-blue-400" />

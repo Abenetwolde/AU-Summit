@@ -111,7 +111,7 @@ export function DashboardLayout() {
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="p-6 relative border-b border-gray-50">
+        <div className="p-3 relative border-b border-gray-50">
           {/* Close button – mobile only */}
           <Button
             variant="ghost"
@@ -122,7 +122,7 @@ export function DashboardLayout() {
             <X className="h-5 w-5 text-gray-500" />
           </Button>
 
-          <div className="flex flex-col items-center gap-4 text-primary w-full text-center mt-2">
+          <div className="flex flex-col items-center gap-1 text-primary w-full text-center mt-2">
             <img
               src={logoSrc}
               alt="Organization Logo"
@@ -135,7 +135,7 @@ export function DashboardLayout() {
               </h1>
             ) : (
               <h1 className="text-sm font-bold font-sans leading-relaxed text-black uppercase tracking-wider">
-                SUPERADMIN
+            
               </h1>
             )}
 
@@ -555,9 +555,9 @@ export function DashboardLayout() {
         </ScrollArea>
 
         {/* User info & logout */}
-        <div className="p-6 mt-auto border-t border-gray-100">
-          <div className="mb-6">
-            <div className="flex items-center gap-3">
+        <div className="p-3 mt-auto border-t border-gray-100">
+          <div className="mb-3">
+            <div className="flex items-center gap-2">
               <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
                 <User className="h-6 w-6" />
               </div>

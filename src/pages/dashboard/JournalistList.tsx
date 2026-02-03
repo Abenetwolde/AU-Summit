@@ -235,7 +235,7 @@ export function JournalistList() {
             </Card>
 
             {/* Table */}
-            <Card className="border-0 shadow-sm overflow-hidden bg-white flex flex-col max-h-[calc(100vh-16rem)]">
+            <Card className="border-0 shadow-sm overflow-hidden bg-white flex flex-col max-h-[calc(100vh-10rem)]">
                 <div className="relative w-full overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 flex-1">
                     <table className="w-full caption-bottom text-sm min-w-[800px]">
                         <thead className="sticky top-0 z-10 [&_tr]:border-b bg-gray-50 shadow-sm">
@@ -259,7 +259,7 @@ export function JournalistList() {
                                     </th>
                                 ))}
 
-                                <th className="h-12 px-4 text-left align-middle font-medium text-gray-500 uppercase text-xs tracking-wider">ACTION</th>
+                                <th className="h-12 px-4 text-left align-middle font-medium text-gray-500 uppercase text-xs tracking-wider sticky right-0 bg-gray-50 z-20 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">ACTION</th>
                             </tr>
                         </thead>
                         <tbody className="[&_tr:last-child]:border-0">
@@ -280,8 +280,23 @@ export function JournalistList() {
                                     <tr key={app.id} className="border-b transition-colors hover:bg-muted/50">
                                         <td className="p-4 align-middle text-gray-500">0{index + 1}</td>
                                         <td className="p-4 align-middle">
-                                            <div className="font-bold text-gray-900">{fullName}</div>
-                                            <div className="text-xs text-gray-500">{occupation}</div>
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 rounded-full overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200">
+                                                    {app.formData?.profile_photo ? (
+                                                        <img src={`${import.meta.env.VITE_API_BASE_URL}/${app.formData.profile_photo}`} alt={fullName} className="h-full w-full object-cover" />
+                                                    ) : (
+                                                        <div className="h-full w-full flex items-center justify-center bg-blue-50 text-blue-600 font-bold text-sm">
+
+                                                            {fullName.charAt(0).toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                                                                              
+                                                    <div className="font-bold text-gray-900">{fullName}</div>
+                                                    <div className="text-xs text-gray-500">{occupation}</div>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td className="p-4 align-middle hidden sm:table-cell">
                                             <div className="flex items-center gap-2 font-bold text-gray-700">
@@ -317,7 +332,7 @@ export function JournalistList() {
                                             );
                                         })}
 
-                                        <td className="p-4 align-middle">
+                                        <td className="p-4 align-middle sticky right-0 bg-white group-hover:bg-muted/50 z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
                                             {checkPermission('application:view:by-id') && (
                                                 <Button variant="outline" size="sm" className="hidden lg:flex h-8 text-blue-500 border-blue-200 hover:bg-blue-50 hover:text-blue-700 font-bold" onClick={() => navigate(`${basePath}/journalists/${app.id}`, { state: { application: app } })}>
                                                     View More <Eye className="ml-1 h-3 w-3" />
