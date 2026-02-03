@@ -815,7 +815,7 @@ export interface UpdateEquipmentStatusPayload {
 }
 
 export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
-// export const FILE_BASE_URL = 'http://localhost:5000';
+// export const FILE_BASE_URL = 'http://localhost:3000';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -906,15 +906,17 @@ export interface SuperAdminStakeholdersResponse {
 
 export interface EntryExitStats {
     entry: {
-        active: number;
-        completed: number;
+        approved: number;
+        pending: number;
+        rejected: number;
         total: number;
         percentage: number;
         trend: 'up' | 'down';
     };
     exit: {
-        active: number;
-        completed: number;
+        approved: number;
+        pending: number;
+        rejected: number;
         total: number;
         percentage: number;
         trend: 'up' | 'down';
@@ -952,6 +954,7 @@ export interface AdminAnalyticsData {
         totalApplicationsReceived: AdminKPI;
         approvedByYou: AdminKPI;
         pendingDecision: AdminKPI;
+        rejectedByYou: AdminKPI;
     };
     chartData: {
         timeSeries: { date: string; count: number }[];
