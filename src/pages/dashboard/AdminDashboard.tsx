@@ -131,11 +131,11 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="gap-2" onClick={() => exportDashboardAnalyticsToCSV('Admin Dashboard', analytics.kpis, analytics.chartData)}>
+                        <Button variant="outline" size="sm" className="gap-2" onClick={() => exportDashboardAnalyticsToCSV('Admin Dashboard', { kpis: analytics.kpis, charts: analytics.chartData })}>
                             <Download className="h-4 w-4" />
                             CSV
                         </Button>
-                        <Button variant="outline" size="sm" className="gap-2 border-primary text-primary hover:bg-primary/5" onClick={() => exportDashboardAnalyticsToPDF('Admin Dashboard', analytics.kpis, analytics.chartData)}>
+                        <Button variant="outline" size="sm" className="gap-2 border-primary text-primary hover:bg-primary/5" onClick={() => exportDashboardAnalyticsToPDF('Admin Dashboard', { kpis: analytics.kpis, charts: analytics.chartData })}>
                             <FileText className="h-4 w-4" />
                             PDF
                         </Button>
@@ -153,7 +153,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Total Assigned */}
                 <Card className="border-0 shadow-sm bg-gradient-to-br from-indigo-500 to-blue-600 text-white overflow-hidden relative group">
                     <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">
@@ -164,8 +164,8 @@ export default function AdminDashboard() {
                         <div className="flex items-end gap-3">
                             <h3 className="text-4xl font-bold">{analytics.kpis.totalApplicationsReceived.value}</h3>
                             <div className="flex items-center gap-1 text-white/90 text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full mb-1">
-                                <TrendingUp className="h-3 w-3" />
-                                <span>{analytics.kpis.totalApplicationsReceived.percentage}%</span>
+                                <Activity className="h-3 w-3" />
+                                <span>Overview</span>
                             </div>
                         </div>
                     </CardContent>
@@ -181,7 +181,7 @@ export default function AdminDashboard() {
                         <div className="flex items-end gap-3">
                             <h3 className="text-4xl font-bold">{analytics.kpis.approvedByYou.value}</h3>
                             <div className="flex items-center gap-1 text-white/90 text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full mb-1">
-                                <TrendingUp className="h-3 w-3" />
+                                <TrendingUp className={cn("h-3 w-3", analytics.kpis.approvedByYou.trend === 'down' && "rotate-180")} />
                                 <span>{analytics.kpis.approvedByYou.percentage}%</span>
                             </div>
                         </div>
@@ -199,12 +199,141 @@ export default function AdminDashboard() {
                             <h3 className="text-4xl font-bold">{analytics.kpis.pendingDecision.value}</h3>
                             <div className="flex items-center gap-1 text-white/90 text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full mb-1">
                                 <Clock className="h-3 w-3" />
-                                <span>Urgent</span>
+                                <span>Review</span>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Rejected by You */}
+                <Card className="border-0 shadow-sm bg-gradient-to-br from-red-500 to-rose-600 text-white overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">
+                        <XCircle className="h-24 w-24" />
+                    </div>
+                    <CardContent className="p-6 relative">
+                        <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">{analytics.kpis.rejectedByYou.label}</p>
+                        <div className="flex items-end gap-3">
+                            <h3 className="text-4xl font-bold">{analytics.kpis.rejectedByYou.value}</h3>
+                            <div className="flex items-center gap-1 text-white/90 text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full mb-1">
+                                <TrendingUp className={cn("h-3 w-3", analytics.kpis.rejectedByYou.trend === 'down' && "rotate-180")} />
+                                <span>{analytics.kpis.rejectedByYou.percentage}%</span>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
+
+            {/* MOFA Specific Sections */}
+            {analytics.mofaData && (
+                <div className="space-y-8 animate-slide-up mt-8" style={{ animationDelay: '0.1s' }}>
+                    {/* 1. Application Distribution by Role */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-bold text-slate-800">Ministry Reviewing Role Distribution</h2>
+                            <Badge variant="neutral" className="bg-indigo-50 text-indigo-700">Workflow Stages</Badge>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {analytics.mofaData.roleDistribution.map((role: any, i: number) => (
+                                <Card key={i} className="border-0 shadow-sm bg-white overflow-hidden relative group h-full">
+                                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
+                                        <User className="h-16 w-16" />
+                                    </div>
+                                    <CardContent className="p-6">
+                                        <div className="flex flex-col gap-4">
+                                            {/* Header */}
+                                            <div>
+                                                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1 truncate">
+                                                    {(role.name || 'Unknown Role').replace(/_/g, ' ')}
+                                                </p>
+                                                <div className="flex items-end gap-2">
+                                                    <h3 className="text-3xl font-bold text-slate-800">{role.total || 0}</h3>
+                                                    <span className="text-[10px] font-bold text-slate-400 mb-1.5 uppercase">Assigned</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Status Grid */}
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div className="bg-emerald-50 p-2 rounded-lg">
+                                                    <p className="text-emerald-600 text-[9px] font-black uppercase tracking-tighter mb-0.5">Approved</p>
+                                                    <p className="text-lg font-bold text-slate-800 leading-none">{role.approved}</p>
+                                                    <p className="text-[9px] font-bold text-emerald-600/70 mt-0.5">
+                                                        {role.total > 0 ? Math.round((role.approved / role.total) * 100) : 0}%
+                                                    </p>
+                                                </div>
+                                                <div className="bg-amber-50 p-2 rounded-lg">
+                                                    <p className="text-amber-600 text-[9px] font-black uppercase tracking-tighter mb-0.5">Pending</p>
+                                                    <p className="text-lg font-bold text-slate-800 leading-none">{role.pending}</p>
+                                                    <p className="text-[9px] font-bold text-amber-600/70 mt-0.5">Review</p>
+                                                </div>
+                                                <div className="bg-red-50 p-2 rounded-lg">
+                                                    <p className="text-red-600 text-[9px] font-black uppercase tracking-tighter mb-0.5">Rejected</p>
+                                                    <p className="text-lg font-bold text-slate-800 leading-none">{role.rejected}</p>
+                                                    <p className="text-[9px] font-bold text-red-600/70 mt-0.5">
+                                                        {role.total > 0 ? Math.round((role.rejected / role.total) * 100) : 0}%
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* 2. Embassy Statistical Overview */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-bold text-slate-800">Embassy Statistical Overview</h2>
+                            <Badge variant="neutral" className="bg-blue-50 text-blue-700">Birds-eye View</Badge>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {analytics.mofaData.embassyStats.map((embassy, i) => {
+                                const data = [
+                                    { name: 'Approved', value: embassy.approved, color: '#10b981' },
+                                    { name: 'Rejected', value: embassy.rejected, color: '#ef4444' },
+                                    { name: 'Pending', value: embassy.pending, color: '#f59e0b' },
+                                ];
+                                return (
+                                    <Card key={i} className="border-0 shadow-sm bg-white hover:shadow-md transition-all overflow-hidden">
+                                        <CardHeader className="pb-2 border-b border-slate-50 flex flex-row items-center justify-between">
+                                            <CardTitle className="text-base truncate max-w-[200px]">{embassy.name}</CardTitle>
+                                            <div className="text-[10px] font-bold text-slate-400">TOTAL: {embassy.total}</div>
+                                        </CardHeader>
+                                        <CardContent className="p-4 flex items-center gap-4">
+                                            <div className="h-32 w-32 relative">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie data={data} cx="50%" cy="50%" innerRadius={35} outerRadius={40} paddingAngle={2} dataKey="value" stroke="none">
+                                                            {data.map((entry, idx) => <Cell key={`cell-${idx}`} fill={entry.color} />)}
+                                                        </Pie>
+                                                        <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', fontSize: '12px' }} />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                    <span className="text-lg font-bold text-slate-700">
+                                                        {embassy.total > 0 ? Math.round((embassy.approved / embassy.total) * 100) : 0}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 space-y-2">
+                                                {data.map((item, idx) => (
+                                                    <div key={idx} className="flex items-center justify-between text-xs">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                                                            <span className="text-slate-500 font-medium">{item.name}</span>
+                                                        </div>
+                                                        <span className="font-bold text-slate-800">{item.value}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Entry/Exit Workflow Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
@@ -227,16 +356,21 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-blue-50 p-4 rounded-xl">
-                                <p className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">Active</p>
-                                <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.entry.active}</h4>
-                                <Progress value={(entryExitStats?.entry.active || 0) / (entryExitStats?.entry.total || 1) * 100} className="mt-2 h-1.5 bg-blue-200" indicatorClassName="bg-blue-600" />
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="bg-emerald-50 p-3 rounded-xl">
+                                <p className="text-emerald-600 text-[10px] font-bold uppercase tracking-wider mb-1">Approved</p>
+                                <h4 className="text-xl font-bold text-slate-800">{entryExitStats?.entry.approved}</h4>
+                                <Progress value={(entryExitStats?.entry.approved || 0) / (entryExitStats?.entry.total || 1) * 100} className="mt-2 h-1 bg-emerald-200" indicatorClassName="bg-emerald-600" />
                             </div>
-                            <div className="bg-emerald-50 p-4 rounded-xl">
-                                <p className="text-emerald-600 text-xs font-bold uppercase tracking-wider mb-1">Completed</p>
-                                <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.entry.completed}</h4>
-                                <Progress value={(entryExitStats?.entry.completed || 0) / (entryExitStats?.entry.total || 1) * 100} className="mt-2 h-1.5 bg-emerald-200" indicatorClassName="bg-emerald-600" />
+                            <div className="bg-amber-50 p-3 rounded-xl">
+                                <p className="text-amber-600 text-[10px] font-bold uppercase tracking-wider mb-1">Pending</p>
+                                <h4 className="text-xl font-bold text-slate-800">{entryExitStats?.entry.pending}</h4>
+                                <Progress value={(entryExitStats?.entry.pending || 0) / (entryExitStats?.entry.total || 1) * 100} className="mt-2 h-1 bg-amber-200" indicatorClassName="bg-amber-600" />
+                            </div>
+                            <div className="bg-red-50 p-3 rounded-xl">
+                                <p className="text-red-600 text-[10px] font-bold uppercase tracking-wider mb-1">Rejected</p>
+                                <h4 className="text-xl font-bold text-slate-800">{entryExitStats?.entry.rejected}</h4>
+                                <Progress value={(entryExitStats?.entry.rejected || 0) / (entryExitStats?.entry.total || 1) * 100} className="mt-2 h-1 bg-red-200" indicatorClassName="bg-red-600" />
                             </div>
                         </div>
                     </CardContent>
@@ -261,16 +395,21 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-amber-50 p-4 rounded-xl">
-                                <p className="text-amber-600 text-xs font-bold uppercase tracking-wider mb-1">Active</p>
-                                <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.exit.active}</h4>
-                                <Progress value={(entryExitStats?.exit.active || 0) / (entryExitStats?.exit.total || 1) * 100} className="mt-2 h-1.5 bg-amber-200" indicatorClassName="bg-amber-600" />
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="bg-emerald-50 p-3 rounded-xl">
+                                <p className="text-emerald-600 text-[10px] font-bold uppercase tracking-wider mb-1">Approved</p>
+                                <h4 className="text-xl font-bold text-slate-800">{entryExitStats?.exit.approved}</h4>
+                                <Progress value={(entryExitStats?.exit.approved || 0) / (entryExitStats?.exit.total || 1) * 100} className="mt-2 h-1 bg-emerald-200" indicatorClassName="bg-emerald-600" />
                             </div>
-                            <div className="bg-emerald-50 p-4 rounded-xl">
-                                <p className="text-emerald-600 text-xs font-bold uppercase tracking-wider mb-1">Completed</p>
-                                <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.exit.completed}</h4>
-                                <Progress value={(entryExitStats?.exit.completed || 0) / (entryExitStats?.exit.total || 1) * 100} className="mt-2 h-1.5 bg-emerald-200" indicatorClassName="bg-emerald-600" />
+                            <div className="bg-amber-50 p-3 rounded-xl">
+                                <p className="text-amber-600 text-[10px] font-bold uppercase tracking-wider mb-1">Pending</p>
+                                <h4 className="text-xl font-bold text-slate-800">{entryExitStats?.exit.pending}</h4>
+                                <Progress value={(entryExitStats?.exit.pending || 0) / (entryExitStats?.exit.total || 1) * 100} className="mt-2 h-1 bg-amber-200" indicatorClassName="bg-amber-600" />
+                            </div>
+                            <div className="bg-red-50 p-3 rounded-xl">
+                                <p className="text-red-600 text-[10px] font-bold uppercase tracking-wider mb-1">Rejected</p>
+                                <h4 className="text-xl font-bold text-slate-800">{entryExitStats?.exit.rejected}</h4>
+                                <Progress value={(entryExitStats?.exit.rejected || 0) / (entryExitStats?.exit.total || 1) * 100} className="mt-2 h-1 bg-red-200" indicatorClassName="bg-red-600" />
                             </div>
                         </div>
                     </CardContent>
@@ -382,19 +521,18 @@ export default function AdminDashboard() {
                     <p className="text-white/40 text-xs font-medium">Average across all your processed applications</p>
                 </Card>
 
-                   {/* Officer Performance KPIs */}
-            <div className="animate-fade-in">
-                <div className="flex items-center justify-between mb-4">
-                    <div>
-                        <h2 className="text-xl font-bold text-slate-800">Team Performance KPIs</h2>
-                        <p className="text-sm text-slate-500">Monitor your team's application processing efficiency</p>
+                {/* Officer Performance KPIs */}
+                <div className="animate-fade-in">
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-800">Team Performance KPIs</h2>
+                            <p className="text-sm text-slate-500">Monitor your team's application processing efficiency</p>
+                        </div>
                     </div>
+                    <OfficerPerformance data={officerKPIs} isLoading={isOfficerLoading} />
                 </div>
-                <OfficerPerformance data={officerKPIs} isLoading={isOfficerLoading} />
-            </div>
             </div>
 
- 
 
             {/* Recent Activity Table */}
             <Card className="shadow-sm border-slate-100">
