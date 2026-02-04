@@ -421,80 +421,98 @@ export default function SuperAdminDashboard() {
 
           {/* 1. Key Metrics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-slide-up" style={{ animationDelay: '0.05s' }}>
-            {/* Total Applications */}
+            {/* Total Applications (Entry) */}
             <Card className="border-0 shadow-sm bg-gradient-to-br from-indigo-500 to-blue-600 text-white overflow-hidden relative group">
               <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">
                 <Users className="h-24 w-24" />
               </div>
               <CardContent className="p-6 relative">
-                <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">Total Applications</p>
+                <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">Entry Applications</p>
                 <div className="flex items-end gap-3">
                   <h3 className="text-4xl font-bold">
-                    {(dashboardData?.journalistStatus.approved.value || 0) +
-                      (dashboardData?.journalistStatus.pending.value || 0) +
-                      (dashboardData?.journalistStatus.rejected.value || 0)}
+                    {entryExitStats?.entry.total || 0}
                   </h3>
                   <span className="text-white/60 text-sm mb-1 font-medium">Total Registered</span>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Approved */}
+            {/* Approved (Entry) */}
             <Card className="border-0 shadow-sm bg-gradient-to-br from-emerald-500 to-teal-600 text-white overflow-hidden relative group">
               <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">
                 <CheckCircle className="h-24 w-24" />
               </div>
               <CardContent className="p-6 relative">
-                <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">Approved</p>
+                <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">Approved Entry</p>
                 <div className="flex items-end justify-between">
                   <div className="flex items-end gap-3">
-                    <h3 className="text-4xl font-bold">{dashboardData?.journalistStatus.approved.value || 0}</h3>
+                    <h3 className="text-4xl font-bold">
+                      {entryExitStats?.entry.approved || 0}
+                    </h3>
                     <span className="text-white/60 text-sm mb-1 font-medium">Journalists</span>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg text-sm font-bold">
-                    {dashboardData?.journalistStatus.approved.percentage}%
+                    {(() => {
+                      const total = entryExitStats?.entry.total || 0;
+                      const approved = entryExitStats?.entry.approved || 0;
+                      return total > 0 ? Math.round((approved / total) * 100) : 0;
+                    })()}%
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Pending */}
+            {/* Pending (Entry) */}
             <Card className="border-0 shadow-sm bg-gradient-to-br from-amber-500 to-orange-600 text-white overflow-hidden relative group">
               <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">
                 <Clock className="h-24 w-24" />
               </div>
               <CardContent className="p-6 relative">
-                <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">Pending</p>
+                <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">Pending Entry</p>
                 <div className="flex items-end justify-between">
                   <div className="flex items-end gap-3">
-                    <h3 className="text-4xl font-bold">{dashboardData?.journalistStatus.pending.value || 0}</h3>
+                    <h3 className="text-4xl font-bold">
+                      {entryExitStats?.entry.pending || 0}
+                    </h3>
                     <span className="text-white/60 text-sm mb-1 font-medium">In Review</span>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg text-sm font-bold">
-                    {dashboardData?.journalistStatus.pending.percentage}%
+                    {(() => {
+                      const total = entryExitStats?.entry.total || 0;
+                      const pending = entryExitStats?.entry.pending || 0;
+                      return total > 0 ? Math.round((pending / total) * 100) : 0;
+                    })()}%
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Rejected */}
+            {/* Rejected (Entry) */}
             <Card className="border-0 shadow-sm bg-gradient-to-br from-red-500 to-rose-600 text-white overflow-hidden relative group">
               <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">
                 <XCircle className="h-24 w-24" />
               </div>
               <CardContent className="p-6 relative">
-                <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">Rejected</p>
+                <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">Rejected Entry</p>
                 <div className="flex items-end justify-between">
                   <div className="flex items-end gap-3">
-                    <h3 className="text-4xl font-bold">{dashboardData?.journalistStatus.rejected.value || 0}</h3>
+                    <h3 className="text-4xl font-bold">
+                      {entryExitStats?.entry.rejected || 0}
+                    </h3>
                     <span className="text-white/60 text-sm mb-1 font-medium">Journalists</span>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg text-sm font-bold">
-                    {dashboardData?.journalistStatus.rejected.percentage}%
+                    {(() => {
+                      const total = entryExitStats?.entry.total || 0;
+                      const rejected = entryExitStats?.entry.rejected || 0;
+                      return total > 0 ? Math.round((rejected / total) * 100) : 0;
+                    })()}%
                   </div>
                 </div>
               </CardContent>
             </Card>
+
+
           </div>
 
           {/* ROW 1: Application Trends + Stakeholder Performance */}

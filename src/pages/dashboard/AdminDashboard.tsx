@@ -10,8 +10,9 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useGetAdminAnalyticsQuery, useGetAdminEntryExitStatsQuery, useGetAdminOfficerKPIsQuery } from '@/store/services/api';
 import { exportDashboardAnalyticsToCSV, exportDashboardAnalyticsToPDF } from '@/lib/export-utils';
-import { Download, FileText, User } from 'lucide-react';
+import { Download, FileText, User as UserIcon } from 'lucide-react';
 import { OfficerPerformance } from '@/components/dashboard/OfficerPerformance';
+import { useAuth, UserRole } from '@/auth/context';
 
 // --- UTILITY ---
 function cn(...inputs: ClassValue[]) {
@@ -85,6 +86,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(({ className, v
 Progress.displayName = "Progress";
 
 export default function AdminDashboard() {
+    const { user } = useAuth();
     const { data: analytics, isLoading: isAnalyticsLoading, isError: isAnalyticsError } = useGetAdminAnalyticsQuery();
     const { data: entryExitStats, isLoading: isEntryExitLoading, isError: isEntryExitError } = useGetAdminEntryExitStatsQuery({ timeframe: 'month' });
     const { data: officerKPIs, isLoading: isOfficerLoading } = useGetAdminOfficerKPIsQuery({ timeframe: 'month' });
@@ -127,7 +129,11 @@ export default function AdminDashboard() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Executive Overview</h1>
-                    <p className="text-slate-500 font-medium mt-1">Review your assignment status and performance metrics.</p>
+                    <p className="text-slate-500 font-medium mt-1">
+                        {[UserRole.SUPER_ADMIN, UserRole.PMO, UserRole.ORG_ADMIN].includes(user?.role as any)
+                            ? "Review your assignment status and performance metrics."
+                            : "Review your current assignment status."}
+                    </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2">
@@ -236,7 +242,7 @@ export default function AdminDashboard() {
                             {analytics.mofaData.roleDistribution.map((role: any, i: number) => (
                                 <Card key={i} className="border-0 shadow-sm bg-white overflow-hidden relative group h-full">
                                     <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
-                                        <User className="h-16 w-16" />
+                                        <UserIcon className="h-16 w-16" />
                                     </div>
                                     <CardContent className="p-6">
                                         <div className="flex flex-col gap-4">
@@ -507,31 +513,33 @@ export default function AdminDashboard() {
             </div>
 
             {/* Second Row: Org Distribution & Performance */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Performance Metric */}
-                <Card className="shadow-sm border-slate-100 flex flex-col justify-center items-center p-8 bg-slate-900 text-white overflow-hidden relative h-[350px]">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
-                    <div className="p-4 bg-white/10 rounded-2xl mb-4">
-                        <Clock className="h-8 w-8 text-blue-400" />
-                    </div>
-                    <p className="text-blue-200 text-sm font-bold uppercase tracking-widest mb-1">{analytics.performance.label}</p>
-                    <h3 className="text-5xl font-bold mb-2">
-                        {Math.floor(analytics.performance.averageProcessingTimeMinutes / 60)}h {analytics.performance.averageProcessingTimeMinutes % 60}m
-                    </h3>
-                    <p className="text-white/40 text-xs font-medium">Average across all your processed applications</p>
-                </Card>
-
-                {/* Officer Performance KPIs */}
-                <div className="animate-fade-in">
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-800">Team Performance KPIs</h2>
-                            <p className="text-sm text-slate-500">Monitor your team's application processing efficiency</p>
+            {([UserRole.SUPER_ADMIN, UserRole.PMO, UserRole.ORG_ADMIN] as string[]).includes(user?.role || '') && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Performance Metric */}
+                    <Card className="shadow-sm border-slate-100 flex flex-col justify-center items-center p-8 bg-slate-900 text-white overflow-hidden relative h-[350px]">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+                        <div className="p-4 bg-white/10 rounded-2xl mb-4">
+                            <Clock className="h-8 w-8 text-blue-400" />
                         </div>
+                        <p className="text-blue-200 text-sm font-bold uppercase tracking-widest mb-1">{analytics.performance.label}</p>
+                        <h3 className="text-5xl font-bold mb-2">
+                            {Math.floor(analytics.performance.averageProcessingTimeMinutes / 60)}h {analytics.performance.averageProcessingTimeMinutes % 60}m
+                        </h3>
+                        <p className="text-white/40 text-xs font-medium">Average across all your processed applications</p>
+                    </Card>
+
+                    {/* Officer Performance KPIs */}
+                    <div className="animate-fade-in">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800">Team Performance KPIs</h2>
+                                <p className="text-sm text-slate-500">Monitor your team's application processing efficiency</p>
+                            </div>
+                        </div>
+                        <OfficerPerformance data={officerKPIs} isLoading={isOfficerLoading} />
                     </div>
-                    <OfficerPerformance data={officerKPIs} isLoading={isOfficerLoading} />
                 </div>
-            </div>
+            )}
 
 
             {/* Recent Activity Table */}
