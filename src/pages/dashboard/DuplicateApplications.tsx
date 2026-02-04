@@ -14,12 +14,14 @@ import { Loader2, Search, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGetUserApplicationHistoryQuery, UserWithDuplicates, DuplicateApplication } from '@/store/services/api';
 import { Badge } from '@/components/ui/badge';
+import { exportDuplicatesToPDF } from '@/lib/export-utils';
+import { Download } from 'lucide-react';
 
 export function DuplicateApplications() {
     const navigate = useNavigate();
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
-    const limit = 10;
+    const limit = 50;
 
     const { data, isLoading, error } = useGetUserApplicationHistoryQuery({
         page,
@@ -45,6 +47,15 @@ export function DuplicateApplications() {
                         Identify users who have submitted multiple applications or are acting as agents.
                     </p>
                 </div>
+                <Button
+                    variant="outline"
+                    onClick={() => data?.users && exportDuplicatesToPDF(data.users)}
+                    disabled={!data?.users || data.users.length === 0}
+                    className="gap-2"
+                >
+                    <Download className="w-4 h-4" />
+                    Export PDF
+                </Button>
             </div>
 
             {/* Filters */}

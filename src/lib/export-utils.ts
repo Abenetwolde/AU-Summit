@@ -711,3 +711,82 @@ export function exportJournalistDetailToPDF(journalist: any) {
 
     doc.save(filename);
 }
+
+/**
+ * Export duplicated applications to PDF
+ */
+export function exportDuplicatesToPDF(users: any[]) {
+    const doc = new jsPDF();
+    const filename = generateFilename('applicant_history_duplicates', 'pdf');
+    const AU_GREEN = [0, 155, 77] as [number, number, number];
+
+    // Header
+    doc.setFillColor(...AU_GREEN);
+    doc.rect(0, 0, 210, 30, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.text('Applicant History & Duplications', 14, 20);
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 38);
+
+    let y = 45;
+
+    users.forEach((user) => {
+        // Check if we need a new page for the user header
+        if (y > 250) {
+            doc.addPage();
+            y = 20;
+        }
+
+        // User Header
+        doc.setFillColor(240, 240, 240);
+        doc.rect(14, y, 182, 18, 'F');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text(`${user.fullName} (ID: ${user.userId})`, 18, y + 7);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(user.email, 18, y + 13);
+
+        y += 25;
+
+        // Applications Table for this user
+        autoTable(doc, {
+            startY: y,
+            head: [['App ID', 'Name', 'Passport', 'Country', 'Status', 'Date']],
+            body: user.applications.map((app: any) => [
+                String(app.applicationId),
+                `${app.firstName} ${app.lastName}`,
+                app.passportNumber,
+                app.country,
+                app.status,
+                new Date(app.createdAt).toLocaleDateString()
+            ]),
+            headStyles: {
+                fillColor: [60, 60, 60],
+                fontSize: 9
+            },
+            styles: { fontSize: 9 },
+            margin: { left: 14 },
+            showHead: 'firstPage'
+        });
+
+        y = (doc as any).lastAutoTable.finalY + 15;
+    });
+
+    // Footer
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`African Union Media Accreditation System`, 14, 285);
+        doc.text(`Page ${i} of ${pageCount}`, 190, 285);
+    }
+
+    doc.save(filename);
+}
