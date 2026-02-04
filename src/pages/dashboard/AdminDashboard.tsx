@@ -9,7 +9,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, 
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useGetAdminAnalyticsQuery, useGetAdminEntryExitStatsQuery, useGetAdminOfficerKPIsQuery } from '@/store/services/api';
-import { exportDashboardAnalyticsToCSV, exportDashboardAnalyticsToPDF } from '@/lib/export-utils';
+import { exportDashboardAnalyticsToCSV, exportElementToPDF } from '@/lib/export-utils';
 import { Download, FileText, User } from 'lucide-react';
 import { OfficerPerformance } from '@/components/dashboard/OfficerPerformance';
 
@@ -131,11 +131,11 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="gap-2" onClick={() => exportDashboardAnalyticsToCSV('Admin Dashboard', analytics.kpis, analytics.chartData)}>
+                        <Button variant="outline" size="sm" className="gap-2" onClick={() => exportDashboardAnalyticsToCSV('Admin Dashboard', { kpis: analytics.kpis, charts: analytics.chartData })}>
                             <Download className="h-4 w-4" />
                             CSV
                         </Button>
-                        <Button variant="outline" size="sm" className="gap-2 border-primary text-primary hover:bg-primary/5" onClick={() => exportDashboardAnalyticsToPDF('Admin Dashboard', analytics.kpis, analytics.chartData)}>
+                        <Button variant="outline" size="sm" className="gap-2 border-primary text-primary hover:bg-primary/5" onClick={() => exportElementToPDF('dashboard-visual-export', 'Executive_Dashboard')}>
                             <FileText className="h-4 w-4" />
                             PDF
                         </Button>
@@ -153,248 +153,248 @@ export default function AdminDashboard() {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Total Assigned */}
-                <Card className="border-0 shadow-sm bg-gradient-to-br from-indigo-500 to-blue-600 text-white overflow-hidden relative group">
-                    <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">
-                        <Activity className="h-24 w-24" />
-                    </div>
-                    <CardContent className="p-6 relative">
-                        <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">{analytics.kpis.totalApplicationsReceived.label}</p>
-                        <div className="flex items-end gap-3">
-                            <h3 className="text-4xl font-bold">{analytics.kpis.totalApplicationsReceived.value}</h3>
-                            <div className="flex items-center gap-1 text-white/90 text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full mb-1">
-                                <TrendingUp className="h-3 w-3" />
-                                <span>{analytics.kpis.totalApplicationsReceived.percentage}%</span>
-                            </div>
+            <div id="dashboard-visual-export" className="space-y-8 p-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Total Assigned */}
+                    <Card className="border-0 shadow-sm bg-gradient-to-br from-indigo-500 to-blue-600 text-white overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">
+                            <Activity className="h-24 w-24" />
                         </div>
-                    </CardContent>
-                </Card>
-
-                {/* Approved by You */}
-                <Card className="border-0 shadow-sm bg-gradient-to-br from-emerald-500 to-teal-600 text-white overflow-hidden relative group">
-                    <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">
-                        <CheckCircle className="h-24 w-24" />
-                    </div>
-                    <CardContent className="p-6 relative">
-                        <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">{analytics.kpis.approvedByYou.label}</p>
-                        <div className="flex items-end gap-3">
-                            <h3 className="text-4xl font-bold">{analytics.kpis.approvedByYou.value}</h3>
-                            <div className="flex items-center gap-1 text-white/90 text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full mb-1">
-                                <TrendingUp className="h-3 w-3" />
-                                <span>{analytics.kpis.approvedByYou.percentage}%</span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Pending Your Review */}
-                <Card className="border-0 shadow-sm bg-gradient-to-br from-amber-500 to-orange-600 text-white overflow-hidden relative group">
-                    <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform text-white">
-                        <Clock className="h-24 w-24" />
-                    </div>
-                    <CardContent className="p-6 relative">
-                        <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">{analytics.kpis.pendingDecision.label}</p>
-                        <div className="flex items-end gap-3">
-                            <h3 className="text-4xl font-bold">{analytics.kpis.pendingDecision.value}</h3>
-                            <div className="flex items-center gap-1 text-white/90 text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full mb-1">
-                                <Clock className="h-3 w-3" />
-                                <span>Urgent</span>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Entry/Exit Workflow Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                {/* Entry Workflow */}
-                <Card className="border-0 shadow-sm bg-white overflow-hidden relative group">
-                    <div className="absolute top-0 right-0 p-6 opacity-5">
-                        <Plane className="h-32 w-32 rotate-45" />
-                    </div>
-                    <CardContent className="p-6 relative">
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <p className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-1">Entry Workflow</p>
-                                <h3 className="text-3xl font-bold text-slate-800">
-                                    {entryExitStats?.entry.total} <span className="text-lg text-slate-400 font-medium">Total Applications</span>
-                                </h3>
-                            </div>
-                            <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${entryExitStats?.entry.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                                <TrendingUp className={`h-3 w-3 ${entryExitStats?.entry.trend === 'up' ? '' : 'rotate-180'}`} />
-                                {entryExitStats?.entry.percentage}%
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-blue-50 p-4 rounded-xl">
-                                <p className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">Active</p>
-                                <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.entry.active}</h4>
-                                <Progress value={(entryExitStats?.entry.active || 0) / (entryExitStats?.entry.total || 1) * 100} className="mt-2 h-1.5 bg-blue-200" indicatorClassName="bg-blue-600" />
-                            </div>
-                            <div className="bg-emerald-50 p-4 rounded-xl">
-                                <p className="text-emerald-600 text-xs font-bold uppercase tracking-wider mb-1">Completed</p>
-                                <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.entry.completed}</h4>
-                                <Progress value={(entryExitStats?.entry.completed || 0) / (entryExitStats?.entry.total || 1) * 100} className="mt-2 h-1.5 bg-emerald-200" indicatorClassName="bg-emerald-600" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Exit Workflow */}
-                <Card className="border-0 shadow-sm bg-white overflow-hidden relative group">
-                    <div className="absolute top-0 right-0 p-6 opacity-5">
-                        <Plane className="h-32 w-32 -rotate-45" />
-                    </div>
-                    <CardContent className="p-6 relative">
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <p className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-1">Exit Workflow</p>
-                                <h3 className="text-3xl font-bold text-slate-800">
-                                    {entryExitStats?.exit.total} <span className="text-lg text-slate-400 font-medium">Total Applications</span>
-                                </h3>
-                            </div>
-                            <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${entryExitStats?.exit.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                                <TrendingUp className={`h-3 w-3 ${entryExitStats?.exit.trend === 'up' ? '' : 'rotate-180'}`} />
-                                {entryExitStats?.exit.percentage}%
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-amber-50 p-4 rounded-xl">
-                                <p className="text-amber-600 text-xs font-bold uppercase tracking-wider mb-1">Active</p>
-                                <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.exit.active}</h4>
-                                <Progress value={(entryExitStats?.exit.active || 0) / (entryExitStats?.exit.total || 1) * 100} className="mt-2 h-1.5 bg-amber-200" indicatorClassName="bg-amber-600" />
-                            </div>
-                            <div className="bg-emerald-50 p-4 rounded-xl">
-                                <p className="text-emerald-600 text-xs font-bold uppercase tracking-wider mb-1">Completed</p>
-                                <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.exit.completed}</h4>
-                                <Progress value={(entryExitStats?.exit.completed || 0) / (entryExitStats?.exit.total || 1) * 100} className="mt-2 h-1.5 bg-emerald-200" indicatorClassName="bg-emerald-600" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Main Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Application Trends */}
-                <Card className="lg:col-span-2 shadow-sm border-slate-100">
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <CardTitle>Application Processing Trends</CardTitle>
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                                <Activity className="h-4 w-4" />
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[300px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={analytics.chartData.timeSeries}>
-                                    <defs>
-                                        <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                    <XAxis
-                                        dataKey="date"
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{ fill: '#64748b', fontSize: 12 }}
-                                        dy={10}
-                                        tickFormatter={(str) => {
-                                            const date = new Date(str);
-                                            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                                        }}
-                                    />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                                    <Tooltip
-                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                    />
-                                    <Area type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Status Distribution */}
-                <Card className="shadow-sm border-slate-100">
-                    <CardHeader>
-                        <CardTitle>Status Breakdown</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[250px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={analytics.chartData.statusDistribution}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={5}
-                                        dataKey="count"
-                                        nameKey="status"
-                                    >
-                                        {analytics.chartData.statusDistribution.map((_, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                    />
-                                    <Legend verticalAlign="bottom" height={36} />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <div className="mt-4 space-y-2">
-                            {analytics.chartData.statusDistribution.map((item, i) => (
-                                <div key={item.status} className="flex items-center justify-between text-sm">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
-                                        <span className="text-slate-600 font-medium">{item.status}</span>
-                                    </div>
-                                    <span className="font-bold text-slate-900">{item.count}</span>
+                        <CardContent className="p-6 relative">
+                            <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">{analytics.kpis.totalApplicationsReceived.label}</p>
+                            <div className="flex items-end gap-3">
+                                <h3 className="text-4xl font-bold">{analytics.kpis.totalApplicationsReceived.value}</h3>
+                                <div className="flex items-center gap-1 text-white/90 text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full mb-1">
+                                    <TrendingUp className="h-3 w-3" />
+                                    <span>{analytics.kpis.totalApplicationsReceived.percentage}%</span>
                                 </div>
-                            ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Approved by You */}
+                    <Card className="border-0 shadow-sm bg-gradient-to-br from-emerald-500 to-teal-600 text-white overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">
+                            <CheckCircle className="h-24 w-24" />
                         </div>
-                    </CardContent>
-                </Card>
-            </div>
+                        <CardContent className="p-6 relative">
+                            <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">{analytics.kpis.approvedByYou.label}</p>
+                            <div className="flex items-end gap-3">
+                                <h3 className="text-4xl font-bold">{analytics.kpis.approvedByYou.value}</h3>
+                                <div className="flex items-center gap-1 text-white/90 text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full mb-1">
+                                    <TrendingUp className="h-3 w-3" />
+                                    <span>{analytics.kpis.approvedByYou.percentage}%</span>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
 
-            {/* Second Row: Org Distribution & Performance */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Performance Metric */}
-                <Card className="shadow-sm border-slate-100 flex flex-col justify-center items-center p-8 bg-slate-900 text-white overflow-hidden relative h-[350px]">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
-                    <div className="p-4 bg-white/10 rounded-2xl mb-4">
-                        <Clock className="h-8 w-8 text-blue-400" />
-                    </div>
-                    <p className="text-blue-200 text-sm font-bold uppercase tracking-widest mb-1">{analytics.performance.label}</p>
-                    <h3 className="text-5xl font-bold mb-2">
-                        {Math.floor(analytics.performance.averageProcessingTimeMinutes / 60)}h {analytics.performance.averageProcessingTimeMinutes % 60}m
-                    </h3>
-                    <p className="text-white/40 text-xs font-medium">Average across all your processed applications</p>
-                </Card>
+                    {/* Pending Your Review */}
+                    <Card className="border-0 shadow-sm bg-gradient-to-br from-amber-500 to-orange-600 text-white overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform text-white">
+                            <Clock className="h-24 w-24" />
+                        </div>
+                        <CardContent className="p-6 relative">
+                            <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">{analytics.kpis.pendingDecision.label}</p>
+                            <div className="flex items-end gap-3">
+                                <h3 className="text-4xl font-bold">{analytics.kpis.pendingDecision.value}</h3>
+                                <div className="flex items-center gap-1 text-white/90 text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full mb-1">
+                                    <Clock className="h-3 w-3" />
+                                    <span>Urgent</span>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
 
-                   {/* Officer Performance KPIs */}
-            <div className="animate-fade-in">
-                <div className="flex items-center justify-between mb-4">
-                    <div>
-                        <h2 className="text-xl font-bold text-slate-800">Team Performance KPIs</h2>
-                        <p className="text-sm text-slate-500">Monitor your team's application processing efficiency</p>
+                {/* Entry/Exit Workflow Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                    {/* Entry Workflow */}
+                    <Card className="border-0 shadow-sm bg-white overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 p-6 opacity-5">
+                            <Plane className="h-32 w-32 rotate-45" />
+                        </div>
+                        <CardContent className="p-6 relative">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <p className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-1">Entry Workflow</p>
+                                    <h3 className="text-3xl font-bold text-slate-800">
+                                        {entryExitStats?.entry.total} <span className="text-lg text-slate-400 font-medium">Total Applications</span>
+                                    </h3>
+                                </div>
+                                <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${entryExitStats?.entry.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                    <TrendingUp className={`h-3 w-3 ${entryExitStats?.entry.trend === 'up' ? '' : 'rotate-180'}`} />
+                                    {entryExitStats?.entry.percentage}%
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-blue-50 p-4 rounded-xl">
+                                    <p className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">Active</p>
+                                    <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.entry.active}</h4>
+                                    <Progress value={(entryExitStats?.entry.active || 0) / (entryExitStats?.entry.total || 1) * 100} className="mt-2 h-1.5 bg-blue-200" indicatorClassName="bg-blue-600" />
+                                </div>
+                                <div className="bg-emerald-50 p-4 rounded-xl">
+                                    <p className="text-emerald-600 text-xs font-bold uppercase tracking-wider mb-1">Completed</p>
+                                    <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.entry.completed}</h4>
+                                    <Progress value={(entryExitStats?.entry.completed || 0) / (entryExitStats?.entry.total || 1) * 100} className="mt-2 h-1.5 bg-emerald-200" indicatorClassName="bg-emerald-600" />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Exit Workflow */}
+                    <Card className="border-0 shadow-sm bg-white overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 p-6 opacity-5">
+                            <Plane className="h-32 w-32 -rotate-45" />
+                        </div>
+                        <CardContent className="p-6 relative">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <p className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-1">Exit Workflow</p>
+                                    <h3 className="text-3xl font-bold text-slate-800">
+                                        {entryExitStats?.exit.total} <span className="text-lg text-slate-400 font-medium">Total Applications</span>
+                                    </h3>
+                                </div>
+                                <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${entryExitStats?.exit.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                    <TrendingUp className={`h-3 w-3 ${entryExitStats?.exit.trend === 'up' ? '' : 'rotate-180'}`} />
+                                    {entryExitStats?.exit.percentage}%
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-amber-50 p-4 rounded-xl">
+                                    <p className="text-amber-600 text-xs font-bold uppercase tracking-wider mb-1">Active</p>
+                                    <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.exit.active}</h4>
+                                    <Progress value={(entryExitStats?.exit.active || 0) / (entryExitStats?.exit.total || 1) * 100} className="mt-2 h-1.5 bg-amber-200" indicatorClassName="bg-amber-600" />
+                                </div>
+                                <div className="bg-emerald-50 p-4 rounded-xl">
+                                    <p className="text-emerald-600 text-xs font-bold uppercase tracking-wider mb-1">Completed</p>
+                                    <h4 className="text-2xl font-bold text-slate-800">{entryExitStats?.exit.completed}</h4>
+                                    <Progress value={(entryExitStats?.exit.completed || 0) / (entryExitStats?.exit.total || 1) * 100} className="mt-2 h-1.5 bg-emerald-200" indicatorClassName="bg-emerald-600" />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Main Charts Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Application Trends */}
+                    <Card className="lg:col-span-2 shadow-sm border-slate-100">
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <CardTitle>Application Processing Trends</CardTitle>
+                                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                                    <Activity className="h-4 w-4" />
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="h-[300px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={analytics.chartData.timeSeries}>
+                                        <defs>
+                                            <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                        <XAxis
+                                            dataKey="date"
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{ fill: '#64748b', fontSize: 12 }}
+                                            dy={10}
+                                            tickFormatter={(str) => {
+                                                const date = new Date(str);
+                                                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                            }}
+                                        />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                                        <Tooltip
+                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                        />
+                                        <Area type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Status Distribution */}
+                    <Card className="shadow-sm border-slate-100">
+                        <CardHeader>
+                            <CardTitle>Status Breakdown</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="h-[250px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={analytics.chartData.statusDistribution}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="count"
+                                            nameKey="status"
+                                        >
+                                            {analytics.chartData.statusDistribution.map((_, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                        />
+                                        <Legend verticalAlign="bottom" height={36} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div className="mt-4 space-y-2">
+                                {analytics.chartData.statusDistribution.map((item, i) => (
+                                    <div key={item.status} className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
+                                            <span className="text-slate-600 font-medium">{item.status}</span>
+                                        </div>
+                                        <span className="font-bold text-slate-900">{item.count}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Second Row: Org Distribution & Performance */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Performance Metric */}
+                    <Card className="shadow-sm border-slate-100 flex flex-col justify-center items-center p-8 bg-slate-900 text-white overflow-hidden relative h-[350px]">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+                        <div className="p-4 bg-white/10 rounded-2xl mb-4">
+                            <Clock className="h-8 w-8 text-blue-400" />
+                        </div>
+                        <p className="text-blue-200 text-sm font-bold uppercase tracking-widest mb-1">{analytics.performance.label}</p>
+                        <h3 className="text-5xl font-bold mb-2">
+                            {Math.floor(analytics.performance.averageProcessingTimeMinutes / 60)}h {analytics.performance.averageProcessingTimeMinutes % 60}m
+                        </h3>
+                        <p className="text-white/40 text-xs font-medium">Average across all your processed applications</p>
+                    </Card>
+
+                    {/* Officer Performance KPIs */}
+                    <div className="animate-fade-in">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800">Team Performance KPIs</h2>
+                                <p className="text-sm text-slate-500">Monitor your team's application processing efficiency</p>
+                            </div>
+                        </div>
+                        <OfficerPerformance data={officerKPIs} isLoading={isOfficerLoading} />
                     </div>
                 </div>
-                <OfficerPerformance data={officerKPIs} isLoading={isOfficerLoading} />
             </div>
-            </div>
-
- 
 
             {/* Recent Activity Table */}
             <Card className="shadow-sm border-slate-100">

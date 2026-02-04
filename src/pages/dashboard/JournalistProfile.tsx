@@ -7,7 +7,7 @@ import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Load
 import { getFlagEmoji } from '@/lib/utils';
 import en from 'react-phone-number-input/locale/en';
 import { SystemCheckSuccess } from '@/components/SystemCheckSuccess';
-import { exportJournalistDetailToPDF } from '@/lib/export-utils';
+import { exportJournalistDetailToPDF, exportJournalistDetailToCSV } from '@/lib/export-utils';
 import { useAuth, UserRole } from '@/auth/context';
 import { MOCK_JOURNALISTS } from '@/data/mock';
 import {
@@ -409,14 +409,24 @@ export function JournalistProfile() {
                     </Button>
                     <h2 className="text-3xl font-bold font-sans text-gray-900">Journalist Profile</h2>
                 </div>
-                <Button
-                    variant="outline"
-                    onClick={() => exportJournalistDetailToPDF(application as any)}
-                    className="gap-2"
-                >
-                    <Download className="h-4 w-4" />
-                    Export PDF
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={() => exportJournalistDetailToCSV(application)}
+                        className="gap-2"
+                    >
+                        <Download className="h-4 w-4" />
+                        Export CSV
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={() => exportJournalistDetailToPDF(application as any)}
+                        className="gap-2"
+                    >
+                        <Download className="h-4 w-4" />
+                        Export PDF
+                    </Button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
