@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Search, Filter, Eye, Download, Loader2 } from 'lucide-react';
+import { Search, Filter, Download, Eye, Loader2 } from 'lucide-react';
 import { useAuth } from '@/auth/context';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { badgeVariants } from '@/components/ui/badge';
 import { CountrySelect } from '@/components/ui/country-select';
 import en from 'react-phone-number-input/locale/en';
 import { exportJournalistsToCSV, exportJournalistsToPDF } from '@/lib/export-utils';
-import { useGetApplicationsQuery, useGetWorkflowApplicationsQuery } from '@/store/services/api';
+import {
+    useGetApplicationsQuery,
+    useGetWorkflowApplicationsQuery,
+} from '@/store/services/api';
 
 // Type for workflow step info
 interface WorkflowStepInfo {
@@ -20,6 +24,8 @@ export function JournalistList() {
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCountry, setSelectedCountry] = useState('');
+    const [page, setPage] = useState(1);
+    const limit = 50;
 
     const { checkPermission, user } = useAuth();
 
@@ -28,13 +34,13 @@ export function JournalistList() {
 
     // Use workflow API for non-super-admin users
     const { data: workflowData, isLoading: isWorkflowLoading, isError: isWorkflowError } = useGetWorkflowApplicationsQuery(
-        { page: 1, limit: 50, search: searchTerm, nationality: selectedCountry },
+        { page, limit, search: searchTerm, nationality: selectedCountry },
         { skip: isSuperAdmin } // Skip this query if user is super admin
     );
 
     // Use regular API for super admin
     const { data: regularData, isLoading: isRegularLoading, isError: isRegularError } = useGetApplicationsQuery(
-        { page: 1, limit: 50 },
+        { page, limit },
         { skip: !isSuperAdmin } // Skip this query if user is NOT super admin
     );
 
@@ -170,6 +176,59 @@ export function JournalistList() {
         }
     };
 
+    const [exportType, setExportType] = useState<'csv' | 'pdf' | null>(null);
+    const isExporting = exportType !== null;
+
+    // Fetch all data for export on demand (Super Admin)
+    const { data: regularExportData, isFetching: isRegularExportFetching } = useGetApplicationsQuery(
+        { page: 1, limit: 1000 },
+        { skip: !isExporting || !isSuperAdmin }
+    );
+
+    // Fetch all data for export on demand (Workflow User)
+    const { data: workflowExportData, isFetching: isWorkflowExportFetching } = useGetWorkflowApplicationsQuery(
+        { page: 1, limit: 1000, search: searchTerm, nationality: selectedCountry },
+        { skip: !isExporting || isSuperAdmin }
+    );
+
+    const fullExportData = isSuperAdmin ? regularExportData : workflowExportData;
+    const isExportFetching = isSuperAdmin ? isRegularExportFetching : isWorkflowExportFetching;
+
+    useEffect(() => {
+        if (isExporting && fullExportData?.applications && !isExportFetching) {
+            let dataToExport = fullExportData.applications;
+
+            // Apply filters for Super Admin (since API doesn't do it for this endpoint)
+            if (isSuperAdmin) {
+                dataToExport = dataToExport.filter((app: any) => {
+                    const fullName = app.formData?.first_name
+                        ? `${app.formData.first_name} ${app.formData.last_name || ''}`
+                        : app.user?.fullName || 'Unknown';
+
+                    const passport = app.formData?.passport_number || '';
+                    const country = app.formData?.country || app.formData?.nationality || '';
+                    const countryNameVal = countryName(country);
+
+                    const matchesSearch = fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        passport.toLowerCase().includes(searchTerm.toLowerCase());
+
+                    const matchesCountry = selectedCountry
+                        ? (country === selectedCountry || countryNameVal === selectedCountry || country === countryName(selectedCountry))
+                        : true;
+
+                    return matchesSearch && matchesCountry;
+                });
+            }
+
+            if (exportType === 'csv') {
+                exportJournalistsToCSV(dataToExport);
+            } else if (exportType === 'pdf') {
+                exportJournalistsToPDF(dataToExport);
+            }
+            setExportType(null); // Reset after export
+        }
+    }, [isExporting, fullExportData, isExportFetching, exportType, isSuperAdmin, searchTerm, selectedCountry]);
+
     if (isLoading) {
         return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
     }
@@ -184,18 +243,20 @@ export function JournalistList() {
                 <div className="flex gap-2">
                     <Button
                         variant="outline"
-                        onClick={() => exportJournalistsToCSV(filteredData as any)}
+                        onClick={() => setExportType('csv')}
+                        disabled={isExporting}
                         className="gap-2"
                     >
-                        <Download className="h-4 w-4" />
+                        {isExporting && exportType === 'csv' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         Export CSV
                     </Button>
                     <Button
                         variant="outline"
-                        onClick={() => exportJournalistsToPDF(filteredData as any)}
+                        onClick={() => setExportType('pdf')}
+                        disabled={isExporting}
                         className="gap-2"
                     >
-                        <Download className="h-4 w-4" />
+                        {isExporting && exportType === 'pdf' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         Export PDF
                     </Button>
                 </div>
@@ -292,7 +353,7 @@ export function JournalistList() {
                                                     )}
                                                 </div>
                                                 <div>
-                                                                                                              
+
                                                     <div className="font-bold text-gray-900">{fullName}</div>
                                                     <div className="text-xs text-gray-500">{occupation}</div>
                                                 </div>
@@ -352,12 +413,55 @@ export function JournalistList() {
                         </tbody>
                     </table>
                 </div>
-                {/* Pagination */}
-                <div className="p-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <span className="text-sm text-gray-500">Page {apiData?.currentPage || 1} of {apiData?.totalPages || 1}</span>
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" disabled={apiData?.currentPage === 1} className="h-8 w-16">Prev</Button>
-                        <Button variant="outline" size="sm" disabled={!apiData?.totalPages || apiData.currentPage >= apiData.totalPages} className="h-8 w-16">Next</Button>
+                {/* Pagination Controls */}
+                <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-lg shadow-sm">
+                    <div className="flex flex-1 justify-between sm:hidden">
+                        <Button
+                            variant="outline"
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1 || isLoading}
+                        >
+                            Previous
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => setPage(p => p + 1)}
+                            disabled={!apiData?.applications || apiData.applications.length < limit || isLoading}
+                        >
+                            Next
+                        </Button>
+                    </div>
+                    <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                        <div>
+                            <p className="text-sm text-gray-700">
+                                Showing page <span className="font-medium">{page}</span>
+                                {apiData?.total ? (
+                                    <> of <span className="font-medium">{Math.ceil(apiData.total / limit)}</span> pages</>
+                                ) : ''}
+                            </p>
+                        </div>
+                        <div>
+                            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                                <Button
+                                    variant="outline"
+                                    className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1 || isLoading}
+                                >
+                                    <span className="sr-only">Previous</span>
+                                    Previous
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 ml-2"
+                                    onClick={() => setPage(p => p + 1)}
+                                    disabled={!apiData?.applications || apiData.applications.length < limit || isLoading}
+                                >
+                                    <span className="sr-only">Next</span>
+                                    Next
+                                </Button>
+                            </nav>
+                        </div>
                     </div>
                 </div>
             </Card>

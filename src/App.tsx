@@ -38,6 +38,7 @@ import AirlineOfficeManagement from './pages/dashboard/AirlineOfficeManagement';
 import ManualEntry from './pages/dashboard/ManualEntry';
 import { ManualApplications } from './pages/dashboard/ManualApplications';
 import { ManualBadgePrint } from './pages/dashboard/badges/ManualBadgePrint';
+import { DuplicateApplications } from './pages/dashboard/DuplicateApplications';
 
 function App() {
     useEffect(() => {
@@ -64,6 +65,7 @@ function App() {
                                     {/* Consolidated Pages */}
                                     <Route path="admin" element={<DashboardIndex />} />
                                     <Route path="journalists" element={<JournalistList />} />
+                                    <Route path="duplicates" element={<DuplicateApplications />} />
                                     <Route element={<ProtectedRoute requiredPermission="application:manual-entry" />}>
                                         <Route path="manual-entry" element={<ManualEntry />} />
                                         <Route path="manual-applications" element={<ManualApplications />} />

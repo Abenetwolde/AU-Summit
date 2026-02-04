@@ -22,6 +22,7 @@ import { Loader2, Search, Eye, CheckCircle, XCircle, Clock, ArrowLeft, LogOut, D
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useGetEntryWorkflowApplicationsQuery } from '@/store/services/api';
+import { exportJournalistsToCSV, exportJournalistsToPDF } from '@/lib/export-utils';
 import { useAuth } from '@/auth/context';
 
 export function EntryWorkflowDashboard() {
@@ -32,7 +33,9 @@ export function EntryWorkflowDashboard() {
     const [statusFilter, setStatusFilter] = useState<string>('PENDING');
     const [startDate, setStartDate] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
+    const [exportType, setExportType] = useState<'csv' | 'pdf' | null>(null);
     const limit = 10;
+    const isExporting = exportType !== null;
 
     // Check if user has permission to approve/reject in entry workflow
     const canApproveEntry = checkPermission('application:approve:dynamic');
@@ -46,9 +49,30 @@ export function EntryWorkflowDashboard() {
         endDate: endDate || undefined
     });
 
+    const { data: exportData, isFetching: isExportFetching } = useGetEntryWorkflowApplicationsQuery({
+        page: 1,
+        limit: 1000,
+        search,
+        status: statusFilter !== 'PENDING' ? statusFilter : undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined
+    }, { skip: !isExporting });
+
     useEffect(() => {
         refetch();
     }, [page, search, statusFilter, startDate, endDate, refetch]);
+
+    useEffect(() => {
+        if (isExporting && exportData?.applications && !isExportFetching) {
+            if (exportType === 'csv') {
+                exportJournalistsToCSV(exportData.applications);
+            } else if (exportType === 'pdf') {
+                exportJournalistsToPDF(exportData.applications);
+            }
+            setExportType(null);
+            toast.success(`Exported as ${exportType.toUpperCase()}`);
+        }
+    }, [isExporting, exportData, isExportFetching, exportType]);
 
     const getRoleApprovalStatus = (app: any) => {
         if (user?.role === 'SUPER_ADMIN') return app.status;
@@ -94,44 +118,6 @@ export function EntryWorkflowDashboard() {
         navigate(`/dashboard/journalists/${app.id}`, { state: { application: app, phase: 'entry' } });
     };
 
-    const handleExport = async (format: 'PDF' | 'EXCEL') => {
-        try {
-            const token = localStorage.getItem('managment_token');
-            const baseUrl = import.meta.env.VITE_API_URL || 'https://api.arrivalclearance.gov.et/api/v1';
-            const queryParams = new URLSearchParams({
-                format,
-                ...(search && { search }),
-                ...(statusFilter !== 'PENDING' && { status: statusFilter }),
-                ...(startDate && { startDate }),
-                ...(endDate && { endDate })
-            });
-
-            const response = await fetch(`${baseUrl}/applications/entry-workflow/export?${queryParams}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) throw new Error('Export failed');
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            const extension = format === 'EXCEL' ? 'xlsx' : 'pdf';
-            const timestamp = new Date().toISOString().slice(0, 10);
-            a.download = `entry_applications_${timestamp}.${extension}`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-
-            toast.success(`Exported as ${format}`);
-        } catch (error) {
-            console.error('Export error:', error);
-            toast.error('Failed to export applications');
-        }
-    };
 
     return (
         <div className="p-6 space-y-6">
@@ -151,21 +137,23 @@ export function EntryWorkflowDashboard() {
                         Manage applications in the entry approval phase
                     </p>
                 </div>
-                <div className="grid grid-cols-2 sm:flex gap-2">
+                <div className="flex gap-2">
                     <Button
                         variant="outline"
-                        onClick={() => handleExport('EXCEL')}
-                        className="gap-2 border-green-600 text-green-700 hover:bg-green-50 w-full sm:w-auto text-xs sm:text-sm"
+                        onClick={() => setExportType('csv')}
+                        disabled={isExporting}
+                        className="gap-2"
                     >
-                        <Download className="w-4 h-4" />
-                        Export Excel
+                        {isExporting && exportType === 'csv' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                        Export CSV
                     </Button>
                     <Button
                         variant="outline"
-                        onClick={() => handleExport('PDF')}
-                        className="gap-2 border-red-600 text-red-700 hover:bg-red-50 w-full sm:w-auto text-xs sm:text-sm"
+                        onClick={() => setExportType('pdf')}
+                        disabled={isExporting}
+                        className="gap-2"
                     >
-                        <FileText className="w-4 h-4" />
+                        {isExporting && exportType === 'pdf' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         Export PDF
                     </Button>
                 </div>

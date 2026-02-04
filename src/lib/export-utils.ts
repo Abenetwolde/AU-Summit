@@ -1,6 +1,53 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Papa from 'papaparse';
+import html2canvas from 'html2canvas';
+
+/**
+ * Generate a filename with current timestamp
+ */
+export const generateFilename = (prefix: string, extension: string): string => {
+    const date = new Date().toISOString().split('T')[0];
+    const time = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
+    return `${prefix}_${date}_${time}.${extension}`;
+};
+
+/**
+ * Export a DOM element to PDF using visual capture
+ */
+export async function exportElementToPDF(elementId: string, fileName: string) {
+    const element = document.getElementById(elementId);
+    if (!element) {
+        console.error(`Element with ID ${elementId} not found`);
+        return;
+    }
+
+    try {
+        const canvas = await html2canvas(element, {
+            scale: 2, // Higher scale for better quality
+            logging: false,
+            useCORS: true,
+            backgroundColor: '#ffffff'
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(generateFilename(fileName, 'pdf'));
+
+    } catch (error) {
+        console.error('Error generating PDF:', error);
+    }
+}
 
 export interface ExportColumn {
     header: string;
@@ -10,11 +57,6 @@ export interface ExportColumn {
 export interface ExportData {
     [key: string]: any;
 }
-
-const generateFilename = (baseName: string, extension: string): string => {
-    const date = new Date().toISOString().split('T')[0];
-    return `${baseName}_${date}.${extension}`;
-};
 
 /**
  * Export data to CSV file
@@ -83,20 +125,74 @@ export function exportToPDF(
  * Export journalist list to CSV
  */
 export function exportJournalistsToCSV(journalists: any[]) {
-    const data = journalists.map(j => ({
-        'Full Name': j.user?.fullName || j.fullname || 'N/A',
-        'Email': j.user?.email || j.email || 'N/A',
-        'Phone': j.formData?.phone || 'N/A',
-        'Country': j.formData?.country || j.country || 'N/A',
-        'Passport No': j.formData?.passport_number || j.passportNo || 'N/A',
-        'Occupation': j.formData?.occupation || j.role || 'N/A',
-        'Arrival Date': j.formData?.arrival_date || 'N/A',
-        'Accommodation': j.formData?.accommodation_details || 'N/A',
-        'EMA Status': j.status || 'N/A',
-        'Immigration Status': j.immigrationStatus || 'N/A',
-        'Customs Status': j.equipmentStatus || 'N/A',
-        'Submission Date': j.createdAt ? new Date(j.createdAt).toLocaleDateString() : 'N/A'
-    }));
+    if (!journalists || journalists.length === 0) return;
+
+    // Helper to format field names to readable headers
+    const formatHeader = (key: string) => {
+        return key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    };
+
+    // Helper to get country name (simple version for utils)
+    const getCountryName = (j: any) => {
+        return j.applyingFromCountry?.name || j.formData?.country || j.formData?.nationality || 'N/A';
+    };
+
+    const data = journalists.map(j => {
+        // PRIORITY: formData > user object > top level
+        const firstName = j.formData?.first_name || j.user?.fullName?.split(' ')[0] || j.fullname?.split(' ')[0] || '';
+        const lastName = j.formData?.last_name || j.user?.fullName?.split(' ').slice(1).join(' ') || j.fullname?.split(' ').slice(1).join(' ') || '';
+        const fullName = j.formData?.first_name ? `${firstName} ${lastName}`.trim() : (j.user?.fullName || j.fullname || 'N/A');
+
+        const row: any = {
+            'Full Name': fullName,
+            'Email': j.formData?.email || j.user?.email || j.email || 'N/A',
+            'Nationality': getCountryName(j),
+            'Passport No': j.formData?.passport_number || j.passportNo || 'N/A',
+            'Organization': j.formData?.media_affiliation || j.formData?.organization_name || 'N/A',
+            'Occupation': j.formData?.position_title || j.formData?.occupation || j.role || 'Journalist',
+            'EMA Status': j.status || 'N/A',
+            'Submission Date': j.createdAt ? new Date(j.createdAt).toLocaleDateString() : 'N/A'
+        };
+
+        // Add equipment summary
+        if (j.equipment && Array.isArray(j.equipment) && j.equipment.length > 0) {
+            row['Equipment'] = j.equipment.map((e: any) => `${e.type}: ${e.description}${e.serialNumber ? ` (SN: ${e.serialNumber})` : ''}`).join('; ');
+        } else {
+            row['Equipment'] = 'None';
+        }
+
+        // Add workflow step statuses
+        if (j.approvals && Array.isArray(j.approvals)) {
+            j.approvals.forEach((appr: any) => {
+                if (appr.workflowStep?.name) {
+                    const stepName = `${appr.workflowStep.name} Status`;
+                    row[stepName] = appr.status || 'PENDING';
+                }
+            });
+        }
+
+        // Add all other formData that aren't technical/file/already included
+        if (j.formData) {
+            Object.entries(j.formData).forEach(([key, value]) => {
+                const technicalKeys = [
+                    'profile_photo', 'passport_photo', 'id', 'userId', 'formId', 'updatedAt',
+                    'declaration_status', 'equipment', 'first_name', 'last_name', 'email',
+                    'nationality', 'country', 'passport_number', 'media_affiliation',
+                    'organization_name', 'position_title', 'occupation', 'press_card_copy',
+                    'assignment_letter', 'terms_and_conditions', 'media_ethics_agreement'
+                ];
+                if (!technicalKeys.includes(key) && (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')) {
+                    const header = formatHeader(key);
+                    // Only add if not already present in row
+                    if (!row[header]) {
+                        row[header] = value;
+                    }
+                }
+            });
+        }
+
+        return row;
+    });
 
     exportToCSV(data, 'journalists_list');
 }
@@ -105,28 +201,38 @@ export function exportJournalistsToCSV(journalists: any[]) {
  * Export journalist list to PDF
  */
 export function exportJournalistsToPDF(journalists: any[]) {
+    if (!journalists || journalists.length === 0) return;
+
+    // Fixed columns for PDF to maintain layout, but with better data
     const columns: ExportColumn[] = [
         { header: 'Full Name', key: 'fullname' },
         { header: 'Email', key: 'email' },
-        { header: 'Country', key: 'country' },
+        { header: 'Nationality', key: 'country' },
         { header: 'Passport No', key: 'passportNo' },
+        { header: 'Organization', key: 'organization' },
         { header: 'Occupation', key: 'role' },
-        { header: 'Arrival', key: 'arrival' },
         { header: 'Status', key: 'status' }
     ];
 
-    const data = journalists.map(j => ({
-        fullname: j.user?.fullName || j.fullname || 'N/A',
-        email: j.user?.email || j.email || 'N/A',
-        country: j.formData?.country || j.country || 'N/A',
-        passportNo: j.formData?.passport_number || j.passportNo || 'N/A',
-        role: j.formData?.occupation || j.role || 'N/A',
-        arrival: j.formData?.arrival_date || 'N/A',
-        status: j.status || 'N/A'
-    }));
+    const data = journalists.map(j => {
+        // PRIORITY: formData > user object > top level
+        const firstName = j.formData?.first_name || j.user?.fullName?.split(' ')[0] || j.fullname?.split(' ')[0] || '';
+        const lastName = j.formData?.last_name || j.user?.fullName?.split(' ').slice(1).join(' ') || j.fullname?.split(' ').slice(1).join(' ') || '';
+        const fullName = j.formData?.first_name ? `${firstName} ${lastName}`.trim() : (j.user?.fullName || j.fullname || 'N/A');
+
+        return {
+            fullname: fullName,
+            email: j.formData?.email || j.user?.email || j.email || 'N/A',
+            country: j.applyingFromCountry?.name || j.formData?.country || j.formData?.nationality || j.country || 'N/A',
+            passportNo: j.formData?.passport_number || j.passportNo || 'N/A',
+            organization: j.formData?.media_affiliation || j.formData?.organization_name || 'N/A',
+            role: j.formData?.position_title || j.formData?.occupation || j.role || 'Journalist',
+            status: j.status || 'N/A'
+        };
+    });
 
     const filename = generateFilename('journalists_list', 'pdf');
-    const doc = new jsPDF('landscape'); // Use landscape for more columns
+    const doc = new jsPDF('landscape');
 
     doc.setFontSize(16);
     doc.text('Journalist List', 14, 15);
@@ -137,7 +243,7 @@ export function exportJournalistsToPDF(journalists: any[]) {
         head: [columns.map(col => col.header)],
         body: data.map(row => columns.map(col => String((row as any)[col.key] || ''))),
         startY: 28,
-        styles: { fontSize: 7 }, // Smaller font to fit
+        styles: { fontSize: 8 },
         headStyles: { fillColor: [0, 155, 77] },
     });
 
@@ -415,70 +521,193 @@ export async function exportDashboardAnalyticsToPDF(
 }
 
 /**
- * Export journalist detail to PDF (Existing - keep)
+ * Export journalist detail to CSV
+ */
+export function exportJournalistDetailToCSV(journalist: any) {
+    if (!journalist) return;
+
+    const row: any = {};
+
+    // 1. Basic Info
+    row['Application ID'] = journalist.id;
+    row['Status'] = journalist.status;
+    row['Full Name'] = journalist.formData?.first_name
+        ? `${journalist.formData.first_name} ${journalist.formData.last_name || ''}`.trim()
+        : (journalist.user?.fullName || journalist.fullname || 'N/A');
+
+    // 2. Map all requested fields from formData
+    const fieldMapping: Record<string, string> = {
+        'first_name': 'First Name',
+        'last_name': 'Last Name',
+        'gender': 'Gender',
+        'date_of_birth': 'Date of Birth',
+        'nationality': 'Nationality',
+        'place_of_birth': 'Place of Birth',
+        'passport_number': 'Passport Number',
+        'passport_issue_date': 'Passport Issue Date',
+        'passport_expiry_date': 'Passport Expiry Date',
+        'visa_information': 'Visa Information',
+        'email': 'Email Address',
+        'phone': 'Phone Number',
+        'emergency_contact_name': 'Emergency Contact Name',
+        'emergency_contact_phone': 'Emergency Contact Phone',
+        'media_affiliation': 'Media Organization/Affiliation',
+        'position_title': 'Position/Title',
+        'media_type': 'Media Type',
+        'press_card_number': 'Press Card Number',
+        'coverage_type': 'Type of Coverage',
+        'previous_coverage_examples': 'Portfolio Links',
+        'terms_and_conditions': 'T&C Agreement',
+        'media_ethics_agreement': 'Media Ethics Agreement',
+        'photo_release': 'Photo Release Permission',
+        'has_drone': 'Drone Equipment',
+        'declaration_status': 'Professional Media Equipment'
+    };
+
+    Object.entries(fieldMapping).forEach(([key, label]) => {
+        let value = journalist.formData?.[key];
+        if (value === true || value === 'true') value = 'Yes';
+        else if (value === false || value === 'false') value = 'No';
+        row[label] = value || 'N/A';
+    });
+
+    // 3. Equipment Summary
+    if (journalist.equipment && Array.isArray(journalist.equipment) && journalist.equipment.length > 0) {
+        row['Equipment Summary'] = journalist.equipment.map((e: any) =>
+            `${e.type}: ${e.description}${e.serialNumber ? ` (SN: ${e.serialNumber})` : ''} - Value: ${e.value} ${e.currency || 'USD'}`
+        ).join('; ');
+    }
+
+    const filename = generateFilename(`journalist_${journalist.id || 'profile'}`, 'csv');
+    exportToCSV([row], filename.replace('.csv', ''));
+}
+
+/**
+ * Export journalist detail to PDF (Comprehensive)
  */
 export function exportJournalistDetailToPDF(journalist: any) {
     const doc = new jsPDF();
     const filename = generateFilename(`journalist_${journalist.id || 'profile'}`, 'pdf');
+    const AU_GREEN = [0, 155, 77] as [number, number, number];
 
-    // Title
-    doc.setFontSize(18);
-    doc.text('Journalist Profile', 14, 15);
+    // Header
+    doc.setFillColor(...AU_GREEN);
+    doc.rect(0, 0, 210, 30, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(20);
+    doc.text('Journalist Accreditation Profile', 14, 20);
 
-    // Personal Information
-    doc.setFontSize(14);
-    doc.text('Personal Information', 14, 30);
-    doc.setFontSize(10);
-    let y = 38;
+    doc.setTextColor(0, 0, 0);
+    let y = 40;
 
-    // Helper to safely get data
-    const getVal = (path: string, fallback = 'N/A') => {
-        return path.split('.').reduce((obj, key) => obj?.[key], journalist) || fallback;
+    const addSection = (title: string) => {
+        if (y > 270) { doc.addPage(); y = 20; }
+        doc.setFontSize(14);
+        doc.setTextColor(...AU_GREEN);
+        doc.text(title, 14, y);
+        y += 2;
+        doc.setDrawColor(...AU_GREEN);
+        doc.line(14, y, 60, y);
+        y += 8;
+        doc.setTextColor(0, 0, 0);
     };
 
-    const personalInfo = [
-        ['Full Name', journalist.user?.fullName || journalist.fullname],
-        ['Nationality', getVal('formData.country', journalist.country)],
-        ['Passport Number', getVal('formData.passport_number', journalist.passportNo)],
-        ['Gender', getVal('formData.gender', 'N/A')],
-        ['Date of Birth', getVal('formData.dob', 'N/A')],
-        ['Contact', getVal('formData.phone', journalist.contact)],
-        ['Email', journalist.user?.email || journalist.email],
-    ];
-
-    personalInfo.forEach(([label, value]) => {
+    const addRow = (label: string, value: any) => {
+        if (y > 270) { doc.addPage(); y = 20; }
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
         doc.text(`${label}:`, 14, y);
-        doc.text(String(value || 'N/A'), 60, y);
-        y += 7;
-    });
+        doc.setFont('helvetica', 'normal');
 
-    // Travel Info
+        let displayValue = String(value || 'N/A');
+        if (value === true || value === 'true') displayValue = 'Yes';
+        else if (value === false || value === 'false') displayValue = 'No';
+
+        doc.text(displayValue, 65, y, { maxWidth: 130 });
+
+        const textLines = doc.splitTextToSize(displayValue, 130);
+        y += (textLines.length * 5) + 2;
+    };
+
+    const gd = (key: string) => journalist.formData?.[key];
+
+    // 1. Personal Details
+    addSection('Personal Details');
+    addRow('First Name', gd('first_name'));
+    addRow('Last Name', gd('last_name'));
+    addRow('Gender', gd('gender'));
+    addRow('Date of Birth', gd('date_of_birth') ? new Date(gd('date_of_birth')).toLocaleDateString() : 'N/A');
+    addRow('Nationality', gd('nationality') || journalist.applyingFromCountry?.name);
+    addRow('Place of Birth', gd('place_of_birth'));
     y += 5;
-    doc.setFontSize(14);
-    doc.text('Travel & Accreditation', 14, y);
+
+    // 2. Travel & Passport
+    addSection('Travel & Passport');
+    addRow('Passport Number', gd('passport_number'));
+    addRow('Passport Issue Date', gd('passport_issue_date') ? new Date(gd('passport_issue_date')).toLocaleDateString() : 'N/A');
+    addRow('Passport Expiry Date', gd('passport_expiry_date') ? new Date(gd('passport_expiry_date')).toLocaleDateString() : 'N/A');
+    addRow('Visa Information', gd('visa_information'));
+    y += 5;
+
+    // 3. Contact Information
+    addSection('Contact Information');
+    addRow('Email Address', gd('email'));
+    addRow('Phone Number', gd('phone'));
+    addRow('Emergency Contact Name', gd('emergency_contact_name'));
+    addRow('Emergency Contact Phone', gd('emergency_contact_phone'));
+    y += 5;
+
+    // 4. Media Profile & Documents
+    addSection('Media Profile & Documents');
+    addRow('Media Organization', gd('media_affiliation'));
+    addRow('Position/Title', gd('position_title'));
+    addRow('Media Type', gd('media_type'));
+    addRow('Press Card Number', gd('press_card_number'));
+    addRow('Type of Coverage', gd('coverage_type'));
+    addRow('Portfolio/Links', gd('previous_coverage_examples'));
+    y += 5;
+
+    // 5. Legal & Agreements
+    addSection('Legal & Agreements');
+    addRow('T&C Agreement', gd('terms_and_conditions'));
+    addRow('Media Ethics Agreement', gd('media_ethics_agreement'));
+    addRow('Photo Release', gd('photo_release'));
+    y += 5;
+
+    // 6. Equipment Declaration
+    addSection('Equipment Declaration');
+    addRow('Will take drone?', gd('has_drone'));
+    addRow('Has professional gear?', gd('declaration_status'));
     y += 8;
-    doc.setFontSize(10);
 
-    const travelInfo = [
-        ['Role', getVal('formData.occupation', journalist.role)],
-        ['Accommodation', getVal('formData.accommodation_details', 'N/A')],
-        ['Arrival Date', getVal('formData.arrival_date', 'N/A')],
-        ['Status', journalist.status],
-    ];
-
-    travelInfo.forEach(([label, value]) => {
-        doc.text(`${label}:`, 14, y);
-        doc.text(String(value || 'N/A'), 60, y);
-        y += 7;
-    });
+    if (journalist.equipment && Array.isArray(journalist.equipment) && journalist.equipment.length > 0) {
+        autoTable(doc, {
+            startY: y,
+            head: [['Type', 'Description', 'Serial No', 'Value', 'Qty', 'Status']],
+            body: journalist.equipment.map((e: any) => [
+                e.type || 'N/A',
+                e.description || 'N/A',
+                e.serialNumber || 'N/A',
+                `${e.value || '0'} ${e.currency || 'USD'}`,
+                e.quantity || 1,
+                e.status || 'PENDING'
+            ]),
+            headStyles: { fillColor: AU_GREEN },
+            theme: 'striped',
+            margin: { left: 14 }
+        });
+        y = (doc as any).lastAutoTable.finalY + 15;
+    }
 
     // Footer
-    doc.setFontSize(8);
-    doc.text(
-        `Generated: ${new Date().toLocaleString()}`,
-        14,
-        doc.internal.pageSize.height - 10
-    );
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`African Union Media Accreditation - ID: ${journalist.id} - Generated: ${new Date().toLocaleString()}`, 14, 285);
+        doc.text(`Page ${i} of ${pageCount}`, 190, 285);
+    }
 
     doc.save(filename);
 }
