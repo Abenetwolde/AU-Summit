@@ -841,8 +841,8 @@ export interface UpdateEquipmentStatusPayload {
     notes?: string;
 }
 
-export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
-// export const FILE_BASE_URL = 'http://localhost:3000';
+// export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
+export const FILE_BASE_URL = 'http://localhost:3000';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -1067,11 +1067,8 @@ export const getFileUrl = (path?: string | null): string => {
 
 const baseQuery = fetchBaseQuery({
     baseUrl: `${FILE_BASE_URL}/api/v1`,
+    credentials: 'include',
     prepareHeaders: (headers) => {
-        const dynamicToken = localStorage.getItem('managment_token');
-        if (dynamicToken && dynamicToken !== 'null' && dynamicToken !== 'undefined') {
-            headers.set('authorization', `Bearer ${dynamicToken}`);
-        }
         return headers;
     },
 });
@@ -1081,7 +1078,8 @@ const baseQueryWithReauth = async (args: any, api: any, extraOptions: any) => {
     if (result.error && result.error.status === 401) {
         localStorage.removeItem('managment_user');
         localStorage.removeItem('managment_token');
-        window.location.href = '/login';
+        // Let the auth context handle redirect or stay here
+        // window.location.href = '/login'; 
     }
     return result;
 };
@@ -1101,6 +1099,16 @@ export const api = createApi({
                 method: 'POST',
                 body: credentials,
             }),
+        }),
+        logout: builder.mutation<{ success: boolean }, void>({
+            query: () => ({
+                url: '/auth/logout',
+                method: 'POST',
+            }),
+        }),
+        getMe: builder.query<any, void>({
+            query: () => '/auth/me',
+            transformResponse: (response: any) => response.data || response,
         }),
         changePassword: builder.mutation<any, any>({
             query: (data) => ({
