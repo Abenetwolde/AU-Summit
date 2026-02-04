@@ -21,7 +21,7 @@ export function DuplicateApplications() {
     const navigate = useNavigate();
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
-    const limit = 50;
+    const limit = 20;
 
     const { data, isLoading, error } = useGetUserApplicationHistoryQuery({
         page,
