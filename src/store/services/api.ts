@@ -733,6 +733,33 @@ export interface UsersResponse {
     };
 }
 
+export interface DuplicateApplication {
+    applicationId: number;
+    firstName: string;
+    lastName: string;
+    country: string;
+    passportNumber: string;
+    status: string;
+    createdAt: string;
+}
+
+export interface UserWithDuplicates {
+    userId: number;
+    fullName: string;
+    email: string;
+    applications: DuplicateApplication[];
+}
+
+export interface UserApplicationHistoryResponse {
+    success: boolean;
+    data: {
+        users: UserWithDuplicates[];
+        total: number;
+        currentPage: number;
+        totalPages: number;
+    };
+}
+
 
 // API Management Types
 export enum IntegrationTrigger {
@@ -1271,6 +1298,17 @@ export const api = createApi({
                 return `/applications?page=${page}&limit=${limit}`;
             },
             transformResponse: (response: ApplicationsResponse) => response.data,
+            providesTags: ['Application'],
+        }),
+        getUserApplicationHistory: builder.query<UserApplicationHistoryResponse['data'], { page?: number; limit?: number; search?: string } | void>({
+            query: (params) => {
+                const queryParams = new URLSearchParams();
+                if (params?.page) queryParams.append('page', params.page.toString());
+                if (params?.limit) queryParams.append('limit', params.limit.toString());
+                if (params?.search) queryParams.append('search', params.search);
+                return `/applications/duplicates?${queryParams.toString()}`;
+            },
+            transformResponse: (response: UserApplicationHistoryResponse) => response.data,
             providesTags: ['Application'],
         }),
         getApplicationById: builder.query<Application, number>({
@@ -2032,6 +2070,7 @@ export const {
     useBulkUpdatePermissionsMutation,
     useDeletePermissionMutation,
     useGetApplicationsQuery,
+    useLazyGetApplicationsQuery,
     useGetApplicationByIdQuery,
     useGetEmbassiesQuery,
     useGetCountriesQuery,
@@ -2043,6 +2082,7 @@ export const {
     useActivateExitWorkflowMutation,
     useGetApprovedApplicationsQuery,
     useGetWorkflowApplicationsQuery,
+    useLazyGetWorkflowApplicationsQuery,
     useGetOrganizationsQuery,
     useCreateOrganizationMutation,
     useUpdateOrganizationMutation,
@@ -2079,6 +2119,7 @@ export const {
     useUpdateWorkflowStepMutation,
     useDeleteWorkflowStepMutation,
     useBulkUpdateWorkflowStepsMutation,
+    useGetUserApplicationHistoryQuery,
     // Forms
     useGetFormsQuery,
     useGetFormByIdQuery,

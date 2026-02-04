@@ -9,7 +9,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, 
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useGetAdminAnalyticsQuery, useGetAdminEntryExitStatsQuery, useGetAdminOfficerKPIsQuery } from '@/store/services/api';
-import { exportDashboardAnalyticsToCSV, exportDashboardAnalyticsToPDF } from '@/lib/export-utils';
+import { exportDashboardAnalyticsToCSV, exportElementToPDF } from '@/lib/export-utils';
 import { Download, FileText, User as UserIcon } from 'lucide-react';
 import { OfficerPerformance } from '@/components/dashboard/OfficerPerformance';
 import { useAuth, UserRole } from '@/auth/context';
@@ -141,7 +141,7 @@ export default function AdminDashboard() {
                             <Download className="h-4 w-4" />
                             CSV
                         </Button>
-                        <Button variant="outline" size="sm" className="gap-2 border-primary text-primary hover:bg-primary/5" onClick={() => exportDashboardAnalyticsToPDF('Admin Dashboard', { kpis: analytics.kpis, charts: analytics.chartData })}>
+                        <Button variant="outline" size="sm" className="gap-2 border-primary text-primary hover:bg-primary/5" onClick={() => exportElementToPDF('dashboard-visual-export', 'Executive_Dashboard')}>
                             <FileText className="h-4 w-4" />
                             PDF
                         </Button>
@@ -341,26 +341,26 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            {/* Entry/Exit Workflow Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                {/* Entry Workflow */}
-                <Card className="border-0 shadow-sm bg-white overflow-hidden relative group">
-                    <div className="absolute top-0 right-0 p-6 opacity-5">
-                        <Plane className="h-32 w-32 rotate-45" />
-                    </div>
-                    <CardContent className="p-6 relative">
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <p className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-1">Entry Workflow</p>
-                                <h3 className="text-3xl font-bold text-slate-800">
-                                    {entryExitStats?.entry.total} <span className="text-lg text-slate-400 font-medium">Total Applications</span>
-                                </h3>
-                            </div>
-                            <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${entryExitStats?.entry.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                                <TrendingUp className={`h-3 w-3 ${entryExitStats?.entry.trend === 'up' ? '' : 'rotate-180'}`} />
-                                {entryExitStats?.entry.percentage}%
-                            </div>
+                {/* Entry/Exit Workflow Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                    {/* Entry Workflow */}
+                    <Card className="border-0 shadow-sm bg-white overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 p-6 opacity-5">
+                            <Plane className="h-32 w-32 rotate-45" />
                         </div>
+                        <CardContent className="p-6 relative">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <p className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-1">Entry Workflow</p>
+                                    <h3 className="text-3xl font-bold text-slate-800">
+                                        {entryExitStats?.entry.total} <span className="text-lg text-slate-400 font-medium">Total Applications</span>
+                                    </h3>
+                                </div>
+                                <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${entryExitStats?.entry.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                    <TrendingUp className={`h-3 w-3 ${entryExitStats?.entry.trend === 'up' ? '' : 'rotate-180'}`} />
+                                    {entryExitStats?.entry.percentage}%
+                                </div>
+                            </div>
 
                         <div className="grid grid-cols-3 gap-3">
                             <div className="bg-emerald-50 p-3 rounded-xl">
@@ -382,24 +382,24 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
 
-                {/* Exit Workflow */}
-                <Card className="border-0 shadow-sm bg-white overflow-hidden relative group">
-                    <div className="absolute top-0 right-0 p-6 opacity-5">
-                        <Plane className="h-32 w-32 -rotate-45" />
-                    </div>
-                    <CardContent className="p-6 relative">
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <p className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-1">Exit Workflow</p>
-                                <h3 className="text-3xl font-bold text-slate-800">
-                                    {entryExitStats?.exit.total} <span className="text-lg text-slate-400 font-medium">Total Applications</span>
-                                </h3>
-                            </div>
-                            <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${entryExitStats?.exit.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                                <TrendingUp className={`h-3 w-3 ${entryExitStats?.exit.trend === 'up' ? '' : 'rotate-180'}`} />
-                                {entryExitStats?.exit.percentage}%
-                            </div>
+                    {/* Exit Workflow */}
+                    <Card className="border-0 shadow-sm bg-white overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 p-6 opacity-5">
+                            <Plane className="h-32 w-32 -rotate-45" />
                         </div>
+                        <CardContent className="p-6 relative">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <p className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-1">Exit Workflow</p>
+                                    <h3 className="text-3xl font-bold text-slate-800">
+                                        {entryExitStats?.exit.total} <span className="text-lg text-slate-400 font-medium">Total Applications</span>
+                                    </h3>
+                                </div>
+                                <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${entryExitStats?.exit.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                    <TrendingUp className={`h-3 w-3 ${entryExitStats?.exit.trend === 'up' ? '' : 'rotate-180'}`} />
+                                    {entryExitStats?.exit.percentage}%
+                                </div>
+                            </div>
 
                         <div className="grid grid-cols-3 gap-3">
                             <div className="bg-emerald-50 p-3 rounded-xl">
@@ -422,95 +422,95 @@ export default function AdminDashboard() {
                 </Card>
             </div>
 
-            {/* Main Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Application Trends */}
-                <Card className="lg:col-span-2 shadow-sm border-slate-100">
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <CardTitle>Application Processing Trends</CardTitle>
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                                <Activity className="h-4 w-4" />
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[300px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={analytics.chartData.timeSeries}>
-                                    <defs>
-                                        <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                    <XAxis
-                                        dataKey="date"
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{ fill: '#64748b', fontSize: 12 }}
-                                        dy={10}
-                                        tickFormatter={(str) => {
-                                            const date = new Date(str);
-                                            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                                        }}
-                                    />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                                    <Tooltip
-                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                    />
-                                    <Area type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Status Distribution */}
-                <Card className="shadow-sm border-slate-100">
-                    <CardHeader>
-                        <CardTitle>Status Breakdown</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[250px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={analytics.chartData.statusDistribution}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={5}
-                                        dataKey="count"
-                                        nameKey="status"
-                                    >
-                                        {analytics.chartData.statusDistribution.map((_, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip
-                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                    />
-                                    <Legend verticalAlign="bottom" height={36} />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <div className="mt-4 space-y-2">
-                            {analytics.chartData.statusDistribution.map((item, i) => (
-                                <div key={item.status} className="flex items-center justify-between text-sm">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
-                                        <span className="text-slate-600 font-medium">{item.status}</span>
-                                    </div>
-                                    <span className="font-bold text-slate-900">{item.count}</span>
+                {/* Main Charts Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Application Trends */}
+                    <Card className="lg:col-span-2 shadow-sm border-slate-100">
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <CardTitle>Application Processing Trends</CardTitle>
+                                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                                    <Activity className="h-4 w-4" />
                                 </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="h-[300px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={analytics.chartData.timeSeries}>
+                                        <defs>
+                                            <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                        <XAxis
+                                            dataKey="date"
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{ fill: '#64748b', fontSize: 12 }}
+                                            dy={10}
+                                            tickFormatter={(str) => {
+                                                const date = new Date(str);
+                                                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                            }}
+                                        />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                                        <Tooltip
+                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                        />
+                                        <Area type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorCount)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Status Distribution */}
+                    <Card className="shadow-sm border-slate-100">
+                        <CardHeader>
+                            <CardTitle>Status Breakdown</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="h-[250px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={analytics.chartData.statusDistribution}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="count"
+                                            nameKey="status"
+                                        >
+                                            {analytics.chartData.statusDistribution.map((_, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                        />
+                                        <Legend verticalAlign="bottom" height={36} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <div className="mt-4 space-y-2">
+                                {analytics.chartData.statusDistribution.map((item, i) => (
+                                    <div key={item.status} className="flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }}></div>
+                                            <span className="text-slate-600 font-medium">{item.status}</span>
+                                        </div>
+                                        <span className="font-bold text-slate-900">{item.count}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
 
             {/* Second Row: Org Distribution & Performance */}
             {([UserRole.SUPER_ADMIN, UserRole.PMO, UserRole.ORG_ADMIN] as string[]).includes(user?.role || '') && (

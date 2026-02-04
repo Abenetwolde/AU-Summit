@@ -260,7 +260,21 @@ export default function SuperAdminDashboard() {
   const getCountryName = (code: string) => {
     if (!code) return 'Unknown';
     const upper = code.toUpperCase().trim();
-    return en[upper as keyof typeof en] || code;
+
+    // ISO-2 to Name mapping (from react-phone-number-input)
+    const iso2Name = en[upper as keyof typeof en];
+    if (iso2Name) return iso2Name;
+
+    // ISO-3 fallback (a few common ones if needed, but backend usually provides full name now)
+    const iso3Map: Record<string, string> = {
+      'ETH': 'Ethiopia',
+      'USA': 'United States',
+      'GBR': 'United Kingdom',
+      'CAN': 'Canada',
+      'FRA': 'France'
+    };
+
+    return iso3Map[upper] || code;
   };
 
   const selectedPerformance = performanceData.find(
@@ -663,31 +677,43 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 <div className="lg:w-80 space-y-4">
-                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Top Nationalities</div>
-                  <div className="h-[420px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={dashboardData.countries.slice(0, 10)} layout="vertical" margin={{ left: -10, right: 20, top: 0, bottom: 0 }}>
-                        <XAxis type="number" hide />
-                        <YAxis
-                          dataKey="code"
-                          type="category"
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }}
-                          width={90}
-                          tickFormatter={(code) => {
-                            const name = getCountryName(code);
-                            return name.length > 5 ? name.substring(0, 5) + '...' : name;
-                          }}
-                        />
-                        <Tooltip
-                          cursor={{ fill: 'transparent' }}
-                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }}
-                          formatter={(value, name, props) => [value, getCountryName(props.payload.code)]}
-                        />
-                        <Bar dataKey="count" fill="#3b82f6" radius={[0, 6, 6, 0]} barSize={24} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Top Nationalities</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-2 py-0.5 rounded-full">Top 10</div>
+                  </div>
+                  <div className="space-y-4 h-[420px] pr-2 overflow-y-auto custom-scrollbar">
+                    {dashboardData.countries.slice(0, 10).map((country, idx) => {
+                      const maxCount = Math.max(...dashboardData.countries.slice(0, 10).map(c => c.count), 1);
+                      const percentage = (country.count / maxCount) * 100;
+                      return (
+                        <div key={idx} className="group relative">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-md bg-slate-100 text-[10px] font-bold text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                                {idx + 1}
+                              </span>
+                              <span className="text-sm font-bold text-slate-700 truncate group-hover:text-slate-900 transition-colors">
+                                {country.name}
+                              </span>
+                              <span className="flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-400 uppercase tracking-tight">
+                                {country.code}
+                              </span>
+                            </div>
+                            <span className="text-sm font-black text-slate-900">{country.count}</span>
+                          </div>
+                          <Progress
+                            value={percentage}
+                            className="h-1.5 bg-slate-100"
+                            indicatorClassName={cn(
+                              "transition-all duration-1000",
+                              idx === 0 ? "bg-blue-600" :
+                                idx === 1 ? "bg-indigo-500" :
+                                  idx === 2 ? "bg-violet-500" : "bg-slate-300 group-hover:bg-blue-400"
+                            )}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

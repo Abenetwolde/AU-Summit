@@ -135,7 +135,7 @@ export function DashboardLayout() {
               </h1>
             ) : (
               <h1 className="text-sm font-bold font-sans leading-relaxed text-black uppercase tracking-wider">
-            
+
               </h1>
             )}
 
@@ -181,6 +181,24 @@ export function DashboardLayout() {
               >
                 <Users className="h-5 w-5" />
                 List of journalists
+              </NavLink>
+            )}
+
+            {/* Applicant History */}
+            {user?.role && (
+              <NavLink
+                to={`${basePath}/duplicates`}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-[#e6f4ea] text-primary'
+                      : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                  )
+                }
+              >
+                <Users className="h-5 w-5" />
+                Applicant History
               </NavLink>
             )}
 
@@ -532,7 +550,8 @@ export function DashboardLayout() {
                 </NavLink>
               </>
             )}
-
+      {/* Duplicate  */}
+           
             {/* Invitation Center – visible to more roles */}
             {(user?.role === UserRole.SUPER_ADMIN || user?.role === UserRole.PMO ||
               checkPermission('application:view:approved')) && (
@@ -552,6 +571,20 @@ export function DashboardLayout() {
                 </NavLink>
               )}
           </nav>
+               <NavLink
+                  to={`${basePath}/duplicates`}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-[#e6f4ea] text-primary'
+                        : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                    )
+                  }
+                >
+                  <Mail className="h-5 w-5" />
+            Duplicate Applications 
+                </NavLink>
         </ScrollArea>
 
         {/* User info & logout */}
