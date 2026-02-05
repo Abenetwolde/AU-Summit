@@ -23,9 +23,7 @@ export function Login() {
             const response = await apiLogin({ email, password }).unwrap();
 
             if (response.success && response.data) {
-                const { token, user, requirePasswordChange } = response.data;
-                // Store token in localStorage for API calls
-                localStorage.setItem('managment_token', token);
+                const { user, requirePasswordChange } = response.data;
 
                 // Determine UserRole enum from API roleName string
                 let roleEnum: any = user.roleName; // Default fallback for valid login with unknown string
