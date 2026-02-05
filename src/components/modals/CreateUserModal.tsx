@@ -21,6 +21,7 @@ import { useAuth, UserRole } from '@/auth/context';
 import { Role, useGetRolesQuery, useGetEmbassiesQuery } from '@/store/services/api';
 import { Search, Loader2 } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
+import { PasswordStrengthIndicator } from '../ui/PasswordStrengthIndicator';
 import { useEffect } from 'react';
 
 interface CreateUserModalProps {
@@ -102,6 +103,11 @@ export function CreateUserModal({ open, onOpenChange, onConfirm, organizationId,
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Invalid email format';
         if (!password) newErrors.password = 'Password is required';
         else if (password.length < 8) newErrors.password = 'Password must be at least 8 characters';
+        else if (!/[A-Z]/.test(password)) newErrors.password = 'Password must contain at least one uppercase letter';
+        else if (!/[a-z]/.test(password)) newErrors.password = 'Password must contain at least one lowercase letter';
+        else if (!/[0-9]/.test(password)) newErrors.password = 'Password must contain at least one number';
+        else if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) newErrors.password = 'Password must contain at least one special character';
+
         if (password !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
         if (!roleId) newErrors.role = 'Role is required';
         if (isEmbassyOfficer && !embassyId) newErrors.embassy = 'Embassy is required for this role';
@@ -167,7 +173,8 @@ export function CreateUserModal({ open, onOpenChange, onConfirm, organizationId,
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                         />
-                        {errors.password && <p className="text-xs text-red-600">{errors.password}</p>}
+                        <PasswordStrengthIndicator password={password} />
+                        {errors.password && <p className="text-xs text-red-600 font-medium">{errors.password}</p>}
                     </div>
 
                     <div className="space-y-2">

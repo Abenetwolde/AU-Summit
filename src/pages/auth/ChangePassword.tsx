@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useChangePasswordMutation } from '@/store/services/api'; // Generate this export
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
+import { PasswordStrengthIndicator } from '@/components/ui/PasswordStrengthIndicator';
 
 export function ChangePassword() {
     const [oldPassword, setOldPassword] = useState('');
@@ -34,6 +35,19 @@ export function ChangePassword() {
 
         if (newPassword.length < 8) {
             toast.error("Password must be at least 8 characters");
+            return;
+        }
+
+        const requirements = [
+            { regex: /[A-Z]/, message: 'uppercase letter' },
+            { regex: /[a-z]/, message: 'lowercase letter' },
+            { regex: /[0-9]/, message: 'number' },
+            { regex: /[!@#$%^&*(),.?":{}|<>]/, message: 'special character' }
+        ];
+
+        const missing = requirements.filter(req => !req.regex.test(newPassword));
+        if (missing.length > 0) {
+            toast.error(`Password must contain at least one ${missing.map(m => m.message).join(', ')}`);
             return;
         }
 
@@ -86,6 +100,7 @@ export function ChangePassword() {
                                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                 </button>
                             </div>
+                            <PasswordStrengthIndicator password={newPassword} />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Confirm New Password</label>

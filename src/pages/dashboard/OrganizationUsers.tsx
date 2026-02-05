@@ -12,6 +12,7 @@ import {
     Role
 } from '../../store/services/api';
 import { useAuth, UserRole } from '../../auth/context';
+import { PasswordStrengthIndicator } from '../../components/ui/PasswordStrengthIndicator';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -97,6 +98,29 @@ export function OrganizationUsers() {
 
         if (!formData.fullName || !formData.email || !formData.password || !formData.roleId) {
             toast.error('All fields are required');
+            return;
+        }
+
+        // Enforce password policy
+        const password = formData.password;
+        if (password.length < 8) {
+            toast.error('Password must be at least 8 characters');
+            return;
+        }
+        if (!/[A-Z]/.test(password)) {
+            toast.error('Password must contain at least one uppercase letter');
+            return;
+        }
+        if (!/[a-z]/.test(password)) {
+            toast.error('Password must contain at least one lowercase letter');
+            return;
+        }
+        if (!/[0-9]/.test(password)) {
+            toast.error('Password must contain at least one number');
+            return;
+        }
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+            toast.error('Password must contain at least one special character');
             return;
         }
 
@@ -406,9 +430,10 @@ export function OrganizationUsers() {
                                 type="password"
                                 value={formData.password}
                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                placeholder="Minimum 6 characters"
+                                placeholder="Minimum 8 characters"
                                 required
                             />
+                            <PasswordStrengthIndicator password={formData.password} />
                         </div>
                         <div>
                             <Label htmlFor="roleId">Role</Label>
