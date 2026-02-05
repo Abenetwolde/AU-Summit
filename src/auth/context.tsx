@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 export type UserRole = string;
 
@@ -61,27 +61,54 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const USER_STORAGE_KEY = 'managment_user';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const [user, setUser] = useState<User | null>(() => {
-        const stored = localStorage.getItem(USER_STORAGE_KEY);
-        try {
-            return stored ? JSON.parse(stored) : null;
-        } catch {
-            return null;
-        }
-    });
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    const API_BASE_URL = 'http://localhost:3000/api/v1'; // Should match FILE_BASE_URL in api.ts
+
+    useEffect(() => {
+        const initAuth = async () => {
+            try {
+                // Try to get current user session using HttpOnly cookie
+                const response = await fetch(`${API_BASE_URL}/auth/me`, {
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        const userData = result.data;
+                        setUser({
+                            id: userData.id,
+                            name: userData.fullName,
+                            email: userData.email,
+                            role: userData.roleName || userData.role?.name,
+                            roleName: userData.roleName || userData.role?.name,
+                            permissions: userData.permissions,
+                            organization: userData.organization,
+                            workflowStepKey: userData.workflowStepKey,
+                            authorizedWorkflowSteps: userData.authorizedWorkflowSteps
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("Auth initialization failed", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        initAuth();
+    }, []);
 
     const checkPermission = (permissionKey: string): boolean => {
         if (!user) return false;
-
-        // Super Admin and PMO have absolute control
         if (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.PMO) return true;
-
         if (!user.permissions) return false;
-        return user.permissions.some(p => p.key === permissionKey);
+        return user.permissions.some(p => (typeof p === 'string' ? p : p.key) === permissionKey);
     };
 
-    const login = (email: string, role: UserRole, permissions: Permission[] = [], fullName: string = 'Officer Sara Kamil', roleName?: string, id: string = '1234-AU', workflowStepKey?: string, organization?: Organization, authorizedWorkflowSteps: any[] = [], requirePasswordChange: boolean = false) => {
-        // Use provided name/permissions if available (from API), otherwise default
+    const login = (email: string, role: UserRole, permissions: any[] = [], fullName: string = '', roleName?: string, id: string = '', workflowStepKey?: string, organization?: Organization, authorizedWorkflowSteps: any[] = [], requirePasswordChange: boolean = false) => {
         const newUser: User = {
             id,
             name: fullName,
@@ -90,21 +117,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             roleName,
             workflowStepKey,
             organization,
-            // gate: 'GATE 1',
-            permissions,
+            permissions: permissions.map(p => typeof p === 'string' ? { key: p, label: p, description: '' } : p),
             authorizedWorkflowSteps,
             requirePasswordChange
         };
         setUser(newUser);
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
     };
 
-    const logout = () => {
-        setUser(null);
-        localStorage.removeItem(USER_STORAGE_KEY);
-        // Also remove the token
-        localStorage.removeItem('managment_token');
+    const logout = async () => {
+        try {
+            await fetch(`${API_BASE_URL}/auth/logout`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+        } catch (error) {
+            console.error("Logout failed", error);
+        } finally {
+            setUser(null);
+            localStorage.removeItem(USER_STORAGE_KEY);
+            localStorage.removeItem('managment_token');
+        }
     };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
 
     return (
         <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, checkPermission }}>
