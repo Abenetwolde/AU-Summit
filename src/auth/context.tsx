@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const API_BASE_URL = 'http://localhost:3000/api/v1'; // Should match FILE_BASE_URL in api.ts
+    const API_BASE_URL = 'https://api.arrivalclearance.gov.et/api/v1'; // Should match FILE_BASE_URL in api.ts
 
     useEffect(() => {
         const initAuth = async () => {
