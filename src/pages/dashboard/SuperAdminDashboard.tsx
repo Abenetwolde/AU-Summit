@@ -214,16 +214,18 @@ export default function SuperAdminDashboard() {
 
   // Derived metrics from Journalists Status chart data for mini cards consistency
   const chartDerivedStats = React.useMemo(() => {
-    if (!adminCharts?.statusDistribution) return { total: 0, approved: 0, pending: 0, rejected: 0 };
+    if (!adminCharts?.statusDistribution) return { total: 0, approved: 0, pending: 0, rejected: 0, submitted: 0 };
 
     const approved = adminCharts.statusDistribution.find((s: any) => s.status === 'APPROVED')?.count || 0;
     const rejected = adminCharts.statusDistribution.find((s: any) => s.status === 'REJECTED')?.count || 0;
-    // Group SUBMITTED, IN_REVIEW, and any other non-final statuses as "Pending"
-    const pending = adminCharts.statusDistribution.reduce((acc: number, curr: any) =>
-      (!['APPROVED', 'REJECTED'].includes(curr.status) ? acc + curr.count : acc), 0);
-    const total = approved + rejected + pending;
+    // Strictly count IN_REVIEW for the "In Review" card
+    const pending = adminCharts.statusDistribution.find((s: any) => s.status === 'IN_REVIEW')?.count || 0;
+    const submitted = adminCharts.statusDistribution.find((s: any) => s.status === 'SUBMITTED')?.count || 0;
 
-    return { total, approved, pending, rejected };
+    // Total should include ALL applications (Submitted, In Review, Approved, Rejected, etc.)
+    const total = adminCharts.statusDistribution.reduce((acc: number, curr: any) => acc + curr.count, 0);
+
+    return { total, approved, pending, rejected, submitted };
   }, [adminCharts?.statusDistribution]);
 
   if (!mounted) return null;
@@ -332,7 +334,7 @@ export default function SuperAdminDashboard() {
     if (!overview || !adminCharts || !dashboardData) return;
 
     const exportData: DashboardExportData = {
-      kpis: overview,
+      kpis: overview as any,
       charts: {
         timeSeries: adminCharts.timeSeries,
         statusDistribution: adminCharts.statusDistribution,
@@ -352,7 +354,7 @@ export default function SuperAdminDashboard() {
 
     try {
       const exportData: DashboardExportData = {
-        kpis: overview,
+        kpis: overview as any,
         charts: {
           timeSeries: adminCharts.timeSeries,
           statusDistribution: adminCharts.statusDistribution,
@@ -449,7 +451,7 @@ export default function SuperAdminDashboard() {
           </div>
 
           {/* 1. Key Metrics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-slide-up" style={{ animationDelay: '0.05s' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 animate-slide-up" style={{ animationDelay: '0.05s' }}>
             {/* Total Applications (Entry) */}
             <Card className="border-0 shadow-sm bg-gradient-to-br from-indigo-500 to-blue-600 text-white overflow-hidden relative group">
               <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">
@@ -462,6 +464,31 @@ export default function SuperAdminDashboard() {
                     {chartDerivedStats.total}
                   </h3>
                   <span className="text-white/60 text-sm mb-1 font-medium">Total Registered</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Submitted (Entry) */}
+            <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-500 to-cyan-600 text-white overflow-hidden relative group">
+              <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">
+                <FileTextIcon className="h-24 w-24" />
+              </div>
+              <CardContent className="p-6 relative">
+                <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">Submitted</p>
+                <div className="flex items-end justify-between">
+                  <div className="flex items-end gap-3">
+                    <h3 className="text-4xl font-bold">
+                      {chartDerivedStats.submitted}
+                    </h3>
+                    <span className="text-white/60 text-sm mb-1 font-medium">Journalists</span>
+                  </div>
+                  <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg text-sm font-bold">
+                    {(() => {
+                      const total = chartDerivedStats.total;
+                      const submitted = chartDerivedStats.submitted;
+                      return total > 0 ? Math.round((submitted / total) * 100) : 0;
+                    })()}%
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -497,13 +524,13 @@ export default function SuperAdminDashboard() {
                 <Clock className="h-24 w-24" />
               </div>
               <CardContent className="p-6 relative">
-                <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">Pending Entry</p>
+                <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">In Review</p>
                 <div className="flex items-end justify-between">
                   <div className="flex items-end gap-3">
                     <h3 className="text-4xl font-bold">
                       {chartDerivedStats.pending}
                     </h3>
-                    <span className="text-white/60 text-sm mb-1 font-medium">In Review</span>
+                    <span className="text-white/60 text-sm mb-1 font-medium">Journalists</span>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg text-sm font-bold">
                     {(() => {
@@ -632,7 +659,7 @@ export default function SuperAdminDashboard() {
                         tickFormatter={v => new Date(v).toLocaleDateString('en-US', { day: 'numeric' })} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }} tickFormatter={v => formatMinutes(v)} />
                       <Tooltip contentStyle={{ backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: '12px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}
-                        formatter={(v: number) => [formatMinutes(v), 'Avg Process Time']} />
+                        formatter={(v: number | undefined) => [formatMinutes(v || 0), 'Avg Process Time']} />
                       <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} fill="url(#colorValue)" dot={{ r: 4, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }} />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -640,6 +667,41 @@ export default function SuperAdminDashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Stakeholder Status Breakdown (Entry) */}
+          <Card id="chart-stakeholder-breakdown" className="border-0 shadow-sm animate-slide-up" style={{ animationDelay: '0.2s' }}>
+            <CardHeader className="pb-3 border-b border-slate-50">
+              <CardTitle>Stakeholder Status Breakdown (Entry Workflow)</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="h-[350px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={Object.entries(stakeholderStatus || {}).map(([name, stats]: any) => ({ name, ...stats }))}
+                    margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }}
+                      interval={0}
+                    />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: '12px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}
+                      cursor={{ fill: '#f8fafc' }}
+                    />
+                    <Legend iconType="circle" />
+                    <Bar dataKey="APPROVED" name="Approved" stackId="a" fill="#10b981" radius={[0, 0, 4, 4]} barSize={48} />
+                    <Bar dataKey="PENDING" name="Pending" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={48} />
+                    <Bar dataKey="REJECTED" name="Rejected" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={48} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* ROW 2: Geographic Distribution – full width, taller */}
           <Card id="chart-geographic-dist" className="border-0 shadow-sm animate-slide-up" style={{ animationDelay: '0.25s' }}>
