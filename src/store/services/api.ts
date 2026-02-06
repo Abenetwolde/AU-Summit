@@ -2100,6 +2100,13 @@ export const api = createApi({
             }),
             transformResponse: (response: any) => response.data,
         }),
+        downloadApprovedPhotos: builder.mutation<Blob, void>({
+            query: () => ({
+                url: '/export/approved-photos',
+                method: 'GET',
+                responseHandler: (response: any) => response.blob(),
+            }),
+        }),
     }),
 });
 
@@ -2254,5 +2261,6 @@ export const {
     useGetAccreditationStatusesQuery,
     useResendAccreditationMutation,
     useSyncAccreditationMutation,
+    useDownloadApprovedPhotosMutation,
 } = api;
 

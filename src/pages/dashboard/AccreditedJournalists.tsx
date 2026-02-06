@@ -6,7 +6,9 @@ import { CountrySelect } from '@/components/ui/country-select';
 import {
     useGetApprovedApplicationsQuery,
     useUpdateApplicationStatusMutation,
-    ApplicationStatus
+    ApplicationStatus,
+    FILE_BASE_URL,
+    useDownloadApprovedPhotosMutation
 } from '@/store/services/api';
 import { toast } from 'sonner';
 import {
@@ -32,6 +34,7 @@ export function AccreditedJournalists() {
     // API Hooks
     const { data, isLoading, refetch } = useGetApprovedApplicationsQuery({ page: currentPage, limit: itemsPerPage });
     const [updateStatus, { isLoading: isUpdating }] = useUpdateApplicationStatusMutation();
+    const [downloadPhotos, { isLoading: isDownloadingPhotos }] = useDownloadApprovedPhotosMutation();
 
     const applications = data?.applications || [];
     const totalPages = data?.totalPages || 1;
@@ -90,6 +93,25 @@ export function AccreditedJournalists() {
         exportJournalistsToPDF(filteredApplications);
     };
 
+    const handleExportPhotos = async () => {
+        try {
+            toast.loading('Preparing photo export...', { id: 'photo-export' });
+            const blob = await downloadPhotos().unwrap();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `approved_passport_photos_${new Date().toISOString().split('T')[0]}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            toast.success('Photos exported successfully', { id: 'photo-export' });
+        } catch (error) {
+            console.error('Photo export failed:', error);
+            toast.error('Failed to export photos', { id: 'photo-export' });
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="flex h-96 items-center justify-center">
@@ -122,6 +144,19 @@ export function AccreditedJournalists() {
                     >
                         <Download className="h-4 w-4" />
                         Export PDF
+                    </Button>
+                    <Button
+                        variant="default"
+                        onClick={handleExportPhotos}
+                        className="gap-2 bg-blue-600 hover:bg-blue-700"
+                        disabled={isDownloadingPhotos}
+                    >
+                        {isDownloadingPhotos ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <Download className="h-4 w-4" />
+                        )}
+                        Export Photos
                     </Button>
                 </div>
             </div>
