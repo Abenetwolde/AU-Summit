@@ -212,6 +212,20 @@ export default function SuperAdminDashboard() {
     }));
   }, [dashboardData?.countries]);
 
+  // Derived metrics from Journalists Status chart data for mini cards consistency
+  const chartDerivedStats = React.useMemo(() => {
+    if (!adminCharts?.statusDistribution) return { total: 0, approved: 0, pending: 0, rejected: 0 };
+
+    const approved = adminCharts.statusDistribution.find((s: any) => s.status === 'APPROVED')?.count || 0;
+    const rejected = adminCharts.statusDistribution.find((s: any) => s.status === 'REJECTED')?.count || 0;
+    // Group SUBMITTED, IN_REVIEW, and any other non-final statuses as "Pending"
+    const pending = adminCharts.statusDistribution.reduce((acc: number, curr: any) =>
+      (!['APPROVED', 'REJECTED'].includes(curr.status) ? acc + curr.count : acc), 0);
+    const total = approved + rejected + pending;
+
+    return { total, approved, pending, rejected };
+  }, [adminCharts?.statusDistribution]);
+
   if (!mounted) return null;
 
   const isLoading = isDashboardLoading || isOverviewLoading || isChartsLoading || isStatusLoading || isPerformanceLoading || isEntryExitLoading;
@@ -244,6 +258,7 @@ export default function SuperAdminDashboard() {
     percentage: Math.round((item.count / (totalDistribution || 1)) * 100),
     color: item.status === 'APPROVED' ? '#10b981' : item.status === 'REJECTED' ? '#ef4444' : item.status === 'IN_REVIEW' ? '#f59e0b' : '#3b82f6'
   }));
+
 
 
   const getIcon = (iconName: string) => {
@@ -444,7 +459,7 @@ export default function SuperAdminDashboard() {
                 <p className="text-white/80 text-sm font-semibold uppercase tracking-wider mb-1">Entry Applications</p>
                 <div className="flex items-end gap-3">
                   <h3 className="text-4xl font-bold">
-                    {entryExitStats?.entry.total || 0}
+                    {chartDerivedStats.total}
                   </h3>
                   <span className="text-white/60 text-sm mb-1 font-medium">Total Registered</span>
                 </div>
@@ -461,14 +476,14 @@ export default function SuperAdminDashboard() {
                 <div className="flex items-end justify-between">
                   <div className="flex items-end gap-3">
                     <h3 className="text-4xl font-bold">
-                      {entryExitStats?.entry.approved || 0}
+                      {chartDerivedStats.approved}
                     </h3>
                     <span className="text-white/60 text-sm mb-1 font-medium">Journalists</span>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg text-sm font-bold">
                     {(() => {
-                      const total = entryExitStats?.entry.total || 0;
-                      const approved = entryExitStats?.entry.approved || 0;
+                      const total = chartDerivedStats.total;
+                      const approved = chartDerivedStats.approved;
                       return total > 0 ? Math.round((approved / total) * 100) : 0;
                     })()}%
                   </div>
@@ -486,14 +501,14 @@ export default function SuperAdminDashboard() {
                 <div className="flex items-end justify-between">
                   <div className="flex items-end gap-3">
                     <h3 className="text-4xl font-bold">
-                      {entryExitStats?.entry.pending || 0}
+                      {chartDerivedStats.pending}
                     </h3>
                     <span className="text-white/60 text-sm mb-1 font-medium">In Review</span>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg text-sm font-bold">
                     {(() => {
-                      const total = entryExitStats?.entry.total || 0;
-                      const pending = entryExitStats?.entry.pending || 0;
+                      const total = chartDerivedStats.total;
+                      const pending = chartDerivedStats.pending;
                       return total > 0 ? Math.round((pending / total) * 100) : 0;
                     })()}%
                   </div>
@@ -511,14 +526,14 @@ export default function SuperAdminDashboard() {
                 <div className="flex items-end justify-between">
                   <div className="flex items-end gap-3">
                     <h3 className="text-4xl font-bold">
-                      {entryExitStats?.entry.rejected || 0}
+                      {chartDerivedStats.rejected}
                     </h3>
                     <span className="text-white/60 text-sm mb-1 font-medium">Journalists</span>
                   </div>
                   <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg text-sm font-bold">
                     {(() => {
-                      const total = entryExitStats?.entry.total || 0;
-                      const rejected = entryExitStats?.entry.rejected || 0;
+                      const total = chartDerivedStats.total;
+                      const rejected = chartDerivedStats.rejected;
                       return total > 0 ? Math.round((rejected / total) * 100) : 0;
                     })()}%
                   </div>

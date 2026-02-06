@@ -308,7 +308,7 @@ export function JournalistList() {
                                 <th className="h-12 px-4 text-left align-middle font-medium text-gray-500 uppercase text-xs tracking-wider hidden md:table-cell">SUBMISSION DATE</th>
 
                                 {/* EMA Status - Using application.status */}
-                                <th className="h-12 px-4 text-center align-middle font-medium text-gray-500 uppercase text-xs tracking-wider">EMA STATUS</th>
+                                <th className="h-12 px-4 text-center align-middle font-medium text-gray-500 uppercase text-xs tracking-wider"> STATUS</th>
 
                                 {/* Dynamic workflow step columns using workflowStep.name */}
                                 {workflowStepInfo.map((step) => (
