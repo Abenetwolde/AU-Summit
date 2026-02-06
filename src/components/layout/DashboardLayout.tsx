@@ -239,6 +239,24 @@ export function DashboardLayout() {
               </NavLink>
             )}
 
+            {/* Delivery Status */}
+            {checkPermission('application:view:approved') && (
+              <NavLink
+                to={`${basePath}/delivery-status`}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-[#e6f4ea] text-primary'
+                      : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                  )
+                }
+              >
+                <Mail className="h-5 w-5" />
+                Delivery Status
+              </NavLink>
+            )}
+
             {/* Entry Workflow */}
             {checkPermission('application:view:entry-workflow') && (
               <NavLink
