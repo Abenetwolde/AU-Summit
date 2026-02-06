@@ -39,6 +39,7 @@ import ManualEntry from './pages/dashboard/ManualEntry';
 import { ManualApplications } from './pages/dashboard/ManualApplications';
 import { ManualBadgePrint } from './pages/dashboard/badges/ManualBadgePrint';
 import { DuplicateApplications } from './pages/dashboard/DuplicateApplications';
+import { AccreditationDelivery } from './pages/dashboard/AccreditationDelivery';
 
 function App() {
     useEffect(() => {
@@ -77,6 +78,7 @@ function App() {
 
                                     <Route element={<ProtectedRoute requiredPermission="application:view:approved" />}>
                                         <Route path="accredited" element={<AccreditedJournalists />} />
+                                        <Route path="delivery-status" element={<AccreditationDelivery />} />
                                         <Route path="invitations" element={<InvitationCenter />} />
                                     </Route>
 

@@ -1065,6 +1065,28 @@ export const getFileUrl = (path?: string | null): string => {
 
 
 
+// Accreditation Types
+export interface AccreditationStatus {
+    id: number;
+    applicationId: number;
+    emailStatus: 'pending' | 'sent' | 'failed';
+    badgeStatus: 'pending' | 'generated' | 'failed';
+    invitationStatus: 'pending' | 'generated' | 'failed' | 'not_required';
+    qrCodeStatus: 'pending' | 'generated' | 'failed';
+    missingAttachments: string[];
+    lastAttemptAt: string | null;
+    errorLog: string | null;
+    application?: Application;
+}
+
+export interface AccreditationStatusesResponse {
+    data: AccreditationStatus[];
+    total: number;
+    currentPage: number;
+    totalPages: number;
+}
+
+
 const baseQuery = fetchBaseQuery({
     baseUrl: `${FILE_BASE_URL}/api/v1`,
     credentials: 'include',
@@ -1087,7 +1109,7 @@ const baseQueryWithReauth = async (args: any, api: any, extraOptions: any) => {
 export const api = createApi({
     reducerPath: 'api',
     baseQuery: baseQueryWithReauth,
-    tagTypes: ['Role', 'Permission', 'Application', 'Form', 'User', 'Category', 'WorkflowStep', 'Invitation', 'Badge', 'EquipCatalog', 'Integration', 'APIProvider', 'Embassy', 'Country', 'Organization', 'EmailTemplate', 'LandingPage', 'Workflow', 'Notification', 'AirlineOffice'],
+    tagTypes: ['Role', 'Permission', 'Application', 'Form', 'User', 'Category', 'WorkflowStep', 'Invitation', 'Badge', 'EquipCatalog', 'Integration', 'APIProvider', 'Embassy', 'Country', 'Organization', 'EmailTemplate', 'LandingPage', 'Workflow', 'Notification', 'AirlineOffice', 'AccreditationStatus'],
     endpoints: (builder) => ({
         getRegistrationStats: builder.query<RegistrationStats, void>({
             query: () => '/analytics/stats',
@@ -1099,6 +1121,24 @@ export const api = createApi({
                 method: 'POST',
                 body: credentials,
             }),
+        }),
+        getAccreditationStatuses: builder.query<AccreditationStatusesResponse, { page?: number; limit?: number; search?: string }>({
+            query: ({ page = 1, limit = 10, search = '' }) => `/accreditation/statuses?page=${page}&limit=${limit}&search=${search}`,
+            providesTags: ['AccreditationStatus']
+        }),
+        resendAccreditation: builder.mutation<{ message: string }, number>({
+            query: (applicationId) => ({
+                url: `/accreditation/resend/${applicationId}`,
+                method: 'POST',
+            }),
+            invalidatesTags: ['AccreditationStatus']
+        }),
+        syncAccreditation: builder.mutation<{ message: string; count: number }, void>({
+            query: () => ({
+                url: '/accreditation/sync',
+                method: 'POST',
+            }),
+            invalidatesTags: ['AccreditationStatus']
         }),
         logout: builder.mutation<{ success: boolean }, void>({
             query: () => ({
@@ -2211,5 +2251,8 @@ export const {
     useGetManualApplicationsQuery,
     useUpdateApplicationMutation,
     useUpdateManualApplicationMutation,
+    useGetAccreditationStatusesQuery,
+    useResendAccreditationMutation,
+    useSyncAccreditationMutation,
 } = api;
 
