@@ -151,7 +151,16 @@ export function AccreditationDelivery() {
                                 <tr key={item.id} className="border-b transition-colors hover:bg-muted/50">
                                     <td className="p-4 align-middle text-gray-500 font-mono text-xs">#{item.applicationId}</td>
                                     <td className="p-4 align-middle">
-                                        <div className="font-bold text-slate-800">{item.application?.user?.fullName || 'N/A'}</div>
+                                        <div className="font-bold text-slate-800">
+                                            {(() => {
+                                                const app = item.application;
+                                                const formData = app?.formData as any || {};
+                                                const name = (formData.first_name || formData.last_name)
+                                                    ? `${formData.first_name || ''} ${formData.last_name || ''}`.trim()
+                                                    : formData.fullName || app?.user?.fullName || 'N/A';
+                                                return name;
+                                            })()}
+                                        </div>
                                         <div className="text-xs text-slate-500">{item.application?.user?.email}</div>
                                     </td>
                                     <td className="p-4 align-middle text-center">
