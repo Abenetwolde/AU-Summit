@@ -26,7 +26,8 @@ import {
   useGetSuperAdminPerformanceQuery,
   useGetSuperAdminEntryExitStatsQuery,
   useGetSuperAdminOfficerPerformanceQuery,
-  useGetRegistrationStatsQuery
+  useGetRegistrationStatsQuery,
+  useGetSuperAdminVisualizationDataQuery
 } from '@/store/services/api';
 import { exportDashboardAnalyticsToCSV, exportDashboardAnalyticsToPDF, captureElement, type DashboardExportData } from '@/lib/export-utils';
 import { OfficerPerformance } from '@/components/dashboard/OfficerPerformance';
@@ -124,6 +125,7 @@ export default function SuperAdminDashboard() {
   const { data: entryExitStats, isLoading: isEntryExitLoading } = useGetSuperAdminEntryExitStatsQuery({ timeframe: 'month' });
   const { data: officerKPIs, isLoading: isOfficerLoading } = useGetSuperAdminOfficerPerformanceQuery({ timeframe: 'month' });
   const { data: registrationStats } = useGetRegistrationStatsQuery();
+  const { data: visualizationData, isLoading: isVisLoading } = useGetSuperAdminVisualizationDataQuery();
 
   const [selectedStakeholder, setSelectedStakeholder] = useState<string>("");
   const [appTrendRange, setAppTrendRange] = useState<'thisMonth' | 'lastMonth'>('thisMonth');
@@ -214,18 +216,16 @@ export default function SuperAdminDashboard() {
 
   // Derived metrics from Journalists Status chart data for mini cards consistency
   const chartDerivedStats = React.useMemo(() => {
-    if (!adminCharts?.statusDistribution) return { total: 0, approved: 0, pending: 0, rejected: 0, submitted: 0 };
+    if (!adminCharts?.statusDistribution) return { total: 0, approved: 0, pending: 0, rejected: 0 };
 
     const approved = adminCharts.statusDistribution.find((s: any) => s.status === 'APPROVED')?.count || 0;
     const rejected = adminCharts.statusDistribution.find((s: any) => s.status === 'REJECTED')?.count || 0;
-    // Strictly count IN_REVIEW for the "In Review" card
-    const pending = adminCharts.statusDistribution.find((s: any) => s.status === 'IN_REVIEW')?.count || 0;
-    const submitted = adminCharts.statusDistribution.find((s: any) => s.status === 'SUBMITTED')?.count || 0;
+    // Group SUBMITTED, IN_REVIEW, and any other non-final statuses as "Pending"
+    const pending = adminCharts.statusDistribution.reduce((acc: number, curr: any) =>
+      (!['APPROVED', 'REJECTED'].includes(curr.status) ? acc + curr.count : acc), 0);
+    const total = approved + rejected + pending;
 
-    // Total should include ALL applications (Submitted, In Review, Approved, Rejected, etc.)
-    const total = adminCharts.statusDistribution.reduce((acc: number, curr: any) => acc + curr.count, 0);
-
-    return { total, approved, pending, rejected, submitted };
+    return { total, approved, pending, rejected };
   }, [adminCharts?.statusDistribution]);
 
   if (!mounted) return null;

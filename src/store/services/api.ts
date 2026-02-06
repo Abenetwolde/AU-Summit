@@ -841,8 +841,8 @@ export interface UpdateEquipmentStatusPayload {
     notes?: string;
 }
 
-export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
-// export const FILE_BASE_URL = 'http://localhost:3000';
+// export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
+export const FILE_BASE_URL = 'http://localhost:5000';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -905,6 +905,26 @@ export interface OfficerPerformanceResponse {
     throughputTrend: { date: string; count: number }[];
     timeframe: string;
     totalProcessedGlobal: number;
+}
+
+export interface VisualizationData {
+    deliveryStats: {
+        emails: { name: string; value: number }[];
+        invitations: { name: string; value: number }[];
+        qrCodes: { name: string; value: number }[];
+    };
+    genderDistribution: { name: string; value: number }[];
+    stakeholders: {
+        countries: { name: string; value: number }[];
+        organizations: { name: string; value: number }[];
+        embassies: { name: string; value: number }[];
+    };
+}
+
+export interface VisualizationDataResponse {
+    success: boolean;
+    message: string;
+    data: VisualizationData;
 }
 
 export interface SuperAdminPerformance {
@@ -2079,6 +2099,10 @@ export const api = createApi({
             query: () => '/super-admin/performance',
             transformResponse: (response: SuperAdminPerformanceResponse) => response.data,
         }),
+        getSuperAdminVisualizationData: builder.query<VisualizationData, void>({
+            query: () => '/super-admin/visualization',
+            transformResponse: (response: VisualizationDataResponse) => response.data,
+        }),
         getAdminAnalytics: builder.query<AdminAnalyticsData, void>({
             query: () => '/admin/analytics',
             transformResponse: (response: AdminAnalyticsResponse) => response.data,
@@ -2231,6 +2255,7 @@ export const {
     useGetSuperAdminStakeholdersQuery,
     useGetSuperAdminStakeholderStatusQuery,
     useGetSuperAdminPerformanceQuery,
+    useGetSuperAdminVisualizationDataQuery,
     useGetAdminAnalyticsQuery,
     useGetAdminEntryExitStatsQuery,
 
