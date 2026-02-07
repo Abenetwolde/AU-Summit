@@ -1800,6 +1800,13 @@ export const api = createApi({
             },
             transformResponse: (response: DashboardDataResponse) => response.data,
         }),
+        exportProfilePictures: builder.query<Blob, void>({
+            query: () => ({
+                url: '/export/profile-pictures',
+                method: 'GET',
+                responseHandler: (response: any) => response.blob()
+            }),
+        }),
         // Invitation Endpoints
         getInvitationTemplates: builder.query<InvitationTemplate[], void>({
             query: () => '/invitations/templates',
@@ -2254,5 +2261,6 @@ export const {
     useGetAccreditationStatusesQuery,
     useResendAccreditationMutation,
     useSyncAccreditationMutation,
+    useLazyExportProfilePicturesQuery,
 } = api;
 
