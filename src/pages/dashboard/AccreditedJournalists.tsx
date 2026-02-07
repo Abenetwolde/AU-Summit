@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Search, RefreshCw, Download, Loader2 } from 'lucide-react';
+import { Search, RefreshCw, Download, Loader2, Image as ImageIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { CountrySelect } from '@/components/ui/country-select';
 import {
     useGetApprovedApplicationsQuery,
     useUpdateApplicationStatusMutation,
+    useLazyExportProfilePicturesQuery,
     ApplicationStatus
 } from '@/store/services/api';
 import { toast } from 'sonner';
@@ -32,6 +33,7 @@ export function AccreditedJournalists() {
     // API Hooks
     const { data, isLoading, refetch } = useGetApprovedApplicationsQuery({ page: currentPage, limit: itemsPerPage });
     const [updateStatus, { isLoading: isUpdating }] = useUpdateApplicationStatusMutation();
+    const [triggerExport, { isFetching: isExportingPhotos }] = useLazyExportProfilePicturesQuery();
 
     const applications = data?.applications || [];
     const totalPages = data?.totalPages || 1;
@@ -39,9 +41,13 @@ export function AccreditedJournalists() {
 
     // Filter applications based on search and country
     const filteredApplications = applications.filter(app => {
-        const fullName = app.user.fullName.toLowerCase();
+        // PRIORITY: formData name since one user can apply for multiple people
+        const firstName = app.formData?.first_name || '';
+        const lastName = app.formData?.last_name || '';
+        const applicantName = `${firstName} ${lastName}`.toLowerCase();
+
         const passportNo = app.formData.passport_number?.toLowerCase() || '';
-        const matchesSearch = fullName.includes(searchTerm.toLowerCase()) || passportNo.includes(searchTerm.toLowerCase());
+        const matchesSearch = applicantName.includes(searchTerm.toLowerCase()) || passportNo.includes(searchTerm.toLowerCase());
         const matchesCountry = selectedCountry ? app.formData.country === selectedCountry : true;
         return matchesSearch && matchesCountry;
     });
@@ -90,6 +96,24 @@ export function AccreditedJournalists() {
         exportJournalistsToPDF(filteredApplications);
     };
 
+    const handleExportProfilePictures = async () => {
+        try {
+            const blob = await triggerExport().unwrap();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `accredited_photos_${new Date().toISOString().split('T')[0]}.zip`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode?.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            toast.success('Profile pictures exported successfully');
+        } catch (error) {
+            toast.error('Failed to export profile pictures');
+            console.error('Export photos failed:', error);
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="flex h-96 items-center justify-center">
@@ -122,6 +146,24 @@ export function AccreditedJournalists() {
                     >
                         <Download className="h-4 w-4" />
                         Export PDF
+                    </Button>
+                    <Button
+                        variant="default"
+                        onClick={handleExportProfilePictures}
+                        disabled={isExportingPhotos}
+                        className="gap-2 bg-blue-600 hover:bg-blue-700"
+                    >
+                        {isExportingPhotos ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Exporting...
+                            </>
+                        ) : (
+                            <>
+                                <ImageIcon className="h-4 w-4" />
+                                Export Photos
+                            </>
+                        )}
                     </Button>
                 </div>
             </div>
@@ -192,14 +234,15 @@ export function AccreditedJournalists() {
                                 <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs hidden lg:table-cell">Occupation</th>
                                 <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs hidden xl:table-cell">Arrival</th>
                                 <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">Status</th>
-                                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="[&_tr:last-child]:border-0">
                             {filteredApplications.map((application) => (
                                 <tr key={application.id} className="border-b transition-colors hover:bg-muted/50">
                                     <td className="p-4 align-middle text-gray-500">{application.id}</td>
-                                    <td className="p-4 align-middle font-bold text-slate-800">{application.user.fullName}</td>
+                                    <td className="p-4 align-middle font-bold text-slate-800">
+                                        {application.formData?.first_name} {application.formData?.last_name}
+                                    </td>
                                     <td className="p-4 align-middle hidden sm:table-cell">
                                         <span className="flex items-center gap-2 font-medium text-slate-600">
                                             {application.applyingFromCountry?.name || countryName(application.formData.country)}
@@ -213,27 +256,7 @@ export function AccreditedJournalists() {
                                     <td className="p-4 align-middle">
                                         {getStatusBadge(application.status as string)}
                                     </td>
-                                    <td className="p-4 align-middle text-right">
-                                        {!isReadOnly ? (
-                                            <Select
-                                                value={application.status as string}
-                                                onValueChange={(value) => handleStatusChange(application.id, value as ApplicationStatus)}
-                                                disabled={isUpdating}
-                                            >
-                                                <SelectTrigger className="w-[140px] h-8 text-xs">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value={ApplicationStatus.SUBMITTED}>Submitted</SelectItem>
-                                                    <SelectItem value={ApplicationStatus.APPROVED}>Approved</SelectItem>
-                                                    <SelectItem value={ApplicationStatus.IN_REVIEW}>In Review</SelectItem>
-                                                    <SelectItem value={ApplicationStatus.REJECTED}>Rejected</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        ) : (
-                                            <span className="text-xs text-gray-400">View Only</span>
-                                        )}
-                                    </td>
+
                                 </tr>
                             ))}
                         </tbody>

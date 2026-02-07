@@ -1052,13 +1052,24 @@ export default function SuperAdminDashboard() {
                       <tr key={app.id} className="hover:bg-slate-50/60 transition-colors group">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center text-blue-700 font-semibold text-sm shadow-sm">
-                              {app.user?.fullName?.charAt(0) || 'J'}
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-slate-800">{app.user?.fullName || '—'}</p>
-                              <p className="text-xs text-slate-500">{app.formData?.country || app.user?.country || '—'}</p>
-                            </div>
+                            {(() => {
+                              const firstName = app.formData?.first_name || '';
+                              const lastName = app.formData?.last_name || '';
+                              const applicantName = `${firstName} ${lastName}`.trim() || app.user?.fullName || '—';
+                              const initials = applicantName.charAt(0).toUpperCase();
+
+                              return (
+                                <>
+                                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center text-blue-700 font-semibold text-sm shadow-sm">
+                                    {initials}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-semibold text-slate-800">{applicantName}</p>
+                                    <p className="text-xs text-slate-500">{app.formData?.country || app.user?.country || '—'}</p>
+                                  </div>
+                                </>
+                              );
+                            })()}
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm font-medium text-slate-700">
