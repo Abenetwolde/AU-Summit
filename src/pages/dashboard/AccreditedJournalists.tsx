@@ -234,7 +234,6 @@ export function AccreditedJournalists() {
                                 <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs hidden lg:table-cell">Occupation</th>
                                 <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs hidden xl:table-cell">Arrival</th>
                                 <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">Status</th>
-                                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="[&_tr:last-child]:border-0">
@@ -257,27 +256,7 @@ export function AccreditedJournalists() {
                                     <td className="p-4 align-middle">
                                         {getStatusBadge(application.status as string)}
                                     </td>
-                                    <td className="p-4 align-middle text-right">
-                                        {!isReadOnly ? (
-                                            <Select
-                                                value={application.status as string}
-                                                onValueChange={(value) => handleStatusChange(application.id, value as ApplicationStatus)}
-                                                disabled={isUpdating}
-                                            >
-                                                <SelectTrigger className="w-[140px] h-8 text-xs">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value={ApplicationStatus.SUBMITTED}>Submitted</SelectItem>
-                                                    <SelectItem value={ApplicationStatus.APPROVED}>Approved</SelectItem>
-                                                    <SelectItem value={ApplicationStatus.IN_REVIEW}>In Review</SelectItem>
-                                                    <SelectItem value={ApplicationStatus.REJECTED}>Rejected</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        ) : (
-                                            <span className="text-xs text-gray-400">View Only</span>
-                                        )}
-                                    </td>
+
                                 </tr>
                             ))}
                         </tbody>
