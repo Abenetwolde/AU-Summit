@@ -41,9 +41,13 @@ export function AccreditedJournalists() {
 
     // Filter applications based on search and country
     const filteredApplications = applications.filter(app => {
-        const fullName = app.user.fullName.toLowerCase();
+        // PRIORITY: formData name since one user can apply for multiple people
+        const firstName = app.formData?.first_name || '';
+        const lastName = app.formData?.last_name || '';
+        const applicantName = `${firstName} ${lastName}`.toLowerCase();
+
         const passportNo = app.formData.passport_number?.toLowerCase() || '';
-        const matchesSearch = fullName.includes(searchTerm.toLowerCase()) || passportNo.includes(searchTerm.toLowerCase());
+        const matchesSearch = applicantName.includes(searchTerm.toLowerCase()) || passportNo.includes(searchTerm.toLowerCase());
         const matchesCountry = selectedCountry ? app.formData.country === selectedCountry : true;
         return matchesSearch && matchesCountry;
     });
@@ -237,7 +241,9 @@ export function AccreditedJournalists() {
                             {filteredApplications.map((application) => (
                                 <tr key={application.id} className="border-b transition-colors hover:bg-muted/50">
                                     <td className="p-4 align-middle text-gray-500">{application.id}</td>
-                                    <td className="p-4 align-middle font-bold text-slate-800">{application.user.fullName}</td>
+                                    <td className="p-4 align-middle font-bold text-slate-800">
+                                        {application.formData?.first_name} {application.formData?.last_name}
+                                    </td>
                                     <td className="p-4 align-middle hidden sm:table-cell">
                                         <span className="flex items-center gap-2 font-medium text-slate-600">
                                             {application.applyingFromCountry?.name || countryName(application.formData.country)}

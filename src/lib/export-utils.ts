@@ -138,10 +138,10 @@ export function exportJournalistsToCSV(journalists: any[]) {
     };
 
     const data = journalists.map(j => {
-        // PRIORITY: formData > user object > top level
-        const firstName = j.formData?.first_name || j.user?.fullName?.split(' ')[0] || j.fullname?.split(' ')[0] || '';
-        const lastName = j.formData?.last_name || j.user?.fullName?.split(' ').slice(1).join(' ') || j.fullname?.split(' ').slice(1).join(' ') || '';
-        const fullName = j.formData?.first_name ? `${firstName} ${lastName}`.trim() : (j.user?.fullName || j.fullname || 'N/A');
+        // EXACTLY from formData as requested by user
+        const firstName = j.formData?.first_name || '';
+        const lastName = j.formData?.last_name || '';
+        const fullName = `${firstName} ${lastName}`.trim() || j.user?.fullName || 'N/A';
 
         const row: any = {
             'Full Name': fullName,
@@ -215,10 +215,10 @@ export function exportJournalistsToPDF(journalists: any[]) {
     ];
 
     const data = journalists.map(j => {
-        // PRIORITY: formData > user object > top level
-        const firstName = j.formData?.first_name || j.user?.fullName?.split(' ')[0] || j.fullname?.split(' ')[0] || '';
-        const lastName = j.formData?.last_name || j.user?.fullName?.split(' ').slice(1).join(' ') || j.fullname?.split(' ').slice(1).join(' ') || '';
-        const fullName = j.formData?.first_name ? `${firstName} ${lastName}`.trim() : (j.user?.fullName || j.fullname || 'N/A');
+        // EXACTLY from formData as requested by user
+        const firstName = j.formData?.first_name || '';
+        const lastName = j.formData?.last_name || '';
+        const fullName = `${firstName} ${lastName}`.trim() || j.user?.fullName || 'N/A';
 
         return {
             fullname: fullName,
