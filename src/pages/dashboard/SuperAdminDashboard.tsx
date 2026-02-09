@@ -674,29 +674,32 @@ export default function SuperAdminDashboard() {
               <CardTitle>Stakeholder Status Breakdown (Entry Workflow)</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="h-[350px]">
+              <div className="h-[800px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
+                    layout="vertical"
                     data={Object.entries(stakeholderStatus || {}).map(([name, stats]: any) => ({ name, ...stats }))}
-                    margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }} />
+                    <YAxis
                       dataKey="name"
+                      type="category"
                       axisLine={false}
                       tickLine={false}
+                      width={150}
                       tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }}
                       interval={0}
                     />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }} />
                     <Tooltip
                       contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: '12px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}
                       cursor={{ fill: '#f8fafc' }}
                     />
                     <Legend iconType="circle" />
-                    <Bar dataKey="APPROVED" name="Approved" stackId="a" fill="#10b981" radius={[0, 0, 4, 4]} barSize={48} />
-                    <Bar dataKey="PENDING" name="Pending" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={48} />
-                    <Bar dataKey="REJECTED" name="Rejected" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={48} />
+                    <Bar dataKey="APPROVED" name="Approved" stackId="a" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20} />
+                    <Bar dataKey="PENDING" name="Pending" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={20} />
+                    <Bar dataKey="REJECTED" name="Rejected" stackId="a" fill="#ef4444" radius={[4, 0, 0, 4]} barSize={20} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
