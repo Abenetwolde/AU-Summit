@@ -801,15 +801,15 @@ export default function SuperAdminDashboard() {
           </Card>
 
           {/* ROW 3: Officer Performance KPIs – full width */}
-          <div className="animate-slide-up" style={{ animationDelay: '0.35s' }}>
+          {/*<div className="animate-slide-up" style={{ animationDelay: '0.35s' }}>
             <div className="flex items-center justify-between mb-5">
-              <div>
+             <div>
                 <h2 className="text-2xl font-bold text-slate-800">Officer Performance KPIs</h2>
                 <p className="text-sm text-slate-500 mt-1">Processing efficiency and workload distribution</p>
               </div>
             </div>
             <OfficerPerformance data={officerKPIs} isLoading={isOfficerLoading} viewMode="organization" />
-          </div>
+          </div>*/}
 
           {/* ROW 4: Registration by Coverage Type + Media Type */}
           {registrationStats && (
