@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Search, RefreshCw, Download, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Search, RefreshCw, Download, Loader2, Image as ImageIcon, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { CountrySelect } from '@/components/ui/country-select';
 import {
@@ -27,7 +28,8 @@ export function AccreditedJournalists() {
     const [selectedCountry, setSelectedCountry] = useState('');
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
-    const { user } = useAuth();
+    const { user, checkPermission } = useAuth();
+    const navigate = useNavigate();
     const isReadOnly = user?.role === UserRole.NISS_OFFICER;
 
     // API Hooks
@@ -234,6 +236,7 @@ export function AccreditedJournalists() {
                                 <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs hidden lg:table-cell">Occupation</th>
                                 <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs hidden xl:table-cell">Arrival</th>
                                 <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">Status</th>
+                                <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">Action</th>
                             </tr>
                         </thead>
                         <tbody className="[&_tr:last-child]:border-0">
@@ -256,7 +259,18 @@ export function AccreditedJournalists() {
                                     <td className="p-4 align-middle">
                                         {getStatusBadge(application.status as string)}
                                     </td>
-
+                                    <td className="p-4 align-middle">
+                                        {checkPermission('application:view:by-id') && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => navigate(`/dashboard/journalists/${application.id}`)}
+                                                title="View Details"
+                                            >
+                                                <Eye className="h-4 w-4 text-gray-500 hover:text-blue-600" />
+                                            </Button>
+                                        )}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
