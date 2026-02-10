@@ -1498,11 +1498,20 @@ export const api = createApi({
             transformResponse: (response: any) => response.data || response,
             providesTags: (_result, _error, id) => [{ type: 'Application', id }],
         }),
-        getApprovedApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number } | void>({
+        getApprovedApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; country?: string; date?: string } | void>({
             query: (params) => {
                 const page = params && 'page' in params ? params.page : 1;
                 const limit = params && 'limit' in params ? params.limit : 10;
-                return `/applications/approved?page=${page}&limit=${limit}`;
+                const search = params && 'search' in params ? params.search : '';
+                const country = params && 'country' in params ? params.country : '';
+                const date = params && 'date' in params ? params.date : '';
+
+                let url = `/applications/approved?page=${page}&limit=${limit}`;
+                if (search) url += `&search=${encodeURIComponent(search)}`;
+                if (country) url += `&country=${encodeURIComponent(country)}`;
+                if (date) url += `&date=${encodeURIComponent(date)}`;
+
+                return url;
             },
             transformResponse: (response: ApplicationsResponse) => response.data,
             providesTags: ['Application'],
