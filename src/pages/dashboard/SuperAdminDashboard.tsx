@@ -452,6 +452,28 @@ export default function SuperAdminDashboard() {
 
           {/* 1. Key Metrics Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 animate-slide-up" style={{ animationDelay: '0.05s' }}>
+            {/* Total Entered */}
+            <Card className="border-0 shadow-sm bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white overflow-hidden relative group">
+              <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">
+                <Plane className="h-24 w-24" />
+              </div>
+              <CardContent className="p-6 relative">
+                <p className="text-blue-100 text-sm font-semibold uppercase tracking-wider mb-1">Journalists Entered</p>
+                <div className="flex items-end gap-3">
+                  <h3 className="text-4xl font-bold">
+                    {overview?.totalEntered?.value || 0}
+                  </h3>
+                  <span className="text-white/60 text-sm mb-1 font-medium">Recorded</span>
+                </div>
+                {overview?.totalEntered?.trend && (
+                  <div className={cn("absolute top-6 right-6 flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/10")}>
+                    {overview.totalEntered.trend === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingUp className="h-3 w-3 rotate-180" />}
+                    {overview.totalEntered.percentage}%
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Total Applications (Entry) */}
             <Card className="border-0 shadow-sm bg-gradient-to-br from-indigo-500 to-blue-600 text-white overflow-hidden relative group">
               <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">

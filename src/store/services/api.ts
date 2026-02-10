@@ -841,8 +841,8 @@ export interface UpdateEquipmentStatusPayload {
     notes?: string;
 }
 
-export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
-// export const FILE_BASE_URL = 'http://localhost:3000';
+// export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
+export const FILE_BASE_URL = 'http://localhost:3000';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -855,6 +855,12 @@ export interface SuperAdminOverview {
     totalApplications: SuperAdminMetric;
     approvedApplications: SuperAdminMetric;
     pendingApplications: SuperAdminMetric;
+    totalEntered?: {
+        value: number;
+        trend: 'up' | 'down' | 'neutral';
+        percentage: number;
+        label: string;
+    };
 }
 
 export interface SuperAdminCharts {
@@ -1109,7 +1115,7 @@ const baseQueryWithReauth = async (args: any, api: any, extraOptions: any) => {
 export const api = createApi({
     reducerPath: 'api',
     baseQuery: baseQueryWithReauth,
-    tagTypes: ['Role', 'Permission', 'Application', 'Form', 'User', 'Category', 'WorkflowStep', 'Invitation', 'Badge', 'EquipCatalog', 'Integration', 'APIProvider', 'Embassy', 'Country', 'Organization', 'EmailTemplate', 'LandingPage', 'Workflow', 'Notification', 'AirlineOffice', 'AccreditationStatus'],
+    tagTypes: ['Role', 'Permission', 'Application', 'Form', 'User', 'Category', 'WorkflowStep', 'Invitation', 'Badge', 'EquipCatalog', 'Integration', 'APIProvider', 'Embassy', 'Country', 'Organization', 'EmailTemplate', 'LandingPage', 'Workflow', 'Notification', 'AirlineOffice', 'AccreditationStatus', 'Entries', 'SuperAdmin'],
     endpoints: (builder) => ({
         getRegistrationStats: builder.query<RegistrationStats, void>({
             query: () => '/analytics/stats',
@@ -2107,6 +2113,28 @@ export const api = createApi({
             }),
             transformResponse: (response: any) => response.data,
         }),
+        // Entry Endpoints
+        getEntries: builder.query<EntriesResponse, { page: number; limit: number; search?: string; status?: string }>({
+            query: ({ page, limit, search, status }) => ({
+                url: '/entry',
+                params: { page, limit, search, status }
+            }),
+            providesTags: ['Entries']
+        }),
+
+        markAsEntered: builder.mutation<{ message: string; entry: JournalistEntry }, { applicationId: number; location?: string }>({
+            query: (body) => ({
+                url: '/entry/mark',
+                method: 'POST',
+                body
+            }),
+            invalidatesTags: ['Entries', 'SuperAdmin']
+        }),
+
+        getEntryStats: builder.query<{ totalEntered: number }, void>({
+            query: () => '/entry/stats'
+        }),
+
     }),
 });
 
@@ -2262,5 +2290,31 @@ export const {
     useResendAccreditationMutation,
     useSyncAccreditationMutation,
     useLazyExportProfilePicturesQuery,
+    useGetEntriesQuery,
+    useMarkAsEnteredMutation,
+    useGetEntryStatsQuery,
 } = api;
+
+// Entry Management
+// -----------------------------------------------------------------------------
+export interface JournalistEntry {
+    id: number;
+    applicationId: number;
+    application?: Application;
+    entryDate?: string;
+    enteredBy?: number;
+    location?: string;
+    status: 'PENDING' | 'ENTERED';
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface EntriesResponse {
+    total: number;
+    totalPages: number;
+    currentPage: number;
+    entries: Application[]; // The controller returns Applications with journalistEntry included
+}
+
+
 
