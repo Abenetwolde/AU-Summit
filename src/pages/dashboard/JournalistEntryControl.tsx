@@ -6,10 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
     useGetEntriesQuery,
     useMarkAsEnteredMutation,
-    useMarkAsExitedMutation,
     ApplicationStatus
 } from '@/store/services/api';
-import { LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -31,7 +29,6 @@ export function JournalistEntryControl() {
     const navigate = useNavigate();
     const [selectedLocation, setSelectedLocation] = useState('Addis Ababa Bole International Airport');
     const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-    const [exitDialogOpen, setExitDialogOpen] = useState(false);
     const [selectedAppId, setSelectedAppId] = useState<number | null>(null);
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
@@ -44,7 +41,6 @@ export function JournalistEntryControl() {
     });
 
     const [markAsEntered, { isLoading: isMarking }] = useMarkAsEnteredMutation();
-    const [markAsExited, { isLoading: isMarkingExit }] = useMarkAsExitedMutation();
 
     const applications = data?.entries || [];
     const totalPages = data?.totalPages || 1;
@@ -56,7 +52,7 @@ export function JournalistEntryControl() {
         }
     };
 
-    const handleMarkAsEntered = async () => {
+    const handleConfirmArrival = async () => {
         if (!selectedAppId) return;
 
         try {
@@ -65,30 +61,12 @@ export function JournalistEntryControl() {
                 location: selectedLocation
             }).unwrap();
 
-            toast.success('Journalist marked as entered successfully');
+            toast.success('Arrival confirmed successfully');
             setConfirmDialogOpen(false);
             setSelectedAppId(null);
             refetch();
         } catch (error) {
-            toast.error('Failed to mark entry');
-            console.error(error);
-        }
-    };
-
-    const handleMarkAsExited = async () => {
-        if (!selectedAppId) return;
-
-        try {
-            await markAsExited({
-                applicationId: selectedAppId
-            }).unwrap();
-
-            toast.success('Journalist marked as exited successfully');
-            setExitDialogOpen(false);
-            setSelectedAppId(null);
-            refetch();
-        } catch (error) {
-            toast.error('Failed to mark exit');
+            toast.error('Failed to confirm arrival');
             console.error(error);
         }
     };
@@ -127,9 +105,9 @@ export function JournalistEntryControl() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-sm text-muted-foreground mb-1">&gt; Entry Control</p>
-                    <h2 className="text-3xl font-bold font-sans text-gray-900">Journalist Entry Tracking</h2>
-                    <p className="text-muted-foreground">Manage and track journalist entries at the airport.</p>
+                    <p className="text-sm text-muted-foreground mb-1">&gt; Arrival Confirmation</p>
+                    <h2 className="text-3xl font-bold font-sans text-gray-900">Journalist Arrival Management</h2>
+                    <p className="text-muted-foreground">Confirm and track journalist arrivals at the port of entry.</p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isFetching}>
@@ -166,8 +144,8 @@ export function JournalistEntryControl() {
                                 }}
                             >
                                 <option value="ALL">All Statuses</option>
-                                <option value="PENDING">Pending Entry</option>
-                                <option value="ENTERED">Entered</option>
+                                <option value="PENDING">Pending Arrival</option>
+                                <option value="ENTERED">Arrival Confirmed</option>
                                 <option value="EXITED">Exited</option>
                             </select>
                         </div>
@@ -191,7 +169,7 @@ export function JournalistEntryControl() {
                                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs hidden sm:table-cell">Passport No</th>
                                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs hidden md:table-cell">Media House</th>
                                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">Status</th>
-                                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">Entry/Exit Detail</th>
+                                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">Arrival/Exit Detail</th>
                                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">Action</th>
                                 </tr>
                             </thead>
@@ -245,21 +223,7 @@ export function JournalistEntryControl() {
                                                         }}
                                                     >
                                                         <CheckCircle className="h-3.5 w-3.5" />
-                                                        Mark Entered
-                                                    </Button>
-                                                )}
-                                                {isEntered(app) && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="text-orange-600 border-orange-200 hover:bg-orange-50 gap-1"
-                                                        onClick={() => {
-                                                            setSelectedAppId(app.id);
-                                                            setExitDialogOpen(true);
-                                                        }}
-                                                    >
-                                                        <LogOut className="h-3.5 w-3.5" />
-                                                        Mark Exited
+                                                        Confirm Arrival
                                                     </Button>
                                                 )}
                                             </td>
@@ -302,15 +266,15 @@ export function JournalistEntryControl() {
             <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Confirm Entry</DialogTitle>
+                        <DialogTitle>Confirm Arrival</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to mark this journalist as having entered the country?
-                            This action will record the timestamp and location.
+                            Are you sure you want to confirm this journalist's arrival into the country?
+                            This action will record the timestamp and point of entry.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
                         <Label htmlFor="location" className="text-right">
-                            Location / Gate
+                            Point of Entry / Gate
                         </Label>
                         <Input
                             id="location"
@@ -321,28 +285,9 @@ export function JournalistEntryControl() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setConfirmDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleMarkAsEntered} disabled={isMarking} className="bg-green-600 hover:bg-green-700">
+                        <Button onClick={handleConfirmArrival} disabled={isMarking} className="bg-green-600 hover:bg-green-700 text-white">
                             {isMarking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Confirm Entry
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog open={exitDialogOpen} onOpenChange={setExitDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Confirm Exit</DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to mark this journalist as having exited the country?
-                            This will record the exit timestamp.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setExitDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleMarkAsExited} disabled={isMarkingExit} className="bg-orange-600 hover:bg-orange-700 text-white">
-                            {isMarkingExit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Confirm Exit
+                            Confirm Arrival
                         </Button>
                     </DialogFooter>
                 </DialogContent>
