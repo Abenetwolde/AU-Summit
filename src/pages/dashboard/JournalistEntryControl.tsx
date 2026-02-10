@@ -6,8 +6,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
     useGetEntriesQuery,
     useMarkAsEnteredMutation,
+    useMarkAsExitedMutation,
     ApplicationStatus
 } from '@/store/services/api';
+import { LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -29,16 +31,20 @@ export function JournalistEntryControl() {
     const navigate = useNavigate();
     const [selectedLocation, setSelectedLocation] = useState('Addis Ababa Bole International Airport');
     const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+    const [exitDialogOpen, setExitDialogOpen] = useState(false);
     const [selectedAppId, setSelectedAppId] = useState<number | null>(null);
+    const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
     // API Hooks
     const { data, isLoading, refetch, isFetching } = useGetEntriesQuery({
         page: currentPage,
         limit: itemsPerPage,
-        search: searchTerm
+        search: searchTerm,
+        status: statusFilter === 'ALL' ? undefined : statusFilter
     });
 
     const [markAsEntered, { isLoading: isMarking }] = useMarkAsEnteredMutation();
+    const [markAsExited, { isLoading: isMarkingExit }] = useMarkAsExitedMutation();
 
     const applications = data?.entries || [];
     const totalPages = data?.totalPages || 1;
@@ -69,8 +75,52 @@ export function JournalistEntryControl() {
         }
     };
 
+    const handleMarkAsExited = async () => {
+        if (!selectedAppId) return;
+
+        try {
+            await markAsExited({
+                applicationId: selectedAppId
+            }).unwrap();
+
+            toast.success('Journalist marked as exited successfully');
+            setExitDialogOpen(false);
+            setSelectedAppId(null);
+            refetch();
+        } catch (error) {
+            toast.error('Failed to mark exit');
+            console.error(error);
+        }
+    };
+
     const isEntered = (app: any) => {
         return app.journalistEntry?.status === 'ENTERED';
+    };
+
+    const isExited = (app: any) => {
+        return app.journalistEntry?.status === 'EXITED';
+    };
+
+    const getStatusBadge = (app: any) => {
+        if (isExited(app)) {
+            return (
+                <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 border-none shadow-none">
+                    Exited
+                </Badge>
+            );
+        }
+        if (isEntered(app)) {
+            return (
+                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none shadow-none">
+                    Entered
+                </Badge>
+            );
+        }
+        return (
+            <Badge variant="outline" className="text-yellow-600 border-yellow-200 bg-yellow-50">
+                Pending Entry
+            </Badge>
+        );
     };
 
     return (
@@ -92,18 +142,34 @@ export function JournalistEntryControl() {
             <Card className="bg-gray-50/50">
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                        <div className="md:col-span-12 space-y-2">
+                        <div className="md:col-span-8 space-y-2">
                             <label className="text-sm font-medium">Search</label>
                             <div className="relative">
                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <input
-                                    placeholder="Search by Name, Passport Number, Email..."
+                                    placeholder="Search by Name, Passport Number..."
                                     className="w-full pl-9 pr-4 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && refetch()}
                                 />
                             </div>
+                        </div>
+                        <div className="md:col-span-4 space-y-2">
+                            <label className="text-sm font-medium">Status Filter</label>
+                            <select
+                                className="w-full h-10 px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                value={statusFilter}
+                                onChange={(e) => {
+                                    setStatusFilter(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                            >
+                                <option value="ALL">All Statuses</option>
+                                <option value="PENDING">Pending Entry</option>
+                                <option value="ENTERED">Entered</option>
+                                <option value="EXITED">Exited</option>
+                            </select>
                         </div>
                     </div>
                 </CardContent>
@@ -124,8 +190,8 @@ export function JournalistEntryControl() {
                                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">Fullname</th>
                                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs hidden sm:table-cell">Passport No</th>
                                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs hidden md:table-cell">Media House</th>
-                                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">Entry Status</th>
-                                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">Entry Detail</th>
+                                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">Status</th>
+                                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">Entry/Exit Detail</th>
                                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">Action</th>
                                 </tr>
                             </thead>
@@ -141,28 +207,25 @@ export function JournalistEntryControl() {
                                         <tr key={app.id} className="border-b transition-colors hover:bg-muted/50">
                                             <td className="p-4 align-middle text-gray-500">{app.id}</td>
                                             <td className="p-4 align-middle font-bold text-slate-800">
-                                                {app.user?.firstName} {app.user?.lastName}
-                                                <div className="text-xs font-normal text-muted-foreground">{app.user?.email}</div>
+                                                {app.formData?.first_name} {app.formData?.last_name}
+                                                <div className="text-xs font-normal text-muted-foreground">{app.user?.email || (app.formData as any)?.email}</div>
                                             </td>
                                             <td className="p-4 align-middle hidden sm:table-cell font-medium text-slate-600">
-                                                {app.user?.passportNumber || 'N/A'}
+                                                {app.formData?.passport_number || 'N/A'}
                                             </td>
                                             <td className="p-4 align-middle hidden md:table-cell text-slate-600">
-                                                {app.user?.mediaHouse || 'N/A'}
+                                                {app.formData?.media_house || (app.formData as any)?.organization_name || 'N/A'}
                                             </td>
                                             <td className="p-4 align-middle">
-                                                {isEntered(app) ? (
-                                                    <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none shadow-none">
-                                                        Entered
-                                                    </Badge>
-                                                ) : (
-                                                    <Badge variant="outline" className="text-yellow-600 border-yellow-200 bg-yellow-50">
-                                                        Pending Entry
-                                                    </Badge>
-                                                )}
+                                                {getStatusBadge(app)}
                                             </td>
                                             <td className="p-4 align-middle text-xs text-muted-foreground">
-                                                {isEntered(app) ? (
+                                                {isExited(app) ? (
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-orange-600 font-semibold uppercase text-[10px]">Exited</span>
+                                                        <span>{new Date(app.journalistEntry?.exitDate).toLocaleString()}</span>
+                                                    </div>
+                                                ) : isEntered(app) ? (
                                                     <div className="flex flex-col gap-1">
                                                         <span className="flex items-center gap-1">
                                                             <MapPin className="h-3 w-3" /> {app.journalistEntry?.location}
@@ -172,7 +235,7 @@ export function JournalistEntryControl() {
                                                 ) : '-'}
                                             </td>
                                             <td className="p-4 align-middle">
-                                                {!isEntered(app) && (
+                                                {(!app.journalistEntry || app.journalistEntry.status === 'PENDING') && (
                                                     <Button
                                                         size="sm"
                                                         className="bg-blue-600 hover:bg-blue-700 gap-1"
@@ -183,6 +246,20 @@ export function JournalistEntryControl() {
                                                     >
                                                         <CheckCircle className="h-3.5 w-3.5" />
                                                         Mark Entered
+                                                    </Button>
+                                                )}
+                                                {isEntered(app) && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="text-orange-600 border-orange-200 hover:bg-orange-50 gap-1"
+                                                        onClick={() => {
+                                                            setSelectedAppId(app.id);
+                                                            setExitDialogOpen(true);
+                                                        }}
+                                                    >
+                                                        <LogOut className="h-3.5 w-3.5" />
+                                                        Mark Exited
                                                     </Button>
                                                 )}
                                             </td>
@@ -247,6 +324,25 @@ export function JournalistEntryControl() {
                         <Button onClick={handleMarkAsEntered} disabled={isMarking} className="bg-green-600 hover:bg-green-700">
                             {isMarking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Confirm Entry
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={exitDialogOpen} onOpenChange={setExitDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirm Exit</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to mark this journalist as having exited the country?
+                            This will record the exit timestamp.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setExitDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleMarkAsExited} disabled={isMarkingExit} className="bg-orange-600 hover:bg-orange-700 text-white">
+                            {isMarkingExit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Confirm Exit
                         </Button>
                     </DialogFooter>
                 </DialogContent>

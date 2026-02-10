@@ -855,12 +855,8 @@ export interface SuperAdminOverview {
     totalApplications: SuperAdminMetric;
     approvedApplications: SuperAdminMetric;
     pendingApplications: SuperAdminMetric;
-    totalEntered?: {
-        value: number;
-        trend: 'up' | 'down' | 'neutral';
-        percentage: number;
-        label: string;
-    };
+    totalEntered?: SuperAdminMetric;
+    totalExited?: SuperAdminMetric;
 }
 
 export interface SuperAdminCharts {
@@ -1504,14 +1500,12 @@ export const api = createApi({
             transformResponse: (response: any) => response.data || response,
             providesTags: (_result, _error, id) => [{ type: 'Application', id }],
         }),
-        getApprovedApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number } | void>({
-            query: (params) => {
-                const page = params && 'page' in params ? params.page : 1;
-                const limit = params && 'limit' in params ? params.limit : 10;
-                return `/applications/approved?page=${page}&limit=${limit}`;
-            },
-            transformResponse: (response: ApplicationsResponse) => response.data,
-            providesTags: ['Application'],
+        getApprovedApplications: builder.query<any, { page: number; limit: number; search?: string; country?: string; date?: string }>({
+            query: (params) => ({
+                url: '/applications/approved',
+                params
+            }),
+            providesTags: ['Application', 'Entries']
         }),
         getWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; nationality?: string } | void>({
             query: (params) => {
@@ -2131,7 +2125,16 @@ export const api = createApi({
             invalidatesTags: ['Entries', 'SuperAdmin']
         }),
 
-        getEntryStats: builder.query<{ totalEntered: number }, void>({
+        markAsExited: builder.mutation<{ message: string; entry: JournalistEntry }, { applicationId: number }>({
+            query: (body) => ({
+                url: '/entry/mark-exit',
+                method: 'POST',
+                body
+            }),
+            invalidatesTags: ['Entries', 'SuperAdmin']
+        }),
+
+        getEntryStats: builder.query<{ totalEntered: number; totalExited: number }, void>({
             query: () => '/entry/stats'
         }),
 
@@ -2292,6 +2295,7 @@ export const {
     useLazyExportProfilePicturesQuery,
     useGetEntriesQuery,
     useMarkAsEnteredMutation,
+    useMarkAsExitedMutation,
     useGetEntryStatsQuery,
 } = api;
 
@@ -2303,8 +2307,10 @@ export interface JournalistEntry {
     application?: Application;
     entryDate?: string;
     enteredBy?: number;
+    exitDate?: string;
+    exitedBy?: number;
     location?: string;
-    status: 'PENDING' | 'ENTERED';
+    status: 'PENDING' | 'ENTERED' | 'EXITED';
     createdAt: string;
     updatedAt: string;
 }

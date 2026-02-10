@@ -33,26 +33,19 @@ export function AccreditedJournalists() {
     const isReadOnly = user?.role === UserRole.NISS_OFFICER;
 
     // API Hooks
-    const { data, isLoading, refetch } = useGetApprovedApplicationsQuery({ page: currentPage, limit: itemsPerPage });
+    const { data, isLoading, refetch } = useGetApprovedApplicationsQuery({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        country: selectedCountry,
+        date: date
+    });
     const [updateStatus, { isLoading: isUpdating }] = useUpdateApplicationStatusMutation();
     const [triggerExport, { isFetching: isExportingPhotos }] = useLazyExportProfilePicturesQuery();
 
     const applications = data?.applications || [];
     const totalPages = data?.totalPages || 1;
     const total = data?.total || 0;
-
-    // Filter applications based on search and country
-    const filteredApplications = applications.filter(app => {
-        // PRIORITY: formData name since one user can apply for multiple people
-        const firstName = app.formData?.first_name || '';
-        const lastName = app.formData?.last_name || '';
-        const applicantName = `${firstName} ${lastName}`.toLowerCase();
-
-        const passportNo = app.formData.passport_number?.toLowerCase() || '';
-        const matchesSearch = applicantName.includes(searchTerm.toLowerCase()) || passportNo.includes(searchTerm.toLowerCase());
-        const matchesCountry = selectedCountry ? app.formData.country === selectedCountry : true;
-        return matchesSearch && matchesCountry;
-    });
 
     const countryName = (code: string) => en[code as keyof typeof en] || code;
 
@@ -91,11 +84,11 @@ export function AccreditedJournalists() {
 
     // Export handlers
     const handleExportCSV = () => {
-        exportJournalistsToCSV(filteredApplications);
+        exportJournalistsToCSV(applications);
     };
 
     const handleExportPDF = () => {
-        exportJournalistsToPDF(filteredApplications);
+        exportJournalistsToPDF(applications);
     };
 
     const handleExportProfilePictures = async () => {
@@ -240,7 +233,7 @@ export function AccreditedJournalists() {
                             </tr>
                         </thead>
                         <tbody className="[&_tr:last-child]:border-0">
-                            {filteredApplications.map((application) => (
+                            {applications.map((application: any) => (
                                 <tr key={application.id} className="border-b transition-colors hover:bg-muted/50">
                                     <td className="p-4 align-middle text-gray-500">{application.id}</td>
                                     <td className="p-4 align-middle font-bold text-slate-800">
@@ -280,7 +273,7 @@ export function AccreditedJournalists() {
                 <div className="p-4 border-t flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <span className="text-sm text-muted-foreground">
-                            Showing {filteredApplications.length > 0 ? ((currentPage - 1) * itemsPerPage) + 1 : 0}-{Math.min(currentPage * itemsPerPage, total)} of {total}
+                            Showing {applications.length > 0 ? ((currentPage - 1) * itemsPerPage) + 1 : 0}-{Math.min(currentPage * itemsPerPage, total)} of {total}
                         </span>
                         <select
                             className="h-8 w-16 rounded-md border border-input bg-background px-2 text-sm"
