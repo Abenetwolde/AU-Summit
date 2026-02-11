@@ -184,7 +184,6 @@ export function SystemSettings() {
                     <TabsTrigger value="branding">Branding</TabsTrigger>
                     <TabsTrigger value="registration">Registration</TabsTrigger>
                     <TabsTrigger value="languages">Languages</TabsTrigger>
-                    <TabsTrigger value="compliance">Compliance</TabsTrigger>
                     <TabsTrigger value="contact">Contact</TabsTrigger>
                 </TabsList>
 
