@@ -295,7 +295,9 @@ export function ExitWorkflowDashboard() {
                                                 #{app.id}
                                             </TableCell>
                                             <TableCell className="font-medium">
-                                                {app.user?.fullName || 'N/A'}
+                                                {app.formData?.first_name
+                                                    ? `${app.formData.first_name} ${app.formData.last_name || ''}`
+                                                    : app.user?.fullName || 'N/A'}
                                             </TableCell>
                                             <TableCell className="text-muted-foreground">
                                                 {app.user?.email || 'N/A'}
