@@ -450,32 +450,7 @@ export function SystemSettings() {
                     </Card>
                 </TabsContent>
 
-                {/* Compliance */}
-                <TabsContent value="compliance" className="space-y-4">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <div>
-                                <CardTitle>Privacy Policy</CardTitle>
-                                <CardDescription>HTML content for the privacy policy page.</CardDescription>
-                            </div>
-                            <Button variant="outline" size="sm" onClick={() => setShowPreview(!showPreview)}>
-                                {showPreview ? <><EyeOff className="w-4 h-4 mr-2" /> Edit</> : <><Eye className="w-4 h-4 mr-2" /> Preview</>}
-                            </Button>
-                        </CardHeader>
-                        <CardContent>
-                            {showPreview ? (
-                                <div className="border rounded-md p-6 min-h-[400px] prose prose-sm max-w-none bg-gray-50/50" dangerouslySetInnerHTML={{ __html: settings.privacyPolicyContent }} />
-                            ) : (
-                                <Textarea
-                                    value={settings.privacyPolicyContent}
-                                    onChange={(e) => setSettings({ ...settings, privacyPolicyContent: e.target.value })}
-                                    className="min-h-[400px] font-mono text-sm leading-relaxed"
-                                    placeholder="<h1>Privacy Policy</h1>..."
-                                />
-                            )}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+
 
                 {/* Contact */}
                 <TabsContent value="contact" className="space-y-4">
