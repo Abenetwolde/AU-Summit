@@ -451,7 +451,7 @@ export default function SuperAdminDashboard() {
           </div>
 
           {/* 1. Key Metrics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6 animate-slide-up" style={{ animationDelay: '0.05s' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-slide-up" style={{ animationDelay: '0.05s' }}>
             {/* Total Entered */}
 
 
