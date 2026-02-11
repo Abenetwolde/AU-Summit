@@ -592,6 +592,7 @@ export function DashboardLayout() {
                 </NavLink>
               )}
           </nav>
+          {checkPermission('application:duplicated') && (
           <NavLink
             to={`${basePath}/duplicates`}
             className={({ isActive }) =>
@@ -606,6 +607,7 @@ export function DashboardLayout() {
             <Mail className="h-5 w-5" />
             Duplicate Applications
           </NavLink>
+          )}
         </ScrollArea>
 
         {/* User info & logout */}
