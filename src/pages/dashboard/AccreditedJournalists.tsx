@@ -6,7 +6,6 @@ import { CountrySelect } from '@/components/ui/country-select';
 import {
     useGetApprovedApplicationsQuery,
     useUpdateApplicationStatusMutation,
-    useLazyExportProfilePicturesQuery,
     ApplicationStatus
 } from '@/store/services/api';
 import { toast } from 'sonner';
@@ -33,7 +32,6 @@ export function AccreditedJournalists() {
     // API Hooks
     const { data, isLoading, refetch } = useGetApprovedApplicationsQuery({ page: currentPage, limit: itemsPerPage });
     const [updateStatus, { isLoading: isUpdating }] = useUpdateApplicationStatusMutation();
-    const [triggerExport, { isFetching: isExportingPhotos }] = useLazyExportProfilePicturesQuery();
 
     const applications = data?.applications || [];
     const totalPages = data?.totalPages || 1;
@@ -96,24 +94,6 @@ export function AccreditedJournalists() {
         exportJournalistsToPDF(filteredApplications);
     };
 
-    const handleExportProfilePictures = async () => {
-        try {
-            const blob = await triggerExport().unwrap();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `accredited_photos_${new Date().toISOString().split('T')[0]}.zip`);
-            document.body.appendChild(link);
-            link.click();
-            link.parentNode?.removeChild(link);
-            window.URL.revokeObjectURL(url);
-            toast.success('Profile pictures exported successfully');
-        } catch (error) {
-            toast.error('Failed to export profile pictures');
-            console.error('Export photos failed:', error);
-        }
-    };
-
     if (isLoading) {
         return (
             <div className="flex h-96 items-center justify-center">
@@ -146,24 +126,6 @@ export function AccreditedJournalists() {
                     >
                         <Download className="h-4 w-4" />
                         Export PDF
-                    </Button>
-                    <Button
-                        variant="default"
-                        onClick={handleExportProfilePictures}
-                        disabled={isExportingPhotos}
-                        className="gap-2 bg-blue-600 hover:bg-blue-700"
-                    >
-                        {isExportingPhotos ? (
-                            <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Exporting...
-                            </>
-                        ) : (
-                            <>
-                                <ImageIcon className="h-4 w-4" />
-                                Export Photos
-                            </>
-                        )}
                     </Button>
                 </div>
             </div>
