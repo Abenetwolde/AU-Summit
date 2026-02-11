@@ -40,6 +40,7 @@ export function AccreditedJournalists() {
         country: selectedCountry,
         date: date
     });
+
     const [updateStatus, { isLoading: isUpdating }] = useUpdateApplicationStatusMutation();
     const [triggerExport, { isFetching: isExportingPhotos }] = useLazyExportProfilePicturesQuery();
 

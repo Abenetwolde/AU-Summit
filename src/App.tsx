@@ -8,6 +8,7 @@ import { ChangePassword } from './pages/auth/ChangePassword';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { JournalistList } from './pages/dashboard/JournalistList';
 import { AccreditedJournalists } from './pages/dashboard/AccreditedJournalists';
+import { JournalistEntryControl } from './pages/dashboard/JournalistEntryControl';
 import { JournalistProfile } from './pages/dashboard/JournalistProfile';
 import { BadgeManagement } from './pages/dashboard/BadgeManagement';
 import { BadgeSlipPreview } from './pages/dashboard/BadgeSlipPreview';
@@ -80,6 +81,11 @@ function App() {
                                         <Route path="accredited" element={<AccreditedJournalists />} />
                                         <Route path="delivery-status" element={<AccreditationDelivery />} />
                                         <Route path="invitations" element={<InvitationCenter />} />
+                                    </Route>
+
+                                    {/* Entry Control */}
+                                    <Route element={<ProtectedRoute requiredPermission="application:entry:manage" />}>
+                                        <Route path="entry-control" element={<JournalistEntryControl />} />
                                     </Route>
 
                                     {/* Workflow Phase Routes */}

@@ -25,6 +25,7 @@ import {
   ArrowRightLeft,
   LogIn,
   Plane,
+  UserCheck,
 } from 'lucide-react';
 import { getFileUrl } from '@/store/services/api';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -272,6 +273,24 @@ export function DashboardLayout() {
               >
                 <LogIn className="h-5 w-5" />
                 Entry Approval
+              </NavLink>
+            )}
+
+            {/* Journalist Entry Control */}
+            {checkPermission('application:entry:manage') && (
+              <NavLink
+                to={`${basePath}/entry-control`}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-[#e6f4ea] text-primary'
+                      : 'text-muted-foreground hover:bg-gray-100 hover:text-foreground'
+                  )
+                }
+              >
+                <UserCheck className="h-5 w-5" />
+                Journalist Entry
               </NavLink>
             )}
 
