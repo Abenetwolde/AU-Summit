@@ -205,11 +205,14 @@ export default function SuperAdminDashboard() {
       'VN': 'VNM', 'VG': 'VGB', 'VI': 'VIR', 'WF': 'WLF', 'EH': 'ESH', 'YE': 'YEM', 'ZM': 'ZMB', 'ZW': 'ZWE'
     };
 
-    return new Map(dashboardData.countries.map(c => {
-      const upperCode = (c.code || '').toUpperCase().trim();
-      const code = upperCode.length === 2 ? iso2to3[upperCode] || upperCode : upperCode;
-      return [code, c];
-    }));
+    // Filter out Ethiopia (ETH) from the map
+    return new Map(dashboardData.countries
+      .filter(c => c.code?.toUpperCase() !== 'ETH')
+      .map(c => {
+        const upperCode = (c.code || '').toUpperCase().trim();
+        const code = upperCode.length === 2 ? iso2to3[upperCode] || upperCode : upperCode;
+        return [code, c];
+      }));
   }, [dashboardData?.countries]);
 
   // Derived metrics from Journalists Status chart data for mini cards consistency
@@ -712,7 +715,7 @@ export default function SuperAdminDashboard() {
               </CardContent>
             </Card>
           </div>
-                 {/* ROW 2: Geographic Distribution – full width, taller */}
+          {/* ROW 2: Geographic Distribution – full width, taller */}
           <Card id="chart-geographic-dist" className="border-0 shadow-sm animate-slide-up" style={{ animationDelay: '0.25s' }}>
             <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-slate-50">
               <CardTitle>Geographic Distribution</CardTitle>
@@ -768,8 +771,8 @@ export default function SuperAdminDashboard() {
                     <div className="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-2 py-0.5 rounded-full">Top 10</div>
                   </div>
                   <div className="space-y-3 sm:space-y-4 h-[250px] sm:h-[350px] lg:h-[420px] pr-2 overflow-y-auto custom-scrollbar">
-                    {dashboardData.countries.slice(0, 10).map((country, idx) => {
-                      const maxCount = Math.max(...dashboardData.countries.slice(0, 10).map(c => c.count), 1);
+                    {dashboardData.countries.filter(c => c.code?.toUpperCase() !== 'ETH').slice(0, 10).map((country, idx) => {
+                      const maxCount = Math.max(...dashboardData.countries.filter(c => c.code?.toUpperCase() !== 'ETH').slice(0, 10).map(c => c.count), 1);
                       const percentage = (country.count / maxCount) * 100;
                       return (
                         <div key={idx} className="group relative">
@@ -844,7 +847,7 @@ export default function SuperAdminDashboard() {
             </CardContent>
           </Card>
 
-   
+
 
           {/* ROW 3: Officer Performance KPIs – full width */}
           {/*<div className="animate-slide-up" style={{ animationDelay: '0.35s' }}>
@@ -857,165 +860,165 @@ export default function SuperAdminDashboard() {
             <OfficerPerformance data={officerKPIs} isLoading={isOfficerLoading} viewMode="organization" />
           </div>*/}
 
-     {/* ROW 4: Registration by Coverage Type + Media Type */}
-{registrationStats && (
-  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6 animate-slide-up w-full">
-    
-    {/* Coverage Type – Horizontal Bar */}
-    <Card
-      id="chart-coverage-type"
-      className="border-0 shadow-sm flex flex-col"
-    >
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base sm:text-lg">
-          Registration by Coverage Type
-        </CardTitle>
-      </CardHeader>
+          {/* ROW 4: Registration by Coverage Type + Media Type */}
+          {registrationStats && (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6 animate-slide-up w-full">
 
-      <CardContent className="flex-1 p-3 sm:p-5">
-        <div className="w-full h-[clamp(260px,35vh,420px)]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              layout="vertical"
-              data={registrationStats.coverage}
-              margin={{ top: 10, right: 20, left: 20, bottom: 10 }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                horizontal={false}
-                stroke="#e2e8f0"
-              />
-
-              <XAxis type="number" hide />
-
-              <YAxis
-                type="category"
-                dataKey="name"
-                tick={{ fontSize: 11 }}
-                width={window.innerWidth < 640 ? 100 : 140}
-              />
-
-              <Tooltip
-                contentStyle={{
-                  borderRadius: "12px",
-                  border: "none",
-                  boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
-                }}
-                cursor={{ fill: "#f1f5f9" }}
-              />
-
-              <Bar
-                dataKey="value"
-                radius={[0, 6, 6, 0]}
-                barSize={window.innerWidth < 640 ? 18 : 28}
+              {/* Coverage Type – Horizontal Bar */}
+              <Card
+                id="chart-coverage-type"
+                className="border-0 shadow-sm flex flex-col"
               >
-                {registrationStats.coverage.map((_, i) => (
-                  <Cell
-                    key={`cell-${i}`}
-                    fill={
-                      ["#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6"][
-                        i % 5
-                      ]
-                    }
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base sm:text-lg">
+                    Registration by Coverage Type
+                  </CardTitle>
+                </CardHeader>
 
-    {/* Media Type */}
-    <Card
-      id="chart-media-type"
-      className="border-0 shadow-sm flex flex-col"
-    >
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base sm:text-lg">
-          Registration by Media Type
-        </CardTitle>
-      </CardHeader>
+                <CardContent className="flex-1 p-3 sm:p-5">
+                  <div className="w-full h-[clamp(260px,35vh,420px)]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        layout="vertical"
+                        data={registrationStats.coverage}
+                        margin={{ top: 10, right: 20, left: 20, bottom: 10 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          horizontal={false}
+                          stroke="#e2e8f0"
+                        />
 
-      <CardContent className="flex-1 p-3 sm:p-5 flex flex-col justify-between">
-        
-        {/* Stacked Bar */}
-        <div className="w-full h-[clamp(70px,12vh,120px)] mb-6">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              layout="vertical"
-              data={[
-                registrationStats.mediaType.reduce(
-                  (acc, item) => ({
-                    ...acc,
-                    [item.name]: item.value,
-                  }),
-                  { name: "Total" }
-                ),
-              ]}
-            >
-              <XAxis type="number" hide />
-              <YAxis type="category" dataKey="name" hide />
-              <Tooltip
-                contentStyle={{
-                  borderRadius: "12px",
-                  border: "none",
-                  boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
-                }}
-                cursor={false}
-              />
+                        <XAxis type="number" hide />
 
-              {registrationStats.mediaType.map((entry, i) => (
-                <Bar
-                  key={i}
-                  dataKey={entry.name}
-                  stackId="a"
-                  fill={
-                    ["#3b82f6", "#8b5cf6", "#ec4899", "#f43f5e", "#f97316"][
-                      i % 5
-                    ]
-                  }
-                />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+                        <YAxis
+                          type="category"
+                          dataKey="name"
+                          tick={{ fontSize: 11 }}
+                          width={window.innerWidth < 640 ? 100 : 140}
+                        />
 
-        {/* Legend Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
-          {registrationStats.mediaType.map((entry, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className="w-3.5 h-3.5 rounded-full flex-shrink-0"
-                  style={{
-                    backgroundColor: [
-                      "#3b82f6",
-                      "#8b5cf6",
-                      "#ec4899",
-                      "#f43f5e",
-                      "#f97316",
-                    ][i % 5],
-                  }}
-                />
-                <span className="text-sm font-medium text-slate-700 truncate">
-                  {entry.name}
-                </span>
-              </div>
+                        <Tooltip
+                          contentStyle={{
+                            borderRadius: "12px",
+                            border: "none",
+                            boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
+                          }}
+                          cursor={{ fill: "#f1f5f9" }}
+                        />
 
-              <span className="text-base sm:text-lg font-bold text-slate-900">
-                {entry.value}
-              </span>
+                        <Bar
+                          dataKey="value"
+                          radius={[0, 6, 6, 0]}
+                          barSize={window.innerWidth < 640 ? 18 : 28}
+                        >
+                          {registrationStats.coverage.map((_, i) => (
+                            <Cell
+                              key={`cell-${i}`}
+                              fill={
+                                ["#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6"][
+                                i % 5
+                                ]
+                              }
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Media Type */}
+              <Card
+                id="chart-media-type"
+                className="border-0 shadow-sm flex flex-col"
+              >
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base sm:text-lg">
+                    Registration by Media Type
+                  </CardTitle>
+                </CardHeader>
+
+                <CardContent className="flex-1 p-3 sm:p-5 flex flex-col justify-between">
+
+                  {/* Stacked Bar */}
+                  <div className="w-full h-[clamp(70px,12vh,120px)] mb-6">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        layout="vertical"
+                        data={[
+                          registrationStats.mediaType.reduce(
+                            (acc, item) => ({
+                              ...acc,
+                              [item.name]: item.value,
+                            }),
+                            { name: "Total" }
+                          ),
+                        ]}
+                      >
+                        <XAxis type="number" hide />
+                        <YAxis type="category" dataKey="name" hide />
+                        <Tooltip
+                          contentStyle={{
+                            borderRadius: "12px",
+                            border: "none",
+                            boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
+                          }}
+                          cursor={false}
+                        />
+
+                        {registrationStats.mediaType.map((entry, i) => (
+                          <Bar
+                            key={i}
+                            dataKey={entry.name}
+                            stackId="a"
+                            fill={
+                              ["#3b82f6", "#8b5cf6", "#ec4899", "#f43f5e", "#f97316"][
+                              i % 5
+                              ]
+                            }
+                          />
+                        ))}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Legend Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
+                    {registrationStats.mediaType.map((entry, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className="w-3.5 h-3.5 rounded-full flex-shrink-0"
+                            style={{
+                              backgroundColor: [
+                                "#3b82f6",
+                                "#8b5cf6",
+                                "#ec4899",
+                                "#f43f5e",
+                                "#f97316",
+                              ][i % 5],
+                            }}
+                          />
+                          <span className="text-sm font-medium text-slate-700 truncate">
+                            {entry.name}
+                          </span>
+                        </div>
+
+                        <span className="text-base sm:text-lg font-bold text-slate-900">
+                          {entry.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  </div>
-)}
+          )}
 
           {/* ROW 5: Journalists Status + Role Distribution */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 animate-slide-up" style={{ animationDelay: '0.45s' }}>
