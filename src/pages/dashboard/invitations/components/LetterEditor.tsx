@@ -1,4 +1,5 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { sanitizeHTML } from '@/utils/sanitization';
 import { useGetInvitationTemplateByIdQuery, useCreateLetterConfigMutation, useUpdateLetterConfigMutation, LetterConfig } from '@/store/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -278,7 +279,7 @@ export const LetterEditor: React.FC<Props> = ({ templateId, existingConfig, onSa
                                 <div
                                     className="h-full w-full overflow-hidden"
                                     dangerouslySetInnerHTML={{
-                                        __html: interpolate(template.htmlContent, previewVars)
+                                        __html: sanitizeHTML(interpolate(template.htmlContent, previewVars))
                                     }}
                                 />
                             </>

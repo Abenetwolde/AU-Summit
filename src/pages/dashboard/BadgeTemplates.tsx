@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { sanitizeHTML } from '@/utils/sanitization';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -247,10 +248,10 @@ export function BadgeTemplates() {
                                                 <div
                                                     className="badge-preview-content h-full w-full overflow-hidden"
                                                     dangerouslySetInnerHTML={{
-                                                        __html: interpolateTemplate(localState.html, {
+                                                        __html: sanitizeHTML(interpolateTemplate(localState.html, {
                                                             ...MOCK_VARS,
                                                             badgeType: template.badgeType || "MEMBER"
-                                                        })
+                                                        }))
                                                     }}
                                                 />
                                             </div>

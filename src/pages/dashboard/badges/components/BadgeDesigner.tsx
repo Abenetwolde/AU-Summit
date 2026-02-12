@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { sanitizeHTML } from '@/utils/sanitization';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -307,10 +308,10 @@ export function BadgeDesigner({ onSave, configId }: { onSave?: () => void; confi
                                 fontFamily: selectedTemplate.name.includes('Premium') ? 'serif' : 'sans-serif'
                             }}
                         >
-                            <style dangerouslySetInnerHTML={{ __html: selectedTemplate.cssStyles }} />
+                            <style dangerouslySetInnerHTML={{ __html: sanitizeHTML(selectedTemplate.cssStyles) }} />
                             <div
                                 className="absolute inset-0 z-0 pointer-events-none"
-                                dangerouslySetInnerHTML={{ __html: selectedTemplate.htmlContent.replace(/{{[^}]+}}/g, '') }}
+                                dangerouslySetInnerHTML={{ __html: sanitizeHTML(selectedTemplate.htmlContent.replace(/{{[^}]+}}/g, '')) }}
                             />
 
                             {/* Elements */}

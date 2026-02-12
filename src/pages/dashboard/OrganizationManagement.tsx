@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,6 +20,11 @@ import {
     getFileUrl
 } from '@/store/services/api';
 import { useAuth } from '@/auth/context';
+import { organizationSchema } from '@/lib/validation-schemas';
+
+type OrganizationFormData = z.infer<typeof organizationSchema> & {
+    logo?: any; // FileList
+};
 
 export function OrganizationManagement() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -37,9 +45,33 @@ export function OrganizationManagement() {
     const canUpdateOrg = checkPermission('organization:update');
     const canDeleteOrg = checkPermission('organization:delete');
 
-    // Form States
-    const [formData, setFormData] = useState<{ name: string, description: string, logo: File | null }>({
-        name: '', description: '', logo: null
+    // Create Form
+    const {
+        register: registerCreate,
+        handleSubmit: handleSubmitCreate,
+        reset: resetCreate,
+        formState: { errors: errorsCreate }
+    } = useForm<OrganizationFormData>({
+        resolver: zodResolver(organizationSchema),
+        defaultValues: {
+            name: '',
+            description: ''
+        }
+    });
+
+    // Edit Form
+    const {
+        register: registerEdit,
+        handleSubmit: handleSubmitEdit,
+        reset: resetEdit,
+        setValue: setValueEdit,
+        formState: { errors: errorsEdit }
+    } = useForm<OrganizationFormData>({
+        resolver: zodResolver(organizationSchema),
+        defaultValues: {
+            name: '',
+            description: ''
+        }
     });
 
     // Derived Data
@@ -58,40 +90,36 @@ export function OrganizationManagement() {
 
     // Helper to filter users for selected org
     const getUsersForOrg = (orgId: number) => {
-        // The modal expects a specific structure, we'll map API users to it if needed
-        // Assuming OrganizationUsersModal handles the User type from API or similar
         return users.filter(user => user.role?.organizationId === orgId);
     };
 
-
     // Handlers
-    const handleCreate = async (e: React.FormEvent) => {
-        e.preventDefault();
-
+    const onCreateSubmit = async (data: OrganizationFormData) => {
         if (!canCreateOrg) {
             toast.error("You don't have permission to create organizations");
             return;
         }
 
-        const data = new FormData();
-        data.append('name', formData.name);
-        data.append('description', formData.description);
-        if (formData.logo) {
-            data.append('logo', formData.logo);
+        const formData = new FormData();
+        formData.append('name', data.name);
+        if (data.description) formData.append('description', data.description);
+
+        // Handle file input
+        if (data.logo && data.logo.length > 0) {
+            formData.append('logo', data.logo[0]);
         }
 
         try {
-            await createOrganization(data).unwrap();
+            await createOrganization(formData).unwrap();
             toast.success("Organization created successfully");
             setIsCreateModalOpen(false);
-            setFormData({ name: '', description: '', logo: null });
+            resetCreate();
         } catch (err) {
             toast.error("Failed to create organization");
         }
     };
 
-    const handleUpdate = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const onUpdateSubmit = async (data: OrganizationFormData) => {
         if (!selectedOrg) return;
 
         if (!canUpdateOrg) {
@@ -99,19 +127,21 @@ export function OrganizationManagement() {
             return;
         }
 
-        const data = new FormData();
-        data.append('name', formData.name);
-        data.append('description', formData.description);
-        if (formData.logo) {
-            data.append('logo', formData.logo);
+        const formData = new FormData();
+        formData.append('name', data.name);
+        if (data.description) formData.append('description', data.description);
+
+        // Handle file input
+        if (data.logo && data.logo.length > 0) {
+            formData.append('logo', data.logo[0]);
         }
 
         try {
-            await updateOrganization({ id: selectedOrg.id, data }).unwrap();
+            await updateOrganization({ id: selectedOrg.id, data: formData }).unwrap();
             toast.success("Organization updated successfully");
             setIsEditModalOpen(false);
-            setFormData({ name: '', description: '', logo: null });
             setSelectedOrg(null);
+            resetEdit();
         } catch (err) {
             toast.error("Failed to update organization");
         }
@@ -123,13 +153,10 @@ export function OrganizationManagement() {
             return;
         }
         setSelectedOrg(org);
-        setFormData({ name: org.name, description: org.description, logo: null }); // Logo file can't be prefilled
+        setValueEdit('name', org.name);
+        setValueEdit('description', org.description);
+        // We don't set the logo file input as it's read-only for files usually
         setIsEditModalOpen(true);
-    };
-
-    const openUserManagement = (org: Organization) => {
-        setSelectedOrg(org);
-        setIsUserModalOpen(true);
     };
 
     if (isOrgLoading || isUsersLoading) {
@@ -144,7 +171,7 @@ export function OrganizationManagement() {
                     <p className="text-muted-foreground">Manage partner organizations and their access.</p>
                 </div>
                 {canCreateOrg && (
-                    <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                    <Button onClick={() => { setIsCreateModalOpen(true); resetCreate(); }} className="gap-2 bg-blue-600 hover:bg-blue-700">
                         <Plus className="h-4 w-4" /> Add Organization
                     </Button>
                 )}
@@ -174,7 +201,6 @@ export function OrganizationManagement() {
                         </div>
                     </CardContent>
                 </Card>
-
             </div>
 
             {/* Filters */}
@@ -231,7 +257,6 @@ export function OrganizationManagement() {
                                                 <DropdownMenuItem
                                                     className="text-red-600"
                                                     onClick={() => {
-                                                        // Implement delete logic if needed, or keeping it as placeholder for now since backend might not have it
                                                         toast.info("Delete functionality coming soon");
                                                     }}
                                                 >
@@ -263,31 +288,32 @@ export function OrganizationManagement() {
                         <DialogTitle>Add Organization</DialogTitle>
                         <DialogDescription>Create a new partner organization.</DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleCreate} className="space-y-4">
+                    <form onSubmit={handleSubmitCreate(onCreateSubmit)} className="space-y-4">
                         <div className="space-y-2">
-                            <Label>Organization Name</Label>
+                            <Label htmlFor="create-name">Organization Name</Label>
                             <Input
+                                id="create-name"
                                 placeholder="E.g. NISS, INSA"
-                                value={formData.name}
-                                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                required
+                                {...registerCreate('name')}
+                                error={errorsCreate.name?.message}
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Description</Label>
+                            <Label htmlFor="create-description">Description</Label>
                             <Input
+                                id="create-description"
                                 placeholder="Brief description"
-                                value={formData.description}
-                                onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                required
+                                {...registerCreate('description')}
+                                error={errorsCreate.description?.message}
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Logo</Label>
+                            <Label htmlFor="create-logo">Logo</Label>
                             <Input
+                                id="create-logo"
                                 type="file"
                                 accept="image/*"
-                                onChange={e => setFormData({ ...formData, logo: e.target.files?.[0] || null })}
+                                {...registerCreate('logo')}
                             />
                         </div>
                         <DialogFooter>
@@ -307,29 +333,30 @@ export function OrganizationManagement() {
                     <DialogHeader>
                         <DialogTitle>Edit Organization</DialogTitle>
                     </DialogHeader>
-                    <form onSubmit={handleUpdate} className="space-y-4">
+                    <form onSubmit={handleSubmitEdit(onUpdateSubmit)} className="space-y-4">
                         <div className="space-y-2">
-                            <Label>Organization Name</Label>
+                            <Label htmlFor="edit-name">Organization Name</Label>
                             <Input
-                                value={formData.name}
-                                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                required
+                                id="edit-name"
+                                {...registerEdit('name')}
+                                error={errorsEdit.name?.message}
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Description</Label>
+                            <Label htmlFor="edit-description">Description</Label>
                             <Input
-                                value={formData.description}
-                                onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                required
+                                id="edit-description"
+                                {...registerEdit('description')}
+                                error={errorsEdit.description?.message}
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Update Logo (Optional)</Label>
+                            <Label htmlFor="edit-logo">Update Logo (Optional)</Label>
                             <Input
+                                id="edit-logo"
                                 type="file"
                                 accept="image/*"
-                                onChange={e => setFormData({ ...formData, logo: e.target.files?.[0] || null })}
+                                {...registerEdit('logo')}
                             />
                         </div>
                         <DialogFooter>
@@ -355,7 +382,7 @@ export function OrganizationManagement() {
                             id: u.id,
                             name: u.fullName,
                             email: u.email,
-                            role: u.roleName || 'User', // Fallback
+                            role: u.roleName || 'User',
                             status: u.status
                         }))
                     }}

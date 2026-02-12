@@ -1,4 +1,5 @@
 import { useGetBadgeTemplatesQuery } from '@/store/services/api';
+import { sanitizeHTML } from '@/utils/sanitization';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Layout, Maximize2 } from 'lucide-react';
@@ -23,7 +24,7 @@ export function BadgeGallery({ onSelect }: { onSelect: (templateId: number) => v
                             }}
                         >
                             <style dangerouslySetInnerHTML={{ __html: template.cssStyles }} />
-                            <div dangerouslySetInnerHTML={{ __html: template.htmlContent.replace(/{{[^}]+}}/g, '...') }} />
+                            <div dangerouslySetInnerHTML={{ __html: sanitizeHTML(template.htmlContent.replace(/{{[^}]+}}/g, '...')) }} />
                         </div>
                         <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <Button variant="secondary" size="sm" className="shadow-lg" onClick={() => onSelect(template.id)}>

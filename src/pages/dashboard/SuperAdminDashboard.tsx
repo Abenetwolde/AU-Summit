@@ -406,13 +406,13 @@ export default function SuperAdminDashboard() {
       }
     `}</style>
 
-      <main className="flex-1 min-w-0">
-        <div className="p-6 md:p-8 space-y-5 max-w-[1600px] mx-auto animate-fade-in">
+      <main className="flex-1 min-w-0 overflow-x-hidden">
+        <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5 max-w-[1600px] mx-auto animate-fade-in">
 
           {/* Export + Form Selector */}
-          <div className="flex items-center justify-end gap-3 mb-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 mb-4">
             <div className="relative group">
-              <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-4 py-2.5 bg-white min-w-[280px] hover:border-blue-400 transition-colors">
+              <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-4 py-2.5 bg-white w-full sm:min-w-[280px] sm:w-auto hover:border-blue-400 transition-colors">
                 <CalendarDays className="h-4 w-4 text-blue-500 flex-shrink-0" />
                 <select
                   value={selectedForm}
@@ -427,15 +427,15 @@ export default function SuperAdminDashboard() {
                 <ChevronDown className="h-4 w-4 text-slate-400 pointer-events-none group-hover:text-blue-500 transition-colors flex-shrink-0" />
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-2">
-              <DownloadIcon className="h-4 w-4" /> Export CSV
+            <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-2 flex-1 sm:flex-initial justify-center">
+              <DownloadIcon className="h-4 w-4" /> <span className="hidden sm:inline">Export</span> CSV
             </Button>
             <Button
               variant="gradient"
               size="sm"
               onClick={handleExportPDF}
               disabled={isExportingPDF}
-              className="gap-2 text-white min-w-[120px]"
+              className="gap-2 text-white flex-1 sm:flex-initial sm:min-w-[120px] justify-center"
             >
               {isExportingPDF ? (
                 <>
@@ -451,7 +451,7 @@ export default function SuperAdminDashboard() {
           </div>
 
           {/* 1. Key Metrics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-slide-up" style={{ animationDelay: '0.05s' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 animate-slide-up" style={{ animationDelay: '0.05s' }}>
             {/* Total Entered */}
 
 
@@ -617,7 +617,7 @@ export default function SuperAdminDashboard() {
           </div>
 
           {/* ROW 1: Application Trends + Stakeholder Performance */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up" style={{ animationDelay: '0.15s' }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 animate-slide-up" style={{ animationDelay: '0.15s' }}>
             {/* Application Trends */}
             <Card id="chart-application-trends" className="border-0 shadow-sm h-full">
               <CardHeader className="pb-3 border-b border-slate-50 flex flex-row items-center justify-between">
@@ -640,9 +640,9 @@ export default function SuperAdminDashboard() {
                   <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 pointer-events-none" />
                 </div>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="h-[240px]">
-                  <ResponsiveContainer width="100%" height="100%">
+              <CardContent className="p-4 sm:p-6">
+                <div className="h-[200px] sm:h-[240px] overflow-x-auto">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={300}>
                     <BarChart data={filterByMonthRange(adminCharts.timeSeries, appTrendRange)} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorTrend" x1="0" y1="0" x2="0" y2="1">
@@ -686,9 +686,9 @@ export default function SuperAdminDashboard() {
                   <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 pointer-events-none" />
                 </div>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="h-[240px]">
-                  <ResponsiveContainer width="100%" height="100%">
+              <CardContent className="p-4 sm:p-6">
+                <div className="h-[200px] sm:h-[240px]">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={300}>
                     <AreaChart
                       data={filterByMonthRange(performanceData.find(p => p.stakeholder === selectedStakeholder)?.trend || [], 'thisMonth')}
                       margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
@@ -712,46 +712,7 @@ export default function SuperAdminDashboard() {
               </CardContent>
             </Card>
           </div>
-
-          {/* Stakeholder Status Breakdown (Entry) */}
-          <Card id="chart-stakeholder-breakdown" className="border-0 shadow-sm animate-slide-up" style={{ animationDelay: '0.2s' }}>
-            <CardHeader className="pb-3 border-b border-slate-50">
-              <CardTitle>Stakeholder Status Breakdown (Entry Workflow)</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="h-[800px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    layout="vertical"
-                    data={Object.entries(stakeholderStatus || {}).map(([name, stats]: any) => ({ name, ...stats }))}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }} />
-                    <YAxis
-                      dataKey="name"
-                      type="category"
-                      axisLine={false}
-                      tickLine={false}
-                      width={150}
-                      tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }}
-                      interval={0}
-                    />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: '12px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}
-                      cursor={{ fill: '#f8fafc' }}
-                    />
-                    <Legend iconType="circle" />
-                    <Bar dataKey="APPROVED" name="Approved" stackId="a" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20} />
-                    <Bar dataKey="PENDING" name="Pending" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={20} />
-                    <Bar dataKey="REJECTED" name="Rejected" stackId="a" fill="#ef4444" radius={[4, 0, 0, 4]} barSize={20} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ROW 2: Geographic Distribution – full width, taller */}
+                 {/* ROW 2: Geographic Distribution – full width, taller */}
           <Card id="chart-geographic-dist" className="border-0 shadow-sm animate-slide-up" style={{ animationDelay: '0.25s' }}>
             <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-slate-50">
               <CardTitle>Geographic Distribution</CardTitle>
@@ -764,9 +725,9 @@ export default function SuperAdminDashboard() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="flex flex-col lg:flex-row gap-8">
-                <div className="h-[480px] lg:flex-1 relative bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 shadow-inner">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col lg:flex-row gap-6 sm:gap-8">
+                <div className="h-[300px] sm:h-[400px] lg:h-[480px] lg:flex-1 relative bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 shadow-inner">
                   <ComposableMap
                     projection="geoMercator"
                     style={{ width: "100%", height: "100%" }}
@@ -801,12 +762,12 @@ export default function SuperAdminDashboard() {
                   </div>
                 </div>
 
-                <div className="lg:w-80 space-y-4">
+                <div className="lg:w-80 space-y-3 sm:space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Top Nationalities</div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-2 py-0.5 rounded-full">Top 10</div>
                   </div>
-                  <div className="space-y-4 h-[420px] pr-2 overflow-y-auto custom-scrollbar">
+                  <div className="space-y-3 sm:space-y-4 h-[250px] sm:h-[350px] lg:h-[420px] pr-2 overflow-y-auto custom-scrollbar">
                     {dashboardData.countries.slice(0, 10).map((country, idx) => {
                       const maxCount = Math.max(...dashboardData.countries.slice(0, 10).map(c => c.count), 1);
                       const percentage = (country.count / maxCount) * 100;
@@ -845,6 +806,46 @@ export default function SuperAdminDashboard() {
             </CardContent>
           </Card>
 
+          {/* Stakeholder Status Breakdown (Entry) */}
+          <Card id="chart-stakeholder-breakdown" className="border-0 shadow-sm animate-slide-up" style={{ animationDelay: '0.2s' }}>
+            <CardHeader className="pb-3 border-b border-slate-50">
+              <CardTitle>Stakeholder Status Breakdown (Entry Workflow)</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
+              <div className="h-[500px] sm:h-[600px] md:h-[700px] lg:h-[800px] overflow-x-auto">
+                <ResponsiveContainer width="100%" height="100%" minWidth={400}>
+                  <BarChart
+                    layout="vertical"
+                    data={Object.entries(stakeholderStatus || {}).map(([name, stats]: any) => ({ name, ...stats }))}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }} />
+                    <YAxis
+                      dataKey="name"
+                      type="category"
+                      axisLine={false}
+                      tickLine={false}
+                      width={150}
+                      tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }}
+                      interval={0}
+                    />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: '12px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}
+                      cursor={{ fill: '#f8fafc' }}
+                    />
+                    <Legend iconType="circle" />
+                    <Bar dataKey="APPROVED" name="Approved" stackId="a" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20} />
+                    <Bar dataKey="PENDING" name="Pending" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={20} />
+                    <Bar dataKey="REJECTED" name="Rejected" stackId="a" fill="#ef4444" radius={[4, 0, 0, 4]} barSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+   
+
           {/* ROW 3: Officer Performance KPIs – full width */}
           {/*<div className="animate-slide-up" style={{ animationDelay: '0.35s' }}>
             <div className="flex items-center justify-between mb-5">
@@ -856,80 +857,176 @@ export default function SuperAdminDashboard() {
             <OfficerPerformance data={officerKPIs} isLoading={isOfficerLoading} viewMode="organization" />
           </div>*/}
 
-          {/* ROW 4: Registration by Coverage Type + Media Type */}
-          {registrationStats && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up" style={{ animationDelay: '0.4s' }}>
-              {/* Coverage Type – Horizontal Bar */}
-              <Card id="chart-coverage-type" className="border-0 shadow-sm">
-                <CardHeader>
-                  <CardTitle>Registration by Coverage Type</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[340px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart layout="vertical" data={registrationStats.coverage} margin={{ top: 10, right: 30, left: 50, bottom: 10 }}>
-                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                        <XAxis type="number" hide />
-                        <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} width={140} />
-                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }} cursor={{ fill: '#f1f5f9' }} />
-                        <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={32}>
-                          {registrationStats.coverage.map((_, i) => (
-                            <Cell key={`cell-${i}`} fill={['#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6'][i % 5]} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
+     {/* ROW 4: Registration by Coverage Type + Media Type */}
+{registrationStats && (
+  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6 animate-slide-up w-full">
+    
+    {/* Coverage Type – Horizontal Bar */}
+    <Card
+      id="chart-coverage-type"
+      className="border-0 shadow-sm flex flex-col"
+    >
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base sm:text-lg">
+          Registration by Coverage Type
+        </CardTitle>
+      </CardHeader>
 
-              {/* Media Type */}
-              <Card id="chart-media-type" className="border-0 shadow-sm">
-                <CardHeader>
-                  <CardTitle>Registration by Media Type</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col justify-center h-[340px]">
-                    <div className="mb-8">
-                      <ResponsiveContainer width="100%" height={80}>
-                        <BarChart layout="vertical" data={[registrationStats.mediaType.reduce((acc, item) => ({ ...acc, [item.name]: item.value }), { name: 'Total' })]}>
-                          <XAxis type="number" hide />
-                          <YAxis type="category" dataKey="name" hide />
-                          <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.1)' }} cursor={false} />
-                          {registrationStats.mediaType.map((entry, i) => (
-                            <Bar key={i} dataKey={entry.name} stackId="a" fill={['#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316'][i % 5]} />
-                          ))}
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
+      <CardContent className="flex-1 p-3 sm:p-5">
+        <div className="w-full h-[clamp(260px,35vh,420px)]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              layout="vertical"
+              data={registrationStats.coverage}
+              margin={{ top: 10, right: 20, left: 20, bottom: 10 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                horizontal={false}
+                stroke="#e2e8f0"
+              />
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {registrationStats.mediaType.map((entry, i) => (
-                        <div key={i} className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50/70 border border-slate-100">
-                          <div className="flex items-center gap-3">
-                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: ['#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316'][i % 5] }} />
-                            <span className="text-sm font-medium text-slate-700">{entry.name}</span>
-                          </div>
-                          <span className="text-lg font-bold text-slate-900">{entry.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <XAxis type="number" hide />
+
+              <YAxis
+                type="category"
+                dataKey="name"
+                tick={{ fontSize: 11 }}
+                width={window.innerWidth < 640 ? 100 : 140}
+              />
+
+              <Tooltip
+                contentStyle={{
+                  borderRadius: "12px",
+                  border: "none",
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
+                }}
+                cursor={{ fill: "#f1f5f9" }}
+              />
+
+              <Bar
+                dataKey="value"
+                radius={[0, 6, 6, 0]}
+                barSize={window.innerWidth < 640 ? 18 : 28}
+              >
+                {registrationStats.coverage.map((_, i) => (
+                  <Cell
+                    key={`cell-${i}`}
+                    fill={
+                      ["#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6"][
+                        i % 5
+                      ]
+                    }
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+
+    {/* Media Type */}
+    <Card
+      id="chart-media-type"
+      className="border-0 shadow-sm flex flex-col"
+    >
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base sm:text-lg">
+          Registration by Media Type
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent className="flex-1 p-3 sm:p-5 flex flex-col justify-between">
+        
+        {/* Stacked Bar */}
+        <div className="w-full h-[clamp(70px,12vh,120px)] mb-6">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              layout="vertical"
+              data={[
+                registrationStats.mediaType.reduce(
+                  (acc, item) => ({
+                    ...acc,
+                    [item.name]: item.value,
+                  }),
+                  { name: "Total" }
+                ),
+              ]}
+            >
+              <XAxis type="number" hide />
+              <YAxis type="category" dataKey="name" hide />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: "12px",
+                  border: "none",
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
+                }}
+                cursor={false}
+              />
+
+              {registrationStats.mediaType.map((entry, i) => (
+                <Bar
+                  key={i}
+                  dataKey={entry.name}
+                  stackId="a"
+                  fill={
+                    ["#3b82f6", "#8b5cf6", "#ec4899", "#f43f5e", "#f97316"][
+                      i % 5
+                    ]
+                  }
+                />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Legend Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
+          {registrationStats.mediaType.map((entry, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className="w-3.5 h-3.5 rounded-full flex-shrink-0"
+                  style={{
+                    backgroundColor: [
+                      "#3b82f6",
+                      "#8b5cf6",
+                      "#ec4899",
+                      "#f43f5e",
+                      "#f97316",
+                    ][i % 5],
+                  }}
+                />
+                <span className="text-sm font-medium text-slate-700 truncate">
+                  {entry.name}
+                </span>
+              </div>
+
+              <span className="text-base sm:text-lg font-bold text-slate-900">
+                {entry.value}
+              </span>
             </div>
-          )}
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+)}
 
           {/* ROW 5: Journalists Status + Role Distribution */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up" style={{ animationDelay: '0.45s' }}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 animate-slide-up" style={{ animationDelay: '0.45s' }}>
             {/* Journalists Status – Donut */}
             <Card id="chart-journalist-status" className="border-0 shadow-sm h-full">
               <CardHeader className="pb-3 border-b border-slate-50">
                 <CardTitle>Journalists Status</CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-8 flex-wrap lg:flex-nowrap">
-                  <div className="space-y-4 min-w-[180px]">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 sm:gap-8">
+                  <div className="space-y-3 sm:space-y-4 w-full sm:min-w-[180px] sm:w-auto">
                     {donutData.map((item, i) => (
                       <div key={i} className="flex items-center gap-3 text-sm">
                         <div className="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: item.color }} />
@@ -938,8 +1035,8 @@ export default function SuperAdminDashboard() {
                       </div>
                     ))}
                   </div>
-                  <div className="flex-1 min-w-[260px] relative">
-                    <ResponsiveContainer width="100%" height={260}>
+                  <div className="flex-1 w-full sm:min-w-[260px] relative">
+                    <ResponsiveContainer width="100%" height={220} className="sm:h-[260px]">
                       <PieChart>
                         <Pie
                           data={donutData}
@@ -971,9 +1068,9 @@ export default function SuperAdminDashboard() {
                 <CardTitle>Role Distribution</CardTitle>
               </CardHeader>
 
-              <CardContent className="p-6">
-                <div className="h-[360px]">
-                  <ResponsiveContainer width="100%" height="100%">
+              <CardContent className="p-4 sm:p-6">
+                <div className="h-[300px] sm:h-[360px] overflow-x-auto">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={350}>
                     <BarChart
                       layout="vertical"
                       data={adminCharts.roleDistribution.map((role, i) => ({
@@ -1028,7 +1125,7 @@ export default function SuperAdminDashboard() {
           {/* Stakeholder Status Breakdown */}
           <div className="animate-slide-up" style={{ animationDelay: '0.55s' }}>
             <h2 className="text-2xl font-bold text-slate-800 mb-6">Stakeholder Status Breakdown</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {Object.entries(stakeholderStatus).map(([name, status], i) => {
                 const data = [
                   { name: 'Approved', value: status.APPROVED, color: '#10b981' },
@@ -1084,8 +1181,8 @@ export default function SuperAdminDashboard() {
               </Button>
             </div>
             <Card className="border-0 shadow-sm overflow-hidden bg-white">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[900px]">
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <table className="w-full text-left border-collapse min-w-[640px]">
                   <thead className="bg-slate-50/70">
                     <tr>
                       <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Journalist</th>

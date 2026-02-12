@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { sanitizeHTML } from '@/utils/sanitization';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -152,7 +153,7 @@ export function EmailTemplates() {
             .replace(/{{status}}/g, '<strong>APPROVED</strong>')
             .replace(/{{passportNumber}}/g, '<strong>EP1234567</strong>')
             .split('\n')
-            .map((line, i) => <p key={i} dangerouslySetInnerHTML={{ __html: line || '&nbsp;' }} />);
+            .map((line, i) => <p key={i} dangerouslySetInnerHTML={{ __html: sanitizeHTML(line || '&nbsp;') }} />);
     };
 
     if (isLoading) {
@@ -167,14 +168,14 @@ export function EmailTemplates() {
                     <p className="text-sm text-gray-500 mt-1">Manage automated system emails, triggers, and attachments</p>
                 </div>
                 {/* {!isReadOnly && ( */}
-                    <Button
-                        onClick={handleCreate}
-                        className="bg-[#009b4d] hover:bg-[#007a3d] gap-2 shadow-sm font-bold"
-                        disabled={isReadOnly}
-                    >
-                        <Plus className="h-4 w-4" />
-                        Create Template
-                    </Button>
+                <Button
+                    onClick={handleCreate}
+                    className="bg-[#009b4d] hover:bg-[#007a3d] gap-2 shadow-sm font-bold"
+                    disabled={isReadOnly}
+                >
+                    <Plus className="h-4 w-4" />
+                    Create Template
+                </Button>
                 {/* )} */}
             </div>
 
@@ -405,7 +406,7 @@ export function EmailTemplates() {
                                                         const html = e.currentTarget.innerHTML;
                                                         setEditingTemplate({ ...editingTemplate, emailContent: html });
                                                     }}
-                                                    dangerouslySetInnerHTML={{ __html: editingTemplate.emailContent || '' }}
+                                                    dangerouslySetInnerHTML={{ __html: sanitizeHTML(editingTemplate.emailContent || '') }}
                                                     className={cn(
                                                         "w-full min-h-[300px] p-6 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm leading-relaxed overflow-y-auto transition-all",
                                                         !isReadOnly && "hover:border-blue-300 cursor-text shadow-sm"
