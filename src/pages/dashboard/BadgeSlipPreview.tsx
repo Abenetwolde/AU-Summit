@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { sanitizeHTML } from '@/utils/sanitization';
 import { Button } from '@/components/ui/button';
 import { Printer, ArrowLeft, Loader2 } from 'lucide-react';
 import { useGetApplicationByIdQuery, useGetBadgeTemplatesQuery, FILE_BASE_URL } from '@/store/services/api';
@@ -17,7 +18,7 @@ export function BadgeSlipPreview() {
     const { id } = useParams();
     const navigate = useNavigate();
 
-    const { data: application, isLoading: isAppLoading } = useGetApplicationByIdQuery(id as string);
+    const { data: application, isLoading: isAppLoading } = useGetApplicationByIdQuery(Number(id));
     const { data: templates, isLoading: isTemplatesLoading } = useGetBadgeTemplatesQuery();
 
     const activeTemplate = templates?.find(t => t.isDefault);
@@ -83,7 +84,7 @@ export function BadgeSlipPreview() {
                         <div
                             className="badge-preview-content h-full w-full"
                             dangerouslySetInnerHTML={{
-                                __html: interpolateTemplate(activeTemplate.htmlContent, previewVars)
+                                __html: sanitizeHTML(interpolateTemplate(activeTemplate.htmlContent, previewVars))
                             }}
                         />
                     </div>

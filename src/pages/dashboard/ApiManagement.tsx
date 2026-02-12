@@ -1,4 +1,8 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
     Plus,
     Trash2,
@@ -51,6 +55,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/auth/context';
+import { apiProviderSchema, integrationSchema } from '@/lib/validation-schemas';
+
+type ApiProviderFormValues = z.infer<typeof apiProviderSchema>;
+type IntegrationFormValues = z.infer<typeof integrationSchema>;
 
 export default function ApiManagement() {
     const [activeTab, setActiveTab] = useState('providers');
@@ -75,22 +83,76 @@ export default function ApiManagement() {
     const [editingProvider, setEditingProvider] = useState<Partial<ApiProvider> | null>(null);
     const [editingIntegration, setEditingIntegration] = useState<Partial<IntegrationConfig> | null>(null);
 
-    const handleCreateProvider = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const formData = new FormData(e.target as HTMLFormElement);
-        const data = {
-            name: formData.get('name') as string,
-            baseUrl: formData.get('baseUrl') as string,
-            headers: formData.get('headers') ? JSON.parse(formData.get('headers') as string) : {},
-            isActive: true
-        };
+    // Forms
+    const providerForm = useForm<ApiProviderFormValues>({
+        resolver: zodResolver(apiProviderSchema),
+        defaultValues: { name: '', baseUrl: '', headers: '{}', isActive: true }
+    });
 
+    const integrationForm = useForm<IntegrationFormValues>({
+        resolver: zodResolver(integrationSchema),
+        defaultValues: {
+            providerId: '',
+            triggerEvent: '',
+            endpoint: '',
+            method: 'POST',
+            requestMapping: '{}',
+            responseMapping: '{}',
+            order: 0
+        }
+    });
+
+    // Reset/Populate Forms
+    useEffect(() => {
+        if (!providerModalOpen) {
+            providerForm.reset({ name: '', baseUrl: '', headers: '{}', isActive: true });
+        } else if (editingProvider) {
+            providerForm.reset({
+                name: editingProvider.name,
+                baseUrl: editingProvider.baseUrl,
+                headers: JSON.stringify(editingProvider.headers || {}, null, 2),
+                isActive: editingProvider.isActive
+            });
+        }
+    }, [providerModalOpen, editingProvider, providerForm]);
+
+    useEffect(() => {
+        if (!integrationModalOpen) {
+            integrationForm.reset({
+                providerId: '',
+                triggerEvent: '',
+                endpoint: '',
+                method: 'POST',
+                requestMapping: '{}',
+                responseMapping: '{}',
+                order: 0
+            });
+        } else if (editingIntegration) {
+            integrationForm.reset({
+                providerId: String(editingIntegration.providerId),
+                triggerEvent: editingIntegration.triggerEvent,
+                endpoint: editingIntegration.endpoint,
+                method: editingIntegration.method,
+                requestMapping: JSON.stringify(editingIntegration.requestMapping || {}, null, 2),
+                responseMapping: JSON.stringify(editingIntegration.responseMapping || {}, null, 2),
+                order: editingIntegration.order || 0
+            });
+        }
+    }, [integrationModalOpen, editingIntegration, integrationForm]);
+
+
+    const handleCreateProvider = async (data: ApiProviderFormValues) => {
         try {
+            const payload = {
+                ...data,
+                headers: data.headers ? JSON.parse(data.headers) : {}
+            };
+
             if (editingProvider?.id) {
-                await updateProvider({ id: editingProvider.id, data }).unwrap();
+                await updateProvider({ id: editingProvider.id, data: payload }).unwrap();
                 toast.success('Provider updated successfully');
             } else {
-                await createProvider(data).unwrap();
+                await createProvider(payload).unwrap();
                 toast.success('Provider created successfully');
             }
             setProviderModalOpen(false);
@@ -100,27 +162,22 @@ export default function ApiManagement() {
         }
     };
 
-    const handleCreateIntegration = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const formData = new FormData(e.target as HTMLFormElement);
-
+    const handleCreateIntegration = async (data: IntegrationFormValues) => {
         try {
-            const data = {
-                providerId: parseInt(formData.get('providerId') as string),
-                triggerEvent: formData.get('triggerEvent') as IntegrationTrigger,
-                endpoint: formData.get('endpoint') as string,
-                method: formData.get('method') as HttpMethod,
-                requestMapping: formData.get('requestMapping') ? JSON.parse(formData.get('requestMapping') as string) : null,
-                responseMapping: formData.get('responseMapping') ? JSON.parse(formData.get('responseMapping') as string) : null,
-                isActive: true,
-                order: parseInt(formData.get('order') as string || '0')
+            const payload = {
+                ...data,
+                providerId: parseInt(data.providerId),
+                requestMapping: data.requestMapping ? JSON.parse(data.requestMapping) : null,
+                responseMapping: data.responseMapping ? JSON.parse(data.responseMapping) : null,
+                method: data.method as HttpMethod,
+                triggerEvent: data.triggerEvent as IntegrationTrigger
             };
 
             if (editingIntegration?.id) {
-                await updateIntegration({ id: editingIntegration.id, data }).unwrap();
+                await updateIntegration({ id: editingIntegration.id, data: payload }).unwrap();
                 toast.success('Integration updated successfully');
             } else {
-                await createIntegration(data).unwrap();
+                await createIntegration(payload).unwrap();
                 toast.success('Integration created successfully');
             }
             setIntegrationModalOpen(false);
@@ -132,8 +189,9 @@ export default function ApiManagement() {
 
     const filteredProviders = providers.filter((p: ApiProvider) => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
     const filteredIntegrations = integrations.filter((i: IntegrationConfig) => i.endpoint.toLowerCase().includes(searchTerm.toLowerCase()) || i.provider?.name.toLowerCase().includes(searchTerm.toLowerCase()));
-  const {user}=useAuth()
+    const { user } = useAuth()
     const readOnly = user?.role === 'PMO';
+
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -156,7 +214,7 @@ export default function ApiManagement() {
                         />
                     </div>
                     <Button
-                    disabled={readOnly}
+                        disabled={readOnly}
                         className="rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
                         onClick={() => {
                             if (activeTab === 'providers') {
@@ -350,153 +408,187 @@ export default function ApiManagement() {
                         </CardContent>
                     </Card>
                 </TabsContent>
-            </Tabs>
 
-            {/* Provider Modal */}
-            <Dialog open={providerModalOpen} onOpenChange={setProviderModalOpen}>
-                <DialogContent className="sm:max-w-[500px] border-none shadow-2xl rounded-3xl">
-                    <form onSubmit={handleCreateProvider}>
-                        <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold">{editingProvider ? 'Edit' : 'Add'} API Provider</DialogTitle>
-                            <DialogDescription>
-                                Define an external system to integrate with.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-6 py-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="name" className="text-sm font-bold text-slate-700 uppercase tracking-widest">Friendly Name</Label>
-                                <Input id="name" name="name" defaultValue={editingProvider?.name} placeholder="e.g. Ethiopia E-Visa Portal" required className="rounded-xl" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="baseUrl" className="text-sm font-bold text-slate-700 uppercase tracking-widest">Base API URL</Label>
-                                <div className="relative">
-                                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                    <Input id="baseUrl" name="baseUrl" defaultValue={editingProvider?.baseUrl} placeholder="https://api.external.com/v1" required className="pl-10 rounded-xl" />
+                {/* Provider Modal */}
+                <Dialog open={providerModalOpen} onOpenChange={setProviderModalOpen}>
+                    <DialogContent className="sm:max-w-[500px] border-none shadow-2xl rounded-3xl">
+                        <form onSubmit={providerForm.handleSubmit(handleCreateProvider)}>
+                            <DialogHeader>
+                                <DialogTitle className="text-2xl font-bold">{editingProvider ? 'Edit' : 'Add'} API Provider</DialogTitle>
+                                <DialogDescription>
+                                    Define an external system to integrate with.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-6 py-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name" className="text-sm font-bold text-slate-700 uppercase tracking-widest">Friendly Name</Label>
+                                    <Input
+                                        id="name"
+                                        placeholder="e.g. Ethiopia E-Visa Portal"
+                                        className="rounded-xl"
+                                        {...providerForm.register('name')}
+                                        error={providerForm.formState.errors.name?.message}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="baseUrl" className="text-sm font-bold text-slate-700 uppercase tracking-widest">Base API URL</Label>
+                                    <div className="relative">
+                                        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                        <Input
+                                            id="baseUrl"
+                                            placeholder="https://api.external.com/v1"
+                                            className="pl-10 rounded-xl"
+                                            {...providerForm.register('baseUrl')}
+                                            error={providerForm.formState.errors.baseUrl?.message}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="headers" className="text-sm font-bold text-slate-700 uppercase tracking-widest">Auth Headers (JSON)</Label>
+                                    <Textarea
+                                        id="headers"
+                                        placeholder="{}"
+                                        className="h-32 font-mono text-xs bg-slate-50 border-slate-100 rounded-xl"
+                                        {...providerForm.register('headers')}
+                                        error={providerForm.formState.errors.headers?.message}
+                                    />
+                                    <p className="text-[10px] text-slate-400 italic font-medium">Headers will be encrypted at rest.</p>
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="headers" className="text-sm font-bold text-slate-700 uppercase tracking-widest">Auth Headers (JSON)</Label>
-                                <Textarea
-                                    id="headers"
-                                    name="headers"
-                                    defaultValue={editingProvider?.headers ? JSON.stringify(editingProvider.headers, null, 2) : '{\n  "Authorization": "Bearer YOUR_TOKEN"\n}'}
-                                    placeholder="{}"
-                                    className="h-32 font-mono text-xs bg-slate-50 border-slate-100 rounded-xl"
-                                />
-                                <p className="text-[10px] text-slate-400 italic font-medium">Headers will be encrypted at rest.</p>
-                            </div>
-                        </div>
-                        <DialogFooter className="gap-2 sm:gap-0">
-                            <Button type="button" variant="ghost" className="rounded-full" onClick={() => setProviderModalOpen(false)}>Cancel</Button>
-                            <Button type="submit" className="rounded-full bg-blue-600 hover:bg-blue-700 px-8">
-                                <Save className="h-4 w-4 mr-2" />
-                                {editingProvider ? 'Update' : 'Create'} Provider
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
+                            <DialogFooter className="gap-2 sm:gap-0">
+                                <Button type="button" variant="ghost" className="rounded-full" onClick={() => setProviderModalOpen(false)}>Cancel</Button>
+                                <Button type="submit" className="rounded-full bg-blue-600 hover:bg-blue-700 px-8">
+                                    <Save className="h-4 w-4 mr-2" />
+                                    {editingProvider ? 'Update' : 'Create'} Provider
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
 
-            {/* Integration Modal */}
-            <Dialog open={integrationModalOpen} onOpenChange={setIntegrationModalOpen}>
-                <DialogContent className="sm:max-w-[700px] border-none shadow-2xl rounded-3xl max-h-[90vh] overflow-y-auto">
-                    <form onSubmit={handleCreateIntegration}>
-                        <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold">{editingIntegration ? 'Edit' : 'Add'} Integration Rule</DialogTitle>
-                            <DialogDescription>
-                                Map a system event to an external API call.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6">
-                            <div className="space-y-2">
-                                <Label className="text-sm font-bold text-slate-700 uppercase tracking-widest">Select Provider</Label>
-                                <Select name="providerId" defaultValue={editingIntegration?.providerId?.toString()}>
-                                    <SelectTrigger className="rounded-xl">
-                                        <SelectValue placeholder="Select API Provider" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {providers.map((p: ApiProvider) => (
-                                            <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                {/* Integration Modal */}
+                <Dialog open={integrationModalOpen} onOpenChange={setIntegrationModalOpen}>
+                    <DialogContent className="sm:max-w-[700px] border-none shadow-2xl rounded-3xl max-h-[90vh] overflow-y-auto">
+                        <form onSubmit={integrationForm.handleSubmit(handleCreateIntegration)}>
+                            <DialogHeader>
+                                <DialogTitle className="text-2xl font-bold">{editingIntegration ? 'Edit' : 'Add'} Integration Rule</DialogTitle>
+                                <DialogDescription>
+                                    Map a system event to an external API call.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-6">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-bold text-slate-700 uppercase tracking-widest">Select Provider</Label>
+                                    <Select
+                                        value={integrationForm.watch('providerId')}
+                                        onValueChange={(val) => integrationForm.setValue('providerId', val)}
+                                    >
+                                        <SelectTrigger className="rounded-xl">
+                                            <SelectValue placeholder="Select API Provider" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {providers.map((p: ApiProvider) => (
+                                                <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {integrationForm.formState.errors.providerId && (
+                                        <p className="text-xs text-red-500">{integrationForm.formState.errors.providerId.message}</p>
+                                    )}
+                                </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-sm font-bold text-slate-700 uppercase tracking-widest">Trigger Event</Label>
-                                <Select name="triggerEvent" defaultValue={editingIntegration?.triggerEvent}>
-                                    <SelectTrigger className="rounded-xl">
-                                        <SelectValue placeholder="System Event" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {Object.values(IntegrationTrigger).map(trigger => (
-                                            <SelectItem key={trigger} value={trigger}>{trigger}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-bold text-slate-700 uppercase tracking-widest">Trigger Event</Label>
+                                    <Select
+                                        value={integrationForm.watch('triggerEvent')}
+                                        onValueChange={(val) => integrationForm.setValue('triggerEvent', val)}
+                                    >
+                                        <SelectTrigger className="rounded-xl">
+                                            <SelectValue placeholder="System Event" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {Object.values(IntegrationTrigger).map(trigger => (
+                                                <SelectItem key={trigger} value={trigger}>{trigger}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {integrationForm.formState.errors.triggerEvent && (
+                                        <p className="text-xs text-red-500">{integrationForm.formState.errors.triggerEvent.message}</p>
+                                    )}
+                                </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="method" className="text-sm font-bold text-slate-700 uppercase tracking-widest">HTTP Method</Label>
-                                <Select name="method" defaultValue={editingIntegration?.method || 'POST'}>
-                                    <SelectTrigger className="rounded-xl">
-                                        <SelectValue placeholder="Method" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {Object.values(HttpMethod).map(method => (
-                                            <SelectItem key={method} value={method}>{method}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="method" className="text-sm font-bold text-slate-700 uppercase tracking-widest">HTTP Method</Label>
+                                    <Select
+                                        value={integrationForm.watch('method')}
+                                        onValueChange={(val) => integrationForm.setValue('method', val as any)}
+                                    >
+                                        <SelectTrigger className="rounded-xl">
+                                            <SelectValue placeholder="Method" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {Object.values(HttpMethod).map(method => (
+                                                <SelectItem key={method} value={method}>{method}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="endpoint" className="text-sm font-bold text-slate-700 uppercase tracking-widest">Endpoint Path</Label>
-                                <Input id="endpoint" name="endpoint" defaultValue={editingIntegration?.endpoint} placeholder="/notify/approve" required className="rounded-xl" />
-                            </div>
-
-                            <div className="md:col-span-2 space-y-2">
-                                <Label className="text-sm font-bold text-slate-700 uppercase tracking-widest">Request Payload Mapping (JSON)</Label>
-                                <Card className="border-slate-100 bg-slate-50 overflow-hidden rounded-2xl">
-                                    <div className="bg-slate-200/50 px-4 py-2 flex items-center justify-between">
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Template Editor</span>
-                                        <Badge variant="outline" className="text-[9px] border-slate-300">Supports handle-bars</Badge>
-                                    </div>
-                                    <Textarea
-                                        name="requestMapping"
-                                        defaultValue={editingIntegration?.requestMapping ? JSON.stringify(editingIntegration.requestMapping, null, 2) : '{\n  "email": "{{user.email}}",\n  "status": "APPROVED"\n}'}
-                                        className="h-40 font-mono text-xs border-none bg-transparent"
+                                <div className="space-y-2">
+                                    <Label htmlFor="endpoint" className="text-sm font-bold text-slate-700 uppercase tracking-widest">Endpoint Path</Label>
+                                    <Input
+                                        id="endpoint"
+                                        placeholder="/notify/approve"
+                                        className="rounded-xl"
+                                        {...integrationForm.register('endpoint')}
+                                        error={integrationForm.formState.errors.endpoint?.message}
                                     />
-                                </Card>
-                                <p className="text-[10px] text-slate-400 italic font-medium">Use {"{{field}}"} for dynamic data injection.</p>
-                            </div>
+                                </div>
 
-                            <div className="md:col-span-2 space-y-2">
-                                <Label className="text-sm font-bold text-slate-700 uppercase tracking-widest">Response Mapping (Application Fields)</Label>
-                                <Card className="border-slate-100 bg-slate-50 overflow-hidden rounded-2xl">
-                                    <div className="bg-slate-200/50 px-4 py-2 flex items-center justify-between">
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Result Handler</span>
-                                        <Badge variant="outline" className="text-[9px] border-slate-300">Updates DB</Badge>
-                                    </div>
-                                    <Textarea
-                                        name="responseMapping"
-                                        defaultValue={editingIntegration?.responseMapping ? JSON.stringify(editingIntegration.responseMapping, null, 2) : '{\n  "immigrationStatus": "PROCESSED"\n}'}
-                                        className="h-24 font-mono text-xs border-none bg-transparent"
-                                    />
-                                </Card>
-                                <p className="text-[10px] text-slate-400 italic font-medium">Map external response keys to Application model fields.</p>
+                                <div className="md:col-span-2 space-y-2">
+                                    <Label className="text-sm font-bold text-slate-700 uppercase tracking-widest">Request Payload Mapping (JSON)</Label>
+                                    <Card className="border-slate-100 bg-slate-50 overflow-hidden rounded-2xl">
+                                        <div className="bg-slate-200/50 px-4 py-2 flex items-center justify-between">
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Template Editor</span>
+                                            <Badge variant="outline" className="text-[9px] border-slate-300">Supports handle-bars</Badge>
+                                        </div>
+                                        <Textarea
+                                            className="h-40 font-mono text-xs border-none bg-transparent"
+                                            {...integrationForm.register('requestMapping')}
+                                            error={integrationForm.formState.errors.requestMapping?.message}
+                                        />
+                                    </Card>
+                                    <p className="text-[10px] text-slate-400 italic font-medium">Use {"{{field}}"} for dynamic data injection.</p>
+                                </div>
+
+                                <div className="md:col-span-2 space-y-2">
+                                    <Label className="text-sm font-bold text-slate-700 uppercase tracking-widest">Response Mapping (Application Fields)</Label>
+                                    <Card className="border-slate-100 bg-slate-50 overflow-hidden rounded-2xl">
+                                        <div className="bg-slate-200/50 px-4 py-2 flex items-center justify-between">
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Result Handler</span>
+                                            <Badge variant="outline" className="text-[9px] border-slate-300">Updates DB</Badge>
+                                        </div>
+                                        <Textarea
+                                            className="h-24 font-mono text-xs border-none bg-transparent"
+                                            {...integrationForm.register('responseMapping')}
+                                            error={integrationForm.formState.errors.responseMapping?.message}
+                                        />
+                                    </Card>
+                                    <p className="text-[10px] text-slate-400 italic font-medium">Map external response keys to Application model fields.</p>
+                                </div>
                             </div>
-                        </div>
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" className="rounded-full" onClick={() => setIntegrationModalOpen(false)}>Cancel</Button>
-                            <Button type="submit" className="rounded-full bg-blue-600 hover:bg-blue-700 px-8 shadow-lg shadow-blue-200">
-                                <Save className="h-4 w-4 mr-2" />
-                                {editingIntegration ? 'Update' : 'Create'} Integration
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
+                            <DialogFooter>
+                                <Button type="button" variant="ghost" className="rounded-full" onClick={() => setIntegrationModalOpen(false)}>Cancel</Button>
+                                <Button type="submit" className="rounded-full bg-blue-600 hover:bg-blue-700 px-8 shadow-lg shadow-blue-200">
+                                    <Save className="h-4 w-4 mr-2" />
+                                    {editingIntegration ? 'Update' : 'Create'} Integration
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+                </Tabs>
         </div>
     );
 }
+

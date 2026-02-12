@@ -21,7 +21,7 @@ import { PermissionManagement } from './pages/dashboard/PermissionManagement';
 import { RoleManagement } from './pages/dashboard/RoleManagement';
 import { InvitationCenter } from './pages/dashboard/invitations/InvitationCenter';
 import { BadgeCenter } from './pages/dashboard/badges/BadgeCenter';
-import ApiManagement from './pages/dashboard/ApiManagement';
+// import ApiManagement from './pagesApiManagement';
 import { PublicProfile } from './pages/public/PublicProfile';
 import { JournalistVerification } from './pages/public/JournalistVerification';
 import { Toaster } from 'sonner';
@@ -41,6 +41,7 @@ import { ManualApplications } from './pages/dashboard/ManualApplications';
 import { ManualBadgePrint } from './pages/dashboard/badges/ManualBadgePrint';
 import { DuplicateApplications } from './pages/dashboard/DuplicateApplications';
 import { AccreditationDelivery } from './pages/dashboard/AccreditationDelivery';
+import ApiManagement from './pages/dashboard/ApiManagement';
 
 function App() {
     useEffect(() => {

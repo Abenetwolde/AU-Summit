@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,6 +22,9 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth, UserRole } from '@/auth/context';
+import { airlineOfficeSchema } from '@/lib/validation-schemas';
+
+type AirlineOfficeFormData = z.infer<typeof airlineOfficeSchema>;
 
 export default function AirlineOfficeManagement() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -39,15 +45,49 @@ export default function AirlineOfficeManagement() {
     const [updateOffice, { isLoading: isUpdating }] = useUpdateAirlineOfficeMutation();
     const [deleteOffice] = useDeleteAirlineOfficeMutation();
 
-    // Form States
-    const [formData, setFormData] = useState({
-        name: '',
-        address: '',
-        city: '',
-        contactPhone: '',
-        contactEmail: '',
-        countryIds: [] as number[]
+    // Create Form
+    const {
+        register: registerCreate,
+        handleSubmit: handleSubmitCreate,
+        width: resetCreate,
+        setValue: setValueCreate,
+        watch: watchCreate,
+        formState: { errors: errorsCreate }
+    } = useForm<AirlineOfficeFormData>({
+        resolver: zodResolver(airlineOfficeSchema),
+        defaultValues: {
+            name: '',
+            address: '',
+            city: '',
+            contactPhone: '',
+            contactEmail: '',
+            countryIds: []
+        }
     });
+
+    const createCountryIds = watchCreate('countryIds');
+
+    // Edit Form
+    const {
+        register: registerEdit,
+        handleSubmit: handleSubmitEdit,
+        reset: resetEdit,
+        setValue: setValueEdit,
+        watch: watchEdit,
+        formState: { errors: errorsEdit }
+    } = useForm<AirlineOfficeFormData>({
+        resolver: zodResolver(airlineOfficeSchema),
+        defaultValues: {
+            name: '',
+            address: '',
+            city: '',
+            contactPhone: '',
+            contactEmail: '',
+            countryIds: []
+        }
+    });
+
+    const editCountryIds = watchEdit('countryIds');
 
     // Derived Data
     const filteredOffices = offices.filter(off =>
@@ -57,24 +97,29 @@ export default function AirlineOfficeManagement() {
     );
 
     // Handlers
-    const handleCreate = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const onCreateSubmit = async (data: AirlineOfficeFormData) => {
         if (!canCreateAirline) {
             toast.error("You don't have permission to create airline offices");
             return;
         }
         try {
-            await createOffice(formData).unwrap();
+            await createOffice(data).unwrap();
             toast.success("Airline office created successfully");
             setIsCreateModalOpen(false);
-            resetForm();
+            resetCreate({
+                name: '',
+                address: '',
+                city: '',
+                contactPhone: '',
+                contactEmail: '',
+                countryIds: []
+            });
         } catch (err: any) {
             toast.error(err.data?.message || "Failed to create airline office");
         }
     };
 
-    const handleUpdate = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const onUpdateSubmit = async (data: AirlineOfficeFormData) => {
         if (!selectedOffice) return;
 
         if (!canUpdateAirline) {
@@ -83,10 +128,11 @@ export default function AirlineOfficeManagement() {
         }
 
         try {
-            await updateOffice({ id: selectedOffice.id, data: formData }).unwrap();
+            await updateOffice({ id: selectedOffice.id, data }).unwrap();
             toast.success("Airline office updated successfully");
             setIsEditModalOpen(false);
-            resetForm();
+            setSelectedOffice(null);
+            resetEdit();
         } catch (err: any) {
             toast.error(err.data?.message || "Failed to update airline office");
         }
@@ -106,42 +152,37 @@ export default function AirlineOfficeManagement() {
         }
     };
 
-    const resetForm = () => {
-        setFormData({
-            name: '',
-            address: '',
-            city: '',
-            contactPhone: '',
-            contactEmail: '',
-            countryIds: [] as number[]
-        });
-        setSelectedOffice(null);
-    };
-
     const openEditModal = (office: AirlineOffice) => {
         if (!canUpdateAirline) {
             toast.error("You don't have permission to edit airline offices");
             return;
         }
         setSelectedOffice(office);
-        setFormData({
-            name: office.name,
-            address: office.address || '',
-            city: office.city || '',
-            contactPhone: office.contactPhone || '',
-            contactEmail: office.contactEmail || '',
-            countryIds: office.overseeingCountries?.map(c => c.id) || []
-        });
+        // Pre-fill edit form
+        setValueEdit('name', office.name);
+        setValueEdit('address', office.address || '');
+        setValueEdit('city', office.city || '');
+        setValueEdit('contactPhone', office.contactPhone || '');
+        setValueEdit('contactEmail', office.contactEmail || '');
+        setValueEdit('countryIds', office.overseeingCountries?.map(c => c.id) || []);
+
         setIsEditModalOpen(true);
     };
 
-    const toggleCountry = (countryId: number) => {
-        setFormData(prev => ({
-            ...prev,
-            countryIds: prev.countryIds.includes(countryId)
-                ? prev.countryIds.filter(id => id !== countryId)
-                : [...prev.countryIds, countryId]
-        }));
+    const toggleCreateCountry = (countryId: number) => {
+        const currentIds = createCountryIds || [];
+        const newIds = currentIds.includes(countryId)
+            ? currentIds.filter(id => id !== countryId)
+            : [...currentIds, countryId];
+        setValueCreate('countryIds', newIds, { shouldValidate: true });
+    };
+
+    const toggleEditCountry = (countryId: number) => {
+        const currentIds = editCountryIds || [];
+        const newIds = currentIds.includes(countryId)
+            ? currentIds.filter(id => id !== countryId)
+            : [...currentIds, countryId];
+        setValueEdit('countryIds', newIds, { shouldValidate: true });
     };
 
     return (
@@ -152,7 +193,17 @@ export default function AirlineOfficeManagement() {
                     <p className="text-muted-foreground">Manage Ethiopian Airlines offices and their overseeing countries.</p>
                 </div>
                 {canCreateAirline && (
-                    <Button onClick={() => { resetForm(); setIsCreateModalOpen(true); }}>
+                    <Button onClick={() => {
+                        resetCreate({
+                            name: '',
+                            address: '',
+                            city: '',
+                            contactPhone: '',
+                            contactEmail: '',
+                            countryIds: []
+                        });
+                        setIsCreateModalOpen(true);
+                    }}>
                         <Plus className="mr-2 h-4 w-4" /> Add Office
                     </Button>
                 )}
@@ -248,68 +299,61 @@ export default function AirlineOfficeManagement() {
                 </div>
             )}
 
-            {/* Create/Edit Dialog */}
-            <Dialog open={isCreateModalOpen || isEditModalOpen} onOpenChange={(open) => {
-                if (!open) {
-                    setIsCreateModalOpen(false);
-                    setIsEditModalOpen(false);
-                }
-            }}>
+            {/* Create Dialog */}
+            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
                 <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>
-                        <DialogTitle>{isEditModalOpen ? 'Edit Airline Office' : 'Add New Airline Office'}</DialogTitle>
+                        <DialogTitle>Add New Airline Office</DialogTitle>
                         <DialogDescription>
                             Enter airline office details and select oversee countries.
                         </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={isEditModalOpen ? handleUpdate : handleCreate} className="space-y-4">
+                    <form onSubmit={handleSubmitCreate(onCreateSubmit)} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2 lg:col-span-2">
-                                <Label htmlFor="name">Office Name</Label>
+                                <Label htmlFor="create-name">Office Name</Label>
                                 <Input
-                                    id="name"
-                                    required
+                                    id="create-name"
                                     placeholder="e.g. Dubai Regional Office"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    {...registerCreate('name')}
+                                    error={errorsCreate.name?.message}
                                 />
                             </div>
                             <div className="space-y-2 lg:col-span-2">
-                                <Label htmlFor="address">Address</Label>
+                                <Label htmlFor="create-address">Address</Label>
                                 <Input
-                                    id="address"
+                                    id="create-address"
                                     placeholder="Full office address"
-                                    value={formData.address}
-                                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                    {...registerCreate('address')}
+                                    error={errorsCreate.address?.message}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="city">City</Label>
+                                <Label htmlFor="create-city">City</Label>
                                 <Input
-                                    id="city"
+                                    id="create-city"
                                     placeholder="City"
-                                    value={formData.city}
-                                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                    {...registerCreate('city')}
+                                    error={errorsCreate.city?.message}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="phone">Contact Phone</Label>
+                                <Label htmlFor="create-phone">Contact Phone</Label>
                                 <Input
-                                    id="phone"
+                                    id="create-phone"
                                     placeholder="+971 ..."
-                                    value={formData.contactPhone}
-                                    onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                                    {...registerCreate('contactPhone')}
+                                    error={errorsCreate.contactPhone?.message}
                                 />
                             </div>
                             <div className="space-y-2 lg:col-span-2">
-                                <Label htmlFor="email">Contact Email (Mandatory for notifications)</Label>
+                                <Label htmlFor="create-email">Contact Email (Mandatory for notifications)</Label>
                                 <Input
-                                    id="email"
+                                    id="create-email"
                                     type="email"
-                                    required
                                     placeholder="office@ethiopianairlines.com"
-                                    value={formData.contactEmail}
-                                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                                    {...registerCreate('contactEmail')}
+                                    error={errorsCreate.contactEmail?.message}
                                 />
                                 <p className="text-[10px] text-muted-foreground">Notifications will be sent to this email upon application approval for overseen countries.</p>
                             </div>
@@ -322,12 +366,12 @@ export default function AirlineOfficeManagement() {
                                     {countries.map((country) => (
                                         <div key={country.id} className="flex items-center space-x-2">
                                             <Checkbox
-                                                id={`country-${country.id}`}
-                                                checked={formData.countryIds.includes(country.id)}
-                                                onCheckedChange={() => toggleCountry(country.id)}
+                                                id={`create-country-${country.id}`}
+                                                checked={createCountryIds?.includes(country.id)}
+                                                onCheckedChange={() => toggleCreateCountry(country.id)}
                                             />
                                             <Label
-                                                htmlFor={`country-${country.id}`}
+                                                htmlFor={`create-country-${country.id}`}
                                                 className="text-sm font-normal cursor-pointer truncate"
                                             >
                                                 {country.name} ({country.code})
@@ -336,18 +380,122 @@ export default function AirlineOfficeManagement() {
                                     ))}
                                 </div>
                             </ScrollArea>
+                            {errorsCreate.countryIds && (
+                                <p className="text-xs text-red-500">{errorsCreate.countryIds.message}</p>
+                            )}
                             <div className="text-xs text-muted-foreground">
-                                Selected: {formData.countryIds.length} countries
+                                Selected: {createCountryIds?.length || 0} countries
                             </div>
                         </div>
 
                         <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => { setIsCreateModalOpen(false); setIsEditModalOpen(false); }}>
+                            <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={isCreating || isUpdating}>
-                                {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {isEditModalOpen ? 'Update' : 'Create'}
+                            <Button type="submit" disabled={isCreating}>
+                                {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Create
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Dialog */}
+            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                        <DialogTitle>Edit Airline Office</DialogTitle>
+                        <DialogDescription>
+                            Enter airline office details and select oversee countries.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmitEdit(onUpdateSubmit)} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2 lg:col-span-2">
+                                <Label htmlFor="edit-name">Office Name</Label>
+                                <Input
+                                    id="edit-name"
+                                    {...registerEdit('name')}
+                                    error={errorsEdit.name?.message}
+                                />
+                            </div>
+                            <div className="space-y-2 lg:col-span-2">
+                                <Label htmlFor="edit-address">Address</Label>
+                                <Input
+                                    id="edit-address"
+                                    placeholder="Full office address"
+                                    {...registerEdit('address')}
+                                    error={errorsEdit.address?.message}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-city">City</Label>
+                                <Input
+                                    id="edit-city"
+                                    placeholder="City"
+                                    {...registerEdit('city')}
+                                    error={errorsEdit.city?.message}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="edit-phone">Contact Phone</Label>
+                                <Input
+                                    id="edit-phone"
+                                    placeholder="+971 ..."
+                                    {...registerEdit('contactPhone')}
+                                    error={errorsEdit.contactPhone?.message}
+                                />
+                            </div>
+                            <div className="space-y-2 lg:col-span-2">
+                                <Label htmlFor="edit-email">Contact Email (Mandatory for notifications)</Label>
+                                <Input
+                                    id="edit-email"
+                                    type="email"
+                                    placeholder="office@ethiopianairlines.com"
+                                    {...registerEdit('contactEmail')}
+                                    error={errorsEdit.contactEmail?.message}
+                                />
+                                <p className="text-[10px] text-muted-foreground">Notifications will be sent to this email upon application approval for overseen countries.</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Overseeing Countries</Label>
+                            <ScrollArea className="h-48 border rounded-md p-4 bg-muted/20">
+                                <div className="grid grid-cols-2 gap-2">
+                                    {countries.map((country) => (
+                                        <div key={country.id} className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id={`edit-country-${country.id}`}
+                                                checked={editCountryIds?.includes(country.id)}
+                                                onCheckedChange={() => toggleEditCountry(country.id)}
+                                            />
+                                            <Label
+                                                htmlFor={`edit-country-${country.id}`}
+                                                className="text-sm font-normal cursor-pointer truncate"
+                                            >
+                                                {country.name} ({country.code})
+                                            </Label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                            {errorsEdit.countryIds && (
+                                <p className="text-xs text-red-500">{errorsEdit.countryIds.message}</p>
+                            )}
+                            <div className="text-xs text-muted-foreground">
+                                Selected: {editCountryIds?.length || 0} countries
+                            </div>
+                        </div>
+
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={isUpdating}>
+                                {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Update
                             </Button>
                         </DialogFooter>
                     </form>

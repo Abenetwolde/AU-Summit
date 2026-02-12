@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { sanitizeHTML } from '@/utils/sanitization';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -258,7 +259,7 @@ export function InvitationTemplates() {
                             <div
                                 className="invitation-preview-content"
                                 dangerouslySetInnerHTML={{
-                                    __html: interpolateTemplate(constructHtml(previewTemplate?.logoUrl || '', previewTemplate?.content || ''), MOCK_VARS)
+                                    __html: sanitizeHTML(interpolateTemplate(constructHtml(previewTemplate?.logoUrl || '', previewTemplate?.content || ''), MOCK_VARS))
                                 }}
                             />
                         </div>

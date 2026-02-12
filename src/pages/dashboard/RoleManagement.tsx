@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,7 +20,9 @@ import {
     useGetOrganizationsQuery,
     Role
 } from '@/store/services/api';
-import { useEffect } from 'react';
+import { roleSchema } from '@/lib/validation-schemas';
+
+type RoleFormValues = z.infer<typeof roleSchema>;
 
 export function RoleManagement() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -49,35 +54,55 @@ export function RoleManagement() {
     const [createRole, { isLoading: isCreating }] = useCreateRoleMutation();
     const [updateRole, { isLoading: isUpdating }] = useUpdateRoleMutation();
 
-    // Form Stats
-    const [formData, setFormData] = useState({ name: '', description: '', organizationId: '' });
-
     const { checkPermission } = useAuth();
     const canCreateRole = checkPermission('role:create');
     const canUpdateRole = checkPermission('role:update');
 
-    const handleCreate = async (e: React.FormEvent) => {
-        e.preventDefault();
+    // Forms
+    const createForm = useForm<RoleFormValues>({
+        resolver: zodResolver(roleSchema),
+        defaultValues: { name: '', description: '', organizationId: '' }
+    });
+
+    const editForm = useForm<RoleFormValues>({
+        resolver: zodResolver(roleSchema),
+        defaultValues: { name: '', description: '', organizationId: '' }
+    });
+
+    // Reset forms when modals close/open
+    useEffect(() => {
+        if (!isCreateModalOpen) createForm.reset();
+    }, [isCreateModalOpen, createForm]);
+
+    useEffect(() => {
+        if (currentRole && isEditModalOpen) {
+            editForm.reset({
+                name: currentRole.name,
+                description: currentRole.description || '',
+                organizationId: currentRole.organizationId ? String(currentRole.organizationId) : ''
+            });
+        }
+    }, [currentRole, isEditModalOpen, editForm]);
+
+    const handleCreate = async (data: RoleFormValues) => {
         if (!canCreateRole) {
             toast.error("You don't have permission to create roles");
             return;
         }
         try {
             await createRole({
-                name: formData.name,
-                description: formData.description,
-                organizationId: formData.organizationId ? Number(formData.organizationId) : null
+                name: data.name,
+                description: data.description,
+                organizationId: data.organizationId ? Number(data.organizationId) : null
             }).unwrap();
             toast.success("Role created successfully");
             setIsCreateModalOpen(false);
-            setFormData({ name: '', description: '', organizationId: '' });
         } catch (error) {
             toast.error("Failed to create role");
         }
     };
 
-    const handleUpdate = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleUpdate = async (data: RoleFormValues) => {
         if (!currentRole) return;
         if (!canUpdateRole) {
             toast.error("You don't have permission to update roles");
@@ -87,15 +112,14 @@ export function RoleManagement() {
             await updateRole({
                 id: currentRole.id,
                 data: {
-                    name: formData.name,
-                    description: formData.description,
-                    organizationId: formData.organizationId ? Number(formData.organizationId) : null
+                    name: data.name,
+                    description: data.description,
+                    organizationId: data.organizationId ? Number(data.organizationId) : null
                 }
             }).unwrap();
             toast.success("Role updated successfully");
             setIsEditModalOpen(false);
             setCurrentRole(null);
-            setFormData({ name: '', description: '', organizationId: '' });
         } catch (error) {
             toast.error("Failed to update role");
         }
@@ -107,11 +131,6 @@ export function RoleManagement() {
             return;
         }
         setCurrentRole(role);
-        setFormData({
-            name: role.name,
-            description: role.description || '',
-            organizationId: role.organizationId ? String(role.organizationId) : ''
-        });
         setIsEditModalOpen(true);
     };
 
@@ -242,13 +261,13 @@ export function RoleManagement() {
                         <DialogTitle>Create New Role</DialogTitle>
                         <DialogDescription>Define a new role and optionally assign to an organization.</DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleCreate} className="space-y-4">
+                    <form onSubmit={createForm.handleSubmit(handleCreate)} className="space-y-4">
                         <div className="space-y-2">
                             <Label>Role Name</Label>
                             <Input
                                 placeholder="e.g. OFFICER_I"
-                                value={formData.name}
-                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                {...createForm.register('name')}
+                                error={createForm.formState.errors.name?.message}
                                 required
                             />
                         </div>
@@ -256,15 +275,15 @@ export function RoleManagement() {
                             <Label>Description</Label>
                             <Input
                                 placeholder="Role description"
-                                value={formData.description}
-                                onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                {...createForm.register('description')}
+                                error={createForm.formState.errors.description?.message}
                             />
                         </div>
                         <div className="space-y-2">
                             <Label>Organization (Optional)</Label>
                             <Select
-                                value={formData.organizationId}
-                                onValueChange={val => setFormData({ ...formData, organizationId: val })}
+                                value={createForm.watch('organizationId') || "0"}
+                                onValueChange={val => createForm.setValue('organizationId', val === "0" ? "" : val)}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select Organization" />
@@ -293,27 +312,27 @@ export function RoleManagement() {
                     <DialogHeader>
                         <DialogTitle>Edit Role</DialogTitle>
                     </DialogHeader>
-                    <form onSubmit={handleUpdate} className="space-y-4">
+                    <form onSubmit={editForm.handleSubmit(handleUpdate)} className="space-y-4">
                         <div className="space-y-2">
                             <Label>Role Name</Label>
                             <Input
-                                value={formData.name}
-                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                {...editForm.register('name')}
+                                error={editForm.formState.errors.name?.message}
                                 required
                             />
                         </div>
                         <div className="space-y-2">
                             <Label>Description</Label>
                             <Input
-                                value={formData.description}
-                                onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                {...editForm.register('description')}
+                                error={editForm.formState.errors.description?.message}
                             />
                         </div>
                         <div className="space-y-2">
                             <Label>Organization</Label>
                             <Select
-                                value={formData.organizationId}
-                                onValueChange={val => setFormData({ ...formData, organizationId: val })}
+                                value={editForm.watch('organizationId') || "0"}
+                                onValueChange={val => editForm.setValue('organizationId', val === "0" ? "" : val)}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select Organization" />
