@@ -18,7 +18,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Search, Eye, CheckCircle, XCircle, Clock, ArrowLeft, LogOut, Download, FileText, Calendar } from 'lucide-react';
+import { Loader2, Search, Eye, CheckCircle, XCircle, Clock, ArrowLeft, LogOut, Download, FileText, Calendar, Filter, RotateCcw, Globe, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useGetEntryWorkflowApplicationsQuery } from '@/store/services/api';
@@ -42,6 +42,17 @@ export function EntryWorkflowDashboard() {
     const [exportType, setExportType] = useState<'csv' | 'pdf' | null>(null);
     const limit = 10;
     const isExporting = exportType !== null;
+
+    const handleResetFilters = () => {
+        setSearch('');
+        setStatusFilter('ALL');
+        setNationalityFilter('');
+        setHasDroneFilter(undefined);
+        setDeclarationStatusFilter(undefined);
+        setDateRange({ start: '', end: '' });
+        setPage(1);
+        toast.success('Filters reset');
+    };
 
     // Check if user has permission to approve/reject in entry workflow
     const canApproveEntry = checkPermission('application:approve:dynamic');
@@ -186,118 +197,145 @@ export function EntryWorkflowDashboard() {
             </div>
 
             {/* Filters */}
-            <Card className="border-blue-200 bg-blue-50/30">
-                <CardHeader>
-                    <CardTitle className="text-sm font-medium text-blue-900">Filters</CardTitle>
+            <Card className="border-blue-100 shadow-sm bg-white overflow-hidden">
+                <CardHeader className="bg-blue-50/50 border-b border-blue-100 py-3 flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Filter className="w-4 h-4 text-blue-600" />
+                        <CardTitle className="text-sm font-semibold text-blue-900 uppercase tracking-wider">Filter Applications</CardTitle>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleResetFilters}
+                        className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100/50 gap-2 font-medium"
+                    >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        Clear All
+                    </Button>
                 </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <CardContent className="p-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Search</label>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 tracking-wide">
+                                <Search className="w-3 h-3" />
+                                Search Metadata
+                            </label>
+                            <div className="relative group">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                                 <Input
-                                    placeholder="Name or email..."
+                                    placeholder="Search by name, email..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="pl-9"
+                                    className="pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-all text-sm h-10"
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Status</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 tracking-wide">
+                                <Clock className="w-3 h-3" />
+                                Approval Status
+                            </label>
                             <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                <SelectTrigger>
+                                <SelectTrigger className="bg-slate-50 border-slate-200 focus:bg-white text-sm h-10">
                                     <SelectValue placeholder="All Statuses" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="ALL">All Statuses</SelectItem>
-                                    <SelectItem value="PENDING">Pending </SelectItem>
-                                    <SelectItem value="IN_REVIEW">In Review </SelectItem>
-                                    <SelectItem value="APPROVED">Approved </SelectItem>
-                                    <SelectItem value="REJECTED">Rejected </SelectItem>
-                                    <SelectItem value="EXITED">Exited</SelectItem>
+                                    <SelectItem value="PENDING">Pending Approval</SelectItem>
+                                    <SelectItem value="IN_REVIEW">Under Review</SelectItem>
+                                    <SelectItem value="APPROVED">Approved / Entered</SelectItem>
+                                    <SelectItem value="REJECTED">Rejected</SelectItem>
+                                    <SelectItem value="EXITED">Exited Country</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Nationality</label>
-                            <Input
-                                placeholder="Country name..."
-                                value={nationalityFilter}
-                                onChange={(e) => setNationalityFilter(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Date Range</label>
-                            <div className="flex gap-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 tracking-wide">
+                                <Globe className="w-3 h-3" />
+                                Nationality
+                            </label>
+                            <div className="relative group">
+                                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                                 <Input
-                                    type="date"
-                                    value={dateRange.start}
-                                    onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                                />
-                                <Input
-                                    type="date"
-                                    value={dateRange.end}
-                                    onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                                    placeholder="Any country..."
+                                    value={nationalityFilter}
+                                    onChange={(e) => setNationalityFilter(e.target.value)}
+                                    className="pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-all text-sm h-10"
                                 />
                             </div>
                         </div>
 
-                        <div className="space-y-2 flex flex-col justify-end">
-                            <div className="flex items-center space-x-4 h-10">
-                                <div className="flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
-                                        id="hasDrone"
-                                        className="w-4 h-4 rounded border-gray-300"
-                                        checked={!!hasDroneFilter}
-                                        onChange={(e) => setHasDroneFilter(e.target.checked ? true : undefined)}
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 tracking-wide">
+                                <Calendar className="w-3 h-3" />
+                                Applied Date Range
+                            </label>
+                            <div className="flex gap-2 items-center">
+                                <div className="relative flex-1 group">
+                                    <Input
+                                        type="date"
+                                        value={dateRange.start}
+                                        onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                                        className="bg-slate-50 border-slate-200 focus:bg-white transition-all text-xs h-10 px-2"
                                     />
-                                    <label htmlFor="hasDrone" className="text-sm font-medium cursor-pointer">
-                                        Has Drone
-                                    </label>
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
-                                        id="declarationStatus"
-                                        className="w-4 h-4 rounded border-gray-300"
-                                        checked={!!declarationStatusFilter}
-                                        onChange={(e) => setDeclarationStatusFilter(e.target.checked ? true : undefined)}
+                                <span className="text-slate-400 text-xs font-bold">TO</span>
+                                <div className="relative flex-1 group">
+                                    <Input
+                                        type="date"
+                                        value={dateRange.end}
+                                        onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                                        className="bg-slate-50 border-slate-200 focus:bg-white transition-all text-xs h-10 px-2"
                                     />
-                                    <label htmlFor="declarationStatus" className="text-sm font-medium cursor-pointer">
-                                        Equipment Declaration
-                                    </label>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div className="flex justify-end">
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setSearch('');
-                                setStatusFilter('PENDING');
-                                setNationalityFilter('');
-                                setHasDroneFilter(undefined);
-                                setDeclarationStatusFilter(undefined);
-                                setDateRange({ start: '', end: '' });
-                                setPage(1);
-                            }}
-                            className="gap-2"
-                        >
-                            Clear Filters
-                        </Button>
+
+                    <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center gap-6">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${hasDroneFilter ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
+                                <CheckCircle className="w-4 h-4" />
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    id="hasDrone"
+                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    checked={!!hasDroneFilter}
+                                    onChange={(e) => setHasDroneFilter(e.target.checked ? true : undefined)}
+                                />
+                                <label htmlFor="hasDrone" className="text-sm font-semibold text-slate-700 cursor-pointer">
+                                    Has Drone
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${declarationStatusFilter ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
+                                <FileText className="w-4 h-4" />
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    id="declarationStatus"
+                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    checked={!!declarationStatusFilter}
+                                    onChange={(e) => setDeclarationStatusFilter(e.target.checked ? true : undefined)}
+                                />
+                                <label htmlFor="declarationStatus" className="text-sm font-semibold text-slate-700 cursor-pointer">
+                                    Equipment Declared
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
 
             {/* Applications Table */}
-            <Card>
+            < Card >
                 <CardHeader>
                     <CardTitle>Entry Phase Applications</CardTitle>
                 </CardHeader>
@@ -402,7 +440,7 @@ export function EntryWorkflowDashboard() {
                         </>
                     )}
                 </CardContent>
-            </Card>
-        </div>
+            </Card >
+        </div >
     );
 }
