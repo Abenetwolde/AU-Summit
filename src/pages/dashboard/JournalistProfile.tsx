@@ -7,7 +7,7 @@ import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Load
 import { getFlagEmoji } from '@/lib/utils';
 import en from 'react-phone-number-input/locale/en';
 import { SystemCheckSuccess } from '@/components/SystemCheckSuccess';
-import { exportJournalistDetailToPDF, exportJournalistDetailToCSV } from '@/lib/export-utils';
+import { exportJournalistDetailToPDF, exportJournalistDetailToCSV, exportClearanceLetterToPDF } from '@/lib/export-utils';
 import { useAuth, UserRole } from '@/auth/context';
 import {
     useApproveWorkflowStepMutation,
@@ -416,6 +416,16 @@ export function JournalistProfile() {
                         <Download className="h-4 w-4" />
                         Export PDF
                     </Button>
+                    {application.equipment?.some((e: any) => e.status === 'APPROVED') && (
+                        <Button
+                            variant="default"
+                            onClick={() => exportClearanceLetterToPDF(application)}
+                            className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                        >
+                            <ShieldCheck className="h-4 w-4" />
+                            Clearance Letter
+                        </Button>
+                    )}
                 </div>
             </div>
 

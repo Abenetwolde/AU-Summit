@@ -31,8 +31,14 @@ export function EntryWorkflowDashboard() {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('PENDING');
-    const [startDate, setStartDate] = useState<string>('');
-    const [endDate, setEndDate] = useState<string>('');
+    const [nationalityFilter, setNationalityFilter] = useState('');
+    const [hasDroneFilter, setHasDroneFilter] = useState<boolean | undefined>(undefined);
+    const [declarationStatusFilter, setDeclarationStatusFilter] = useState<boolean | undefined>(undefined);
+    const [exportLimit, setExportLimit] = useState<'current' | 'all'>('current');
+    const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
+        start: '',
+        end: ''
+    });
     const [exportType, setExportType] = useState<'csv' | 'pdf' | null>(null);
     const limit = 10;
     const isExporting = exportType !== null;
@@ -44,23 +50,29 @@ export function EntryWorkflowDashboard() {
         page,
         limit,
         search,
-        status: statusFilter !== 'PENDING' ? statusFilter : undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined
+        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+        nationality: nationalityFilter || undefined,
+        startDate: dateRange.start || undefined,
+        endDate: dateRange.end || undefined,
+        hasDrone: hasDroneFilter,
+        declarationStatus: declarationStatusFilter
     });
 
     const { data: exportData, isFetching: isExportFetching } = useGetEntryWorkflowApplicationsQuery({
         page: 1,
-        limit: 1000,
+        limit: exportLimit === 'all' ? 10000 : limit, // Use a large number for 'all', or current page limit
         search,
-        status: statusFilter !== 'PENDING' ? statusFilter : undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined
+        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+        nationality: nationalityFilter || undefined,
+        startDate: dateRange.start || undefined,
+        endDate: dateRange.end || undefined,
+        hasDrone: hasDroneFilter,
+        declarationStatus: declarationStatusFilter
     }, { skip: !isExporting });
 
     useEffect(() => {
         refetch();
-    }, [page, search, statusFilter, startDate, endDate, refetch]);
+    }, [page, search, statusFilter, nationalityFilter, hasDroneFilter, declarationStatusFilter, dateRange, refetch]);
 
     useEffect(() => {
         if (isExporting && exportData?.applications && !isExportFetching) {
@@ -118,6 +130,9 @@ export function EntryWorkflowDashboard() {
         navigate(`/dashboard/journalists/${app.id}`, { state: { application: app, phase: 'entry' } });
     };
 
+    const handleExport = (type: 'csv' | 'pdf') => {
+        setExportType(type);
+    };
 
     return (
         <div className="p-6 space-y-6">
@@ -140,7 +155,7 @@ export function EntryWorkflowDashboard() {
                 <div className="flex gap-2">
                     <Button
                         variant="outline"
-                        onClick={() => setExportType('csv')}
+                        onClick={() => handleExport('csv')}
                         disabled={isExporting}
                         className="gap-2"
                     >
@@ -149,13 +164,24 @@ export function EntryWorkflowDashboard() {
                     </Button>
                     <Button
                         variant="outline"
-                        onClick={() => setExportType('pdf')}
+                        onClick={() => handleExport('pdf')}
                         disabled={isExporting}
                         className="gap-2"
                     >
                         {isExporting && exportType === 'pdf' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         Export PDF
                     </Button>
+                    <div className="flex items-center gap-2 border rounded-md px-2 py-1">
+                        <label className="text-xs font-medium">Size:</label>
+                        <select
+                            className="text-xs border-none bg-transparent outline-none cursor-pointer"
+                            value={exportLimit}
+                            onChange={(e) => setExportLimit(e.target.value as 'current' | 'all')}
+                        >
+                            <option value="current">Current Page</option>
+                            <option value="all">All Records</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -164,50 +190,89 @@ export function EntryWorkflowDashboard() {
                 <CardHeader>
                     <CardTitle className="text-sm font-medium text-blue-900">Filters</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Search by name or email..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-9"
-                            />
-                        </div>
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="All Statuses" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="PENDING">Pending </SelectItem>
-                                <SelectItem value="IN_REVIEW">In Review </SelectItem>
-                                <SelectItem value="APPROVED">Approved </SelectItem>
-                                <SelectItem value="REJECTED">Rejected </SelectItem>
-                                <SelectItem value="EXITED">Exited</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                            <div className="relative flex-1">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Search</label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                 <Input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    className="pl-9 w-full"
-                                    placeholder="Start Date"
+                                    placeholder="Name or email..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="pl-9"
                                 />
                             </div>
-                            <span className="text-muted-foreground text-center text-sm">to</span>
-                            <div className="relative flex-1">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Status</label>
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="All Statuses" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ALL">All Statuses</SelectItem>
+                                    <SelectItem value="PENDING">Pending </SelectItem>
+                                    <SelectItem value="IN_REVIEW">In Review </SelectItem>
+                                    <SelectItem value="APPROVED">Approved </SelectItem>
+                                    <SelectItem value="REJECTED">Rejected </SelectItem>
+                                    <SelectItem value="EXITED">Exited</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Nationality</label>
+                            <Input
+                                placeholder="Country name..."
+                                value={nationalityFilter}
+                                onChange={(e) => setNationalityFilter(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Date Range</label>
+                            <div className="flex gap-2">
                                 <Input
                                     type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    className="pl-9 w-full"
-                                    placeholder="End Date"
+                                    value={dateRange.start}
+                                    onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
                                 />
+                                <Input
+                                    type="date"
+                                    value={dateRange.end}
+                                    onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 flex flex-col justify-end">
+                            <div className="flex items-center space-x-4 h-10">
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        id="hasDrone"
+                                        className="w-4 h-4 rounded border-gray-300"
+                                        checked={!!hasDroneFilter}
+                                        onChange={(e) => setHasDroneFilter(e.target.checked ? true : undefined)}
+                                    />
+                                    <label htmlFor="hasDrone" className="text-sm font-medium cursor-pointer">
+                                        Has Drone
+                                    </label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="checkbox"
+                                        id="declarationStatus"
+                                        className="w-4 h-4 rounded border-gray-300"
+                                        checked={!!declarationStatusFilter}
+                                        onChange={(e) => setDeclarationStatusFilter(e.target.checked ? true : undefined)}
+                                    />
+                                    <label htmlFor="declarationStatus" className="text-sm font-medium cursor-pointer">
+                                        Equipment Declaration
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -217,8 +282,10 @@ export function EntryWorkflowDashboard() {
                             onClick={() => {
                                 setSearch('');
                                 setStatusFilter('PENDING');
-                                setStartDate('');
-                                setEndDate('');
+                                setNationalityFilter('');
+                                setHasDroneFilter(undefined);
+                                setDeclarationStatusFilter(undefined);
+                                setDateRange({ start: '', end: '' });
                                 setPage(1);
                             }}
                             className="gap-2"
@@ -335,7 +402,7 @@ export function EntryWorkflowDashboard() {
                         </>
                     )}
                 </CardContent>
-            </Card >
-        </div >
+            </Card>
+        </div>
     );
 }

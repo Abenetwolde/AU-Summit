@@ -122,83 +122,48 @@ export function exportToPDF(
 }
 
 /**
- * Export journalist list to CSV
+ * Export journalist list to CSV (Minimalist)
  */
 export function exportJournalistsToCSV(journalists: any[]) {
     if (!journalists || journalists.length === 0) return;
 
-    // Helper to format field names to readable headers
-    const formatHeader = (key: string) => {
-        return key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-    };
-
-    // Helper to get country name (simple version for utils)
     const getCountryName = (j: any) => {
-        return j.applyingFromCountry?.name || j.formData?.country || j.formData?.nationality || 'N/A';
+        return j.applyingFromCountry?.name || j.formData?.nationality || j.formData?.country || 'N/A';
     };
 
     const data = journalists.map(j => {
-        // EXACTLY from formData as requested by user
         const firstName = j.formData?.first_name || '';
         const lastName = j.formData?.last_name || '';
         const fullName = `${firstName} ${lastName}`.trim() || j.user?.fullName || 'N/A';
 
         const row: any = {
             'Full Name': fullName,
-            'Email': j.formData?.email || j.user?.email || j.email || 'N/A',
+            'Email': j.formData?.email || j.user?.email || 'N/A',
             'Nationality': getCountryName(j),
-            'Passport No': j.formData?.passport_number || j.passportNo || 'N/A',
+            'Passport No': j.formData?.passport_number || 'N/A',
             'Organization': j.formData?.media_affiliation || j.formData?.organization_name || 'N/A',
-            'Occupation': j.formData?.position_title || j.formData?.occupation || j.role || 'Journalist',
+            'Occupation': j.formData?.position_title || j.formData?.occupation || 'Journalist',
             'EMA Status': j.status || 'N/A',
             'Submission Date': j.createdAt ? new Date(j.createdAt).toLocaleDateString() : 'N/A'
         };
 
-        // Add equipment summary
+        // Add equipment summary - only approved ones if possible, but keep it simple for now as it's a general list
         if (j.equipment && Array.isArray(j.equipment) && j.equipment.length > 0) {
-            row['Equipment'] = j.equipment.map((e: any) => `${e.type}: ${e.description}${e.serialNumber ? ` (SN: ${e.serialNumber})` : ''}`).join('; ');
+            row['Equipment'] = j.equipment
+                .map((e: any) => `${e.type}: ${e.description}${e.serialNumber ? ` (SN: ${e.serialNumber})` : ''}`)
+                .join('; ');
         } else {
             row['Equipment'] = 'None';
-        }
-
-        // Add workflow step statuses
-        if (j.approvals && Array.isArray(j.approvals)) {
-            j.approvals.forEach((appr: any) => {
-                if (appr.workflowStep?.name) {
-                    const stepName = `${appr.workflowStep.name} Status`;
-                    row[stepName] = appr.status || 'PENDING';
-                }
-            });
-        }
-
-        // Add all other formData that aren't technical/file/already included
-        if (j.formData) {
-            Object.entries(j.formData).forEach(([key, value]) => {
-                const technicalKeys = [
-                    'profile_photo', 'passport_photo', 'id', 'userId', 'formId', 'updatedAt',
-                    'declaration_status', 'equipment', 'first_name', 'last_name', 'email',
-                    'nationality', 'country', 'passport_number', 'media_affiliation',
-                    'organization_name', 'position_title', 'occupation', 'press_card_copy',
-                    'assignment_letter', 'terms_and_conditions', 'media_ethics_agreement'
-                ];
-                if (!technicalKeys.includes(key) && (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')) {
-                    const header = formatHeader(key);
-                    // Only add if not already present in row
-                    if (!row[header]) {
-                        row[header] = value;
-                    }
-                }
-            });
         }
 
         return row;
     });
 
-    exportToCSV(data, 'journalists_list');
+    exportToCSV(data, 'journalists_list_minimalist');
 }
 
 /**
- * Export journalist list to PDF
+ * Export journalist list to PDF (Minimalist)
  */
 export function exportJournalistsToPDF(journalists: any[]) {
     if (!journalists || journalists.length === 0) return;
@@ -210,32 +175,38 @@ export function exportJournalistsToPDF(journalists: any[]) {
         { header: 'Nationality', key: 'country' },
         { header: 'Passport No', key: 'passportNo' },
         { header: 'Organization', key: 'organization' },
-        { header: 'Occupation', key: 'role' },
-        { header: 'Status', key: 'status' }
+        { header: 'Status', key: 'status' },
+        { header: 'Equipment', key: 'equipment' }
     ];
 
     const data = journalists.map(j => {
-        // EXACTLY from formData as requested by user
         const firstName = j.formData?.first_name || '';
         const lastName = j.formData?.last_name || '';
         const fullName = `${firstName} ${lastName}`.trim() || j.user?.fullName || 'N/A';
 
+        let equipmentSummary = 'None';
+        if (j.equipment && Array.isArray(j.equipment) && j.equipment.length > 0) {
+            equipmentSummary = j.equipment
+                .map((e: any) => `${e.type}: ${e.description}${e.serialNumber ? ` (SN: ${e.serialNumber})` : ''}`)
+                .join('; ');
+        }
+
         return {
             fullname: fullName,
-            email: j.formData?.email || j.user?.email || j.email || 'N/A',
-            country: j.applyingFromCountry?.name || j.formData?.country || j.formData?.nationality || j.country || 'N/A',
-            passportNo: j.formData?.passport_number || j.passportNo || 'N/A',
+            email: j.formData?.email || j.user?.email || 'N/A',
+            country: j.applyingFromCountry?.name || j.formData?.nationality || j.formData?.country || 'N/A',
+            passportNo: j.formData?.passport_number || 'N/A',
             organization: j.formData?.media_affiliation || j.formData?.organization_name || 'N/A',
-            role: j.formData?.position_title || j.formData?.occupation || j.role || 'Journalist',
-            status: j.status || 'N/A'
+            status: j.status || 'N/A',
+            equipment: equipmentSummary
         };
     });
 
-    const filename = generateFilename('journalists_list', 'pdf');
+    const filename = generateFilename('journalists_list_minimalist', 'pdf');
     const doc = new jsPDF('landscape');
 
     doc.setFontSize(16);
-    doc.text('Journalist List', 14, 15);
+    doc.text('Journalist List (Minimalist)', 14, 15);
     doc.setFontSize(10);
     doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
 
@@ -243,8 +214,11 @@ export function exportJournalistsToPDF(journalists: any[]) {
         head: [columns.map(col => col.header)],
         body: data.map(row => columns.map(col => String((row as any)[col.key] || ''))),
         startY: 28,
-        styles: { fontSize: 8 },
+        styles: { fontSize: 7, cellPadding: 2 },
         headStyles: { fillColor: [0, 155, 77] },
+        columnStyles: {
+            6: { cellWidth: 60 } // Equipment column can be wider
+        }
     });
 
     doc.save(filename);
@@ -787,6 +761,94 @@ export function exportDuplicatesToPDF(users: any[]) {
         doc.text(`African Union Media Accreditation System`, 14, 285);
         doc.text(`Page ${i} of ${pageCount}`, 190, 285);
     }
+
+    doc.save(filename);
+}
+
+/**
+ * Export a minimalist Clearance Letter to PDF
+ */
+export function exportClearanceLetterToPDF(journalist: any) {
+    if (!journalist) return;
+
+    const doc = new jsPDF();
+    const filename = generateFilename(`clearance_letter_${journalist.id || 'profile'}`, 'pdf');
+    const AU_GREEN = [0, 155, 77] as [number, number, number];
+
+    // Header with minimalist style
+    doc.setFillColor(...AU_GREEN);
+    doc.rect(0, 0, 210, 35, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.text('EQUIPMENT CLEARANCE LETTER', 14, 23);
+
+    doc.setTextColor(0, 0, 0);
+    let y = 50;
+
+    // Applicant Information (Minimalist)
+    const firstName = journalist.formData?.first_name || '';
+    const lastName = journalist.formData?.last_name || '';
+    const fullName = `${firstName} ${lastName}`.trim() || journalist.user?.fullName || 'N/A';
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('APPLICANT INFORMATION', 14, y);
+    doc.setDrawColor(200, 200, 200);
+    doc.line(14, y + 2, 200, y + 2);
+    y += 12;
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Full Name: ${fullName}`, 14, y);
+    doc.text(`Passport No: ${journalist.formData?.passport_number || 'N/A'}`, 110, y);
+    y += 7;
+    doc.text(`Organization: ${journalist.formData?.media_affiliation || journalist.formData?.organization_name || 'N/A'}`, 14, y);
+    doc.text(`Nationality: ${journalist.applyingFromCountry?.name || journalist.formData?.nationality || 'N/A'}`, 110, y);
+    y += 15;
+
+    // Approved Equipment Section
+    const approvedEquipment = (journalist.equipment || []).filter((e: any) => e.status === 'APPROVED');
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('APPROVED EQUIPMENT LIST', 14, y);
+    doc.line(14, y + 2, 200, y + 2);
+    y += 10;
+
+    if (approvedEquipment.length > 0) {
+        autoTable(doc, {
+            startY: y,
+            head: [['Type', 'Description', 'Serial Number', 'Quantity']],
+            body: approvedEquipment.map((e: any) => [
+                e.type || 'EQUIPMENT',
+                e.description || 'N/A',
+                e.serialNumber || 'N/A',
+                e.quantity || 1
+            ]),
+            headStyles: { fillColor: AU_GREEN },
+            styles: { fontSize: 9 },
+            margin: { left: 14 }
+        });
+        y = (doc as any).lastAutoTable.finalY + 20;
+    } else {
+        doc.setFont('helvetica', 'italic');
+        doc.text('No approved equipment found for this application.', 14, y);
+        y += 15;
+    }
+
+    // Clearance Message
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    const message = "This document serves as official clearance for the above-listed media equipment. The holder is authorized to bring this equipment into the host country for media coverage purposes. All equipment must be exported upon the conclusion of the assignment.";
+    const splitMessage = doc.splitTextToSize(message, 180);
+    doc.text(splitMessage, 14, y);
+    y += (splitMessage.length * 5) + 20;
+
+    // Footer / Verification
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`African Union Media Accreditation Portal - Document Verification ID: ${journalist.id}-${Date.now()}`, 14, 280);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 285);
 
     doc.save(filename);
 }
