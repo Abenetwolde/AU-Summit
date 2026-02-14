@@ -18,21 +18,41 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Search, Eye, CheckCircle, XCircle, Clock, ArrowLeft, LogOut, Download, FileText, Calendar } from 'lucide-react';
+import { Loader2, Search, Eye, CheckCircle, XCircle, Clock, ArrowLeft, LogOut, Download, FileText, Calendar, Filter, RotateCcw, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useGetExitWorkflowApplicationsQuery, useInitializeExitWorkflowMutation } from '@/store/services/api';
 import { useAuth } from '@/auth/context';
+import { exportJournalistsToCSV, exportJournalistsToPDF } from '@/lib/export-utils';
 
 export function ExitWorkflowDashboard() {
     const navigate = useNavigate();
     const { user, checkPermission } = useAuth();
     const [page, setPage] = useState(1);
-    const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState<string>('PENDING');
-    const [startDate, setStartDate] = useState<string>('');
-    const [endDate, setEndDate] = useState<string>('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('ALL');
+    const [nationalityFilter, setNationalityFilter] = useState('');
+    const [hasDroneFilter, setHasDroneFilter] = useState<boolean | undefined>(undefined);
+    const [declarationStatusFilter, setDeclarationStatusFilter] = useState<boolean | undefined>(undefined);
+    const [exportLimit, setExportLimit] = useState<'current' | 'all'>('current');
+    const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
+        start: '',
+        end: ''
+    });
+    const [exportType, setExportType] = useState<'csv' | 'pdf' | null>(null);
     const limit = 10;
+    const isExporting = exportType !== null;
+
+    const handleResetFilters = () => {
+        setSearchQuery('');
+        setStatusFilter('ALL');
+        setNationalityFilter('');
+        setHasDroneFilter(undefined);
+        setDeclarationStatusFilter(undefined);
+        setDateRange({ start: '', end: '' });
+        setPage(1);
+        toast.success('Filters reset');
+    };
 
     // Check if user has permission to manage exit workflow (approve/reject/initialize)
     const canManageExit = checkPermission('application:manage-exit-workflow');
@@ -40,36 +60,55 @@ export function ExitWorkflowDashboard() {
     const { data, isLoading, error, refetch } = useGetExitWorkflowApplicationsQuery({
         page,
         limit,
-        search,
-        status: statusFilter !== 'PENDING' ? statusFilter : undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined
+        search: searchQuery,
+        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+        nationality: nationalityFilter || undefined,
+        startDate: dateRange.start || undefined,
+        endDate: dateRange.end || undefined,
+        hasDrone: hasDroneFilter,
+        declarationStatus: declarationStatusFilter
     });
 
     const [initializeExit, { isLoading: isInitializing }] = useInitializeExitWorkflowMutation();
 
+    const { data: exportData, isFetching: isExportFetching } = useGetExitWorkflowApplicationsQuery({
+        page: 1,
+        limit: exportLimit === 'all' ? 10000 : limit,
+        search: searchQuery,
+        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+        nationality: nationalityFilter || undefined,
+        startDate: dateRange.start || undefined,
+        endDate: dateRange.end || undefined,
+        hasDrone: hasDroneFilter,
+        declarationStatus: declarationStatusFilter
+    }, { skip: !isExporting });
+
     useEffect(() => {
         refetch();
-    }, [page, search, statusFilter, startDate, endDate, refetch]);
+    }, [page, searchQuery, statusFilter, nationalityFilter, hasDroneFilter, declarationStatusFilter, dateRange.start, dateRange.end, refetch]);
+
+    useEffect(() => {
+        if (isExporting && exportData?.applications && !isExportFetching) {
+            if (exportType === 'csv') {
+                exportJournalistsToCSV(exportData.applications);
+            } else if (exportType === 'pdf') {
+                exportJournalistsToPDF(exportData.applications);
+            }
+            setExportType(null);
+            toast.success(`Exported as ${exportType.toUpperCase()}`);
+        }
+    }, [isExporting, exportData, isExportFetching, exportType]);
 
     const getRoleApprovalStatus = (app: any) => {
-
         if (user?.role === 'SUPER_ADMIN') return app.status;
-
-        console.log("user", user);
 
         // Try matching by recognized role strings first (roleName is more likely to match backend logic)
         const relevantApproval = app.approvals?.find((a: any) => {
             const step = a.workflowStep;
             if (!step || !step.isExitStep) return false;
 
-            // // Match by ID if we have authorized steps (most reliable)
-            // if (user?.authorizedWorkflowSteps?.some(s => s.id === step.id)) return true;
-
-            // Fallback to role name matching
             return step.requiredRole === user?.roleName;
         });
-        console.log(relevantApproval);
 
         return relevantApproval ? relevantApproval.status : app.status;
     };
@@ -109,44 +148,8 @@ export function ExitWorkflowDashboard() {
             toast.error(error?.data?.message || 'Failed to initialize exit workflow');
         }
     };
-
-    const handleExport = async (format: 'PDF' | 'EXCEL') => {
-        try {
-            const token = localStorage.getItem('managment_token');
-            const baseUrl = import.meta.env.VITE_API_URL || 'https://api.arrivalclearance.gov.et/api/v1';
-            const queryParams = new URLSearchParams({
-                format,
-                ...(search && { search }),
-                ...(statusFilter !== 'PENDING' && { status: statusFilter }),
-                ...(startDate && { startDate }),
-                ...(endDate && { endDate })
-            });
-
-            const response = await fetch(`${baseUrl}/applications/exit-workflow/export?${queryParams}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) throw new Error('Export failed');
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            const extension = format === 'EXCEL' ? 'xlsx' : 'pdf';
-            const timestamp = new Date().toISOString().slice(0, 10);
-            a.download = `exit_applications_${timestamp}.${extension}`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-
-            toast.success(`Exported as ${format}`);
-        } catch (error) {
-            console.error('Export error:', error);
-            toast.error('Failed to export applications');
-        }
+    const handleExport = (type: 'csv' | 'pdf') => {
+        setExportType(type);
     };
 
     return (
@@ -167,91 +170,175 @@ export function ExitWorkflowDashboard() {
                         Manage applications in the exit approval phase
                     </p>
                 </div>
-                <div className="grid grid-cols-2 sm:flex gap-2">
+                <div className="flex gap-2">
                     <Button
                         variant="outline"
-                        onClick={() => handleExport('EXCEL')}
-                        className="gap-2 border-green-600 text-green-700 hover:bg-green-50 w-full sm:w-auto text-xs sm:text-sm"
+                        onClick={() => handleExport('csv')}
+                        disabled={isExporting}
+                        className="gap-2"
                     >
-                        <Download className="w-4 h-4" />
-                        Export Excel
+                        {isExporting && exportType === 'csv' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                        Export CSV
                     </Button>
                     <Button
                         variant="outline"
-                        onClick={() => handleExport('PDF')}
-                        className="gap-2 border-red-600 text-red-700 hover:bg-red-50 w-full sm:w-auto text-xs sm:text-sm"
+                        onClick={() => handleExport('pdf')}
+                        disabled={isExporting}
+                        className="gap-2"
                     >
-                        <FileText className="w-4 h-4" />
+                        {isExporting && exportType === 'pdf' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         Export PDF
                     </Button>
+                    <div className="flex items-center gap-2 border rounded-md px-2 py-1">
+                        <label className="text-xs font-medium">Size:</label>
+                        <select
+                            className="text-xs border-none bg-transparent outline-none cursor-pointer"
+                            value={exportLimit}
+                            onChange={(e) => setExportLimit(e.target.value as 'current' | 'all')}
+                        >
+                            <option value="current">Current Page</option>
+                            <option value="all">All Records</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
             {/* Filters */}
-            <Card className="border-purple-200 bg-purple-50/30">
-                <CardHeader>
-                    <CardTitle className="text-sm font-medium text-purple-900">Filters</CardTitle>
+            <Card className="border-purple-100 shadow-sm bg-white overflow-hidden">
+                <CardHeader className="bg-purple-50/50 border-b border-purple-100 py-3 flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Filter className="w-4 h-4 text-purple-600" />
+                        <CardTitle className="text-sm font-semibold text-purple-900 uppercase tracking-wider">Filter Exit Applications</CardTitle>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleResetFilters}
+                            className="h-8 text-purple-600 hover:text-purple-700 hover:bg-purple-100/50 gap-2 font-medium"
+                        >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Clear All
+                        </Button>
+                    </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Search by name or email..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-9"
-                            />
-                        </div>
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Status: Pending" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="PENDING">Pending </SelectItem>
-                                <SelectItem value="APPROVED">Approved </SelectItem>
-                                <SelectItem value="REJECTED">Rejected </SelectItem>
-                                <SelectItem value="EXITED">Exited</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                            <div className="relative flex-1">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <CardContent className="p-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 tracking-wide">
+                                <Search className="w-3 h-3 text-purple-500" />
+                                Search Metadata
+                            </label>
+                            <div className="relative group">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-purple-500 transition-colors" />
                                 <Input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    className="pl-9 w-full"
-                                    placeholder="Start Date"
+                                    placeholder="Search by name, email..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-all text-sm h-10"
                                 />
                             </div>
-                            <span className="text-muted-foreground text-center text-sm">to</span>
-                            <div className="relative flex-1">
-                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 tracking-wide">
+                                <Clock className="w-3 h-3 text-purple-500" />
+                                Approval Status
+                            </label>
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="bg-slate-50 border-slate-200 focus:bg-white text-sm h-10">
+                                    <SelectValue placeholder="All Statuses" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ALL">All Statuses</SelectItem>
+                                    <SelectItem value="PENDING">Pending Exit Approval</SelectItem>
+                                    <SelectItem value="IN_REVIEW">Under Review</SelectItem>
+                                    <SelectItem value="APPROVED">Exit Approved</SelectItem>
+                                    <SelectItem value="REJECTED">Exit Rejected</SelectItem>
+                                    <SelectItem value="EXITED">Officially Exited</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 tracking-wide">
+                                <Globe className="w-3 h-3 text-purple-500" />
+                                Nationality
+                            </label>
+                            <div className="relative group">
+                                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-purple-500 transition-colors" />
                                 <Input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    className="pl-9 w-full"
-                                    placeholder="End Date"
+                                    placeholder="Any country..."
+                                    value={nationalityFilter}
+                                    onChange={(e) => setNationalityFilter(e.target.value)}
+                                    className="pl-9 bg-slate-50 border-slate-200 focus:bg-white transition-all text-sm h-10"
                                 />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 tracking-wide">
+                                <Calendar className="w-3 h-3 text-purple-500" />
+                                Exit Date Range
+                            </label>
+                            <div className="flex gap-2 items-center">
+                                <div className="relative flex-1 group">
+                                    <Input
+                                        type="date"
+                                        value={dateRange.start}
+                                        onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                                        className="bg-slate-50 border-slate-200 focus:bg-white transition-all text-xs h-10 px-2"
+                                    />
+                                </div>
+                                <span className="text-slate-400 text-xs font-bold font-mono">TO</span>
+                                <div className="relative flex-1 group">
+                                    <Input
+                                        type="date"
+                                        value={dateRange.end}
+                                        onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                                        className="bg-slate-50 border-slate-200 focus:bg-white transition-all text-xs h-10 px-2"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div className="flex justify-end">
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setSearch('');
-                                setStatusFilter('PENDING');
-                                setStartDate('');
-                                setEndDate('');
-                                setPage(1);
-                            }}
-                            className="gap-2"
-                        >
-                            Clear Filters
-                        </Button>
+
+                    <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center gap-6">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${hasDroneFilter ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-400'}`}>
+                                <CheckCircle className="w-4 h-4" />
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    id="hasDrone-exit"
+                                    className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                    checked={!!hasDroneFilter}
+                                    onChange={(e) => setHasDroneFilter(e.target.checked ? true : undefined)}
+                                />
+                                <label htmlFor="hasDrone-exit" className="text-sm font-semibold text-slate-700 cursor-pointer">
+                                    Includes Drones
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${declarationStatusFilter ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-400'}`}>
+                                <FileText className="w-4 h-4" />
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    id="declarationStatus-exit"
+                                    className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                    checked={!!declarationStatusFilter}
+                                    onChange={(e) => setDeclarationStatusFilter(e.target.checked ? true : undefined)}
+                                />
+                                <label htmlFor="declarationStatus-exit" className="text-sm font-semibold text-slate-700 cursor-pointer">
+                                    Equipment Declared
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </CardContent>
             </Card>

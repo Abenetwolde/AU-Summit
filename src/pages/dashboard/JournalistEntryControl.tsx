@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Search, RefreshCw, CheckCircle, Loader2, MapPin } from 'lucide-react';
+import { Filter, RotateCcw, Globe, Search, RefreshCw, CheckCircle, Loader2, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     useGetEntriesQuery,
     useMarkAsEnteredMutation,
@@ -31,6 +31,13 @@ export function JournalistEntryControl() {
     const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
     const [selectedAppId, setSelectedAppId] = useState<number | null>(null);
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
+
+    const handleResetFilters = () => {
+        setSearchTerm('');
+        setStatusFilter('ALL');
+        setCurrentPage(1);
+        toast.success('Filters reset');
+    };
 
     // API Hooks
     const { data, isLoading, refetch, isFetching } = useGetEntriesQuery({
@@ -117,26 +124,47 @@ export function JournalistEntryControl() {
             </div>
 
             {/* Filter Section */}
-            <Card className="bg-gray-50/50">
+            <Card className="border-gray-200 shadow-sm bg-white overflow-hidden">
+                <CardHeader className="bg-gray-50/50 border-b border-gray-100 py-3 flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Filter className="w-4 h-4 text-gray-600" />
+                        <CardTitle className="text-sm font-semibold text-gray-900 uppercase tracking-wider">Arrival Filters</CardTitle>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleResetFilters}
+                        className="h-8 text-gray-600 hover:text-gray-700 hover:bg-gray-100/50 gap-2 font-medium"
+                    >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        Clear All
+                    </Button>
+                </CardHeader>
                 <CardContent className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                        <div className="md:col-span-8 space-y-2">
-                            <label className="text-sm font-medium">Search</label>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 tracking-wide">
+                                <Search className="w-3 h-3 text-gray-500" />
+                                Search Journalist
+                            </label>
+                            <div className="relative group">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-gray-900 transition-colors" />
                                 <input
                                     placeholder="Search by Name, Passport Number..."
-                                    className="w-full pl-9 pr-4 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                    className="w-full pl-9 pr-4 py-2 rounded-md border border-input bg-slate-50 focus:bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all h-10"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && refetch()}
                                 />
                             </div>
                         </div>
-                        <div className="md:col-span-4 space-y-2">
-                            <label className="text-sm font-medium">Status Filter</label>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 tracking-wide">
+                                <Clock className="w-3 h-3 text-gray-500" />
+                                Arrival Status
+                            </label>
                             <select
-                                className="w-full h-10 px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                className="w-full h-10 px-3 py-2 rounded-md border border-input bg-slate-50 focus:bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                                 value={statusFilter}
                                 onChange={(e) => {
                                     setStatusFilter(e.target.value);
@@ -146,7 +174,7 @@ export function JournalistEntryControl() {
                                 <option value="ALL">All Statuses</option>
                                 <option value="PENDING">Pending Arrival</option>
                                 <option value="ENTERED">Arrival Confirmed</option>
-                                <option value="EXITED">Exited</option>
+                                <option value="EXITED">Exited Country</option>
                             </select>
                         </div>
                     </div>

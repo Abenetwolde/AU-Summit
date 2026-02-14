@@ -300,6 +300,7 @@ export interface WorkflowStep {
     emailStep: boolean; // Controls if this step triggers the email
     targetAudience: 'LOCAL' | 'INTERNATIONAL';
     isExitStep: boolean;
+    triggersExitStatus: boolean;
     emailTemplateId?: number;
     branchCondition?: any;
     createdAt: string;
@@ -320,6 +321,7 @@ export interface CreateWorkflowStepPayload {
     emailStep?: boolean;
     targetAudience?: 'LOCAL' | 'INTERNATIONAL';
     isExitStep?: boolean;
+    triggersExitStatus?: boolean;
     emailTemplateId?: number;
     branchCondition?: any;
 }
@@ -339,6 +341,7 @@ export interface UpdateWorkflowStepPayload {
     emailStep?: boolean;
     targetAudience?: 'LOCAL' | 'INTERNATIONAL';
     isExitStep?: boolean;
+    triggersExitStatus?: boolean;
     emailTemplateId?: number;
     branchCondition?: any;
 }
@@ -1454,9 +1457,9 @@ export const api = createApi({
             invalidatesTags: (_result, _error, id) => [{ type: 'Application', id }],
         }),
         // Two-Phase Workflow Endpoints
-        getEntryWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string; nationality?: string; startDate?: string; endDate?: string }>({
+        getEntryWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string; nationality?: string; startDate?: string; endDate?: string; hasDrone?: boolean; declarationStatus?: boolean }>({
             query: (params = {}) => {
-                const { page = 1, limit = 10, search = '', status = '', nationality = '', startDate = '', endDate = '' } = params;
+                const { page = 1, limit = 10, search = '', status = '', nationality = '', startDate = '', endDate = '', hasDrone, declarationStatus } = params;
                 const queryParams = new URLSearchParams({
                     page: String(page),
                     limit: String(limit),
@@ -1464,16 +1467,18 @@ export const api = createApi({
                     ...(status && { status }),
                     ...(nationality && { nationality }),
                     ...(startDate && { startDate }),
-                    ...(endDate && { endDate })
+                    ...(endDate && { endDate }),
+                    ...(hasDrone !== undefined && { hasDrone: String(hasDrone) }),
+                    ...(declarationStatus !== undefined && { declarationStatus: String(declarationStatus) })
                 });
                 return `/applications/entry-workflow?${queryParams}`;
             },
             transformResponse: (response: ApplicationsResponse) => response.data,
             providesTags: ['Application'],
         }),
-        getExitWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string; nationality?: string; startDate?: string; endDate?: string }>({
+        getExitWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string; nationality?: string; startDate?: string; endDate?: string; hasDrone?: boolean; declarationStatus?: boolean }>({
             query: (params = {}) => {
-                const { page = 1, limit = 10, search = '', status = '', nationality = '', startDate = '', endDate = '' } = params;
+                const { page = 1, limit = 10, search = '', status = '', nationality = '', startDate = '', endDate = '', hasDrone, declarationStatus } = params;
                 const queryParams = new URLSearchParams({
                     page: String(page),
                     limit: String(limit),
@@ -1481,7 +1486,9 @@ export const api = createApi({
                     ...(status && { status }),
                     ...(nationality && { nationality }),
                     ...(startDate && { startDate }),
-                    ...(endDate && { endDate })
+                    ...(endDate && { endDate }),
+                    ...(hasDrone !== undefined && { hasDrone: String(hasDrone) }),
+                    ...(declarationStatus !== undefined && { declarationStatus: String(declarationStatus) })
                 });
                 return `/applications/exit-workflow?${queryParams}`;
             },

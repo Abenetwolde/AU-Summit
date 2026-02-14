@@ -85,6 +85,7 @@ interface StepNodeData extends Record<string, unknown> {
     emailStep?: boolean;
     targetAudience: 'LOCAL' | 'INTERNATIONAL';
     isExitStep: boolean;
+    triggersExitStatus?: boolean;
     onEdit?: () => void;
 }
 
@@ -150,6 +151,11 @@ const StepNode = ({ data: rawData, selected }: NodeProps) => {
                 <Badge variant="secondary" className={cn("h-4 px-1 text-[8px] border-0", data.isExitStep ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700")}>
                     {data.isExitStep ? 'Exit' : 'Entry'}
                 </Badge>
+                {data.triggersExitStatus && (
+                    <Badge className="h-4 px-1 text-[8px] bg-red-100 text-red-700 border-0 flex items-center gap-0.5">
+                        <GitBranch className="h-2 w-2" /> Trigger
+                    </Badge>
+                )}
             </div>
 
             <Handle type="source" position={Position.Bottom} className="!w-4 !h-2 !rounded-sm !bg-slate-400 !-bottom-1.5 transition-colors hover:!bg-blue-500" />
@@ -230,6 +236,7 @@ const transformApiToNodes = (steps: WorkflowStep[], onEdit: (step: WorkflowStep)
                     emailStep: step.emailStep,
                     targetAudience: step.targetAudience,
                     isExitStep: step.isExitStep,
+                    triggersExitStatus: step.triggersExitStatus,
                     originalStep: step,
                     onEdit: () => onEdit(step)
                 }
@@ -294,6 +301,7 @@ const transformNodesToApi = (nodes: Node[], edges: Edge[], allStepsOriginal: Wor
             // Pass through identity fields to ensure they are preserved or updated correctly
             isExitStep: !!node.data.isExitStep,
             targetAudience: node.data.targetAudience as any,
+            triggersExitStatus: !!node.data.triggersExitStatus,
             formId: (node.data.formId as number | null) || null
         };
     });
@@ -534,6 +542,7 @@ function WorkflowBuilderContent() {
                 emailStep: currentStep.emailStep,
                 targetAudience: currentStep.targetAudience as any || 'INTERNATIONAL',
                 isExitStep: currentStep.isExitStep || false,
+                triggersExitStatus: currentStep.isExitStep ? !!currentStep.triggersExitStatus : false,
                 emailTemplateId: currentStep.emailStep ? currentStep.emailTemplateId : undefined,
                 branchCondition: currentStep.branchCondition || null,
                 // Automatically assign next order within this context to make it appear on canvas
@@ -598,6 +607,7 @@ function WorkflowBuilderContent() {
                     emailTemplateId: currentStep.emailStep ? currentStep.emailTemplateId : undefined,
                     targetAudience: currentStep.targetAudience,
                     isExitStep: currentStep.isExitStep,
+                    triggersExitStatus: currentStep.isExitStep ? !!currentStep.triggersExitStatus : false,
                     branchCondition: currentStep.branchCondition || null
                 }
             }).unwrap();
@@ -823,6 +833,7 @@ function WorkflowBuilderContent() {
                                 <TableHead>Depends On</TableHead>
                                 <TableHead>Email Trigger</TableHead>
                                 <TableHead>Template</TableHead>
+                                <TableHead>Exit Trigger</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
@@ -1010,6 +1021,16 @@ function WorkflowBuilderContent() {
                                             </Select>
                                         </TableCell>
                                         <TableCell>
+                                            {step.isExitStep && (
+                                                <div className="flex items-center justify-center">
+                                                    <Checkbox
+                                                        checked={!!(currentNode ? currentNode.data.triggersExitStatus : step.triggersExitStatus)}
+                                                        onCheckedChange={(checked) => updateNodeData({ triggersExitStatus: !!checked })}
+                                                    />
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
                                             {isPlaced ? <Badge className="bg-emerald-500 h-5 text-[9px]">Active</Badge> : <Badge variant="secondary" className="text-slate-500 h-5 text-[9px]">Unused</Badge>}
                                         </TableCell>
                                         <TableCell className="text-right">
@@ -1130,6 +1151,27 @@ function WorkflowBuilderContent() {
                                     </Select>
                                 </div>
                             </div>
+
+                            {currentStep.isExitStep && (
+                                <div className="space-y-4 border p-3 rounded-md bg-purple-50 col-span-2">
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="create-exit-trigger-cb"
+                                            checked={!!currentStep.triggersExitStatus}
+                                            onCheckedChange={(c) => setCurrentStep({ ...currentStep, triggersExitStatus: !!c })}
+                                        />
+                                        <div className="grid gap-1.5 leading-none">
+                                            <label
+                                                htmlFor="create-exit-trigger-cb"
+                                                className="text-sm font-medium leading-none text-purple-900"
+                                            >
+                                                Trigger Automatic Exit Status
+                                            </label>
+                                            <p className="text-[10px] text-purple-600 italic">When approved, journalists will be marked as EXITED automatically.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Branching Condition */}
                             <div className="space-y-4 border p-3 rounded-md bg-emerald-50/30">
@@ -1333,6 +1375,27 @@ function WorkflowBuilderContent() {
                                 </div>
                             </div>
 
+                            {currentStep.isExitStep && (
+                                <div className="space-y-4 border p-3 rounded-md bg-purple-50">
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="edit-exit-trigger-cb"
+                                            checked={!!currentStep.triggersExitStatus}
+                                            onCheckedChange={(c) => setCurrentStep({ ...currentStep, triggersExitStatus: !!c })}
+                                        />
+                                        <div className="grid gap-1.5 leading-none">
+                                            <label
+                                                htmlFor="edit-exit-trigger-cb"
+                                                className="text-sm font-medium leading-none text-purple-900"
+                                            >
+                                                Trigger Automatic Exit Status
+                                            </label>
+                                            <p className="text-[10px] text-purple-600 italic">When approved, journalists will be marked as EXITED automatically.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Branching Condition */}
                             <div className="space-y-4 border p-3 rounded-md bg-emerald-50/30">
                                 <Label className="text-emerald-800 font-bold flex items-center gap-2">
@@ -1428,7 +1491,7 @@ function WorkflowBuilderContent() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div >
+        </div>
     );
 }
 

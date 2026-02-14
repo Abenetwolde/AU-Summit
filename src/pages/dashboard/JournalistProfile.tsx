@@ -7,7 +7,7 @@ import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Load
 import { getFlagEmoji } from '@/lib/utils';
 import en from 'react-phone-number-input/locale/en';
 import { SystemCheckSuccess } from '@/components/SystemCheckSuccess';
-import { exportJournalistDetailToPDF, exportJournalistDetailToCSV } from '@/lib/export-utils';
+import { exportJournalistDetailToPDF, exportJournalistDetailToCSV, exportClearanceLetterToPDF } from '@/lib/export-utils';
 import { useAuth, UserRole } from '@/auth/context';
 import {
     useApproveWorkflowStepMutation,
@@ -120,15 +120,22 @@ export function JournalistProfile() {
         console.log('Effective Step ID:', effectiveStepId);
 
         if (!effectiveStepId && isSuperAdmin) {
-            // Fallback for Super Admin: Find the first PENDING approval to act on
-            const approvalsList = application.approvals || [];
+            // Fallback for Super Admin: Find the first PENDING approval to act on in the CURRENT phase
+            const approvalsList = (application.approvals || []).filter((a: any) => {
+                const step = (a as any).workflowStep || (a as any).approvalWorkflowStep;
+                if (!step) return false;
+                if (currentPhase === 'exit') return step.isExitStep;
+                if (currentPhase === 'entry') return !step.isExitStep;
+                return true; // Default to allowing all if phase unknown
+            });
+
             const pendingStep = approvalsList.find((a: any) => a.status === 'PENDING');
 
             if (pendingStep) {
                 const step = (pendingStep as any).workflowStep || (pendingStep as any).approvalWorkflowStep;
                 effectiveStepId = step?.id;
             } else if (approvalsList.length > 0) {
-                // If no pending steps (e.g., all approved), act on the last one (e.g. to Revoke)
+                // If no pending steps (e.g., all approved), act on the last one (e.g. to Revoke) in the current phase
                 const lastStep = approvalsList[approvalsList.length - 1];
                 const step = (lastStep as any).workflowStep || (lastStep as any).approvalWorkflowStep;
                 effectiveStepId = step?.id;
@@ -330,7 +337,17 @@ export function JournalistProfile() {
         const step = (a as any).workflowStep || (a as any).approvalWorkflowStep;
         if (!step) return false;
 
-        const stepName = step.name || 'Unknown Step'; // Use 'a.workflowStep' and cast to 'any' for the legacy property to avoid lint errors while maintaining functionality.
+        // NEW: Phase Filtering
+        // When coming from a specific workflow dashboard, we MUST only act on steps in that phase.
+        if (currentPhase === 'exit' && !step.isExitStep) {
+            console.log(`[Phase Check] Skipping Entry Step ${step.id} because we are in EXIT phase.`);
+            return false;
+        }
+        if (currentPhase === 'entry' && step.isExitStep) {
+            console.log(`[Phase Check] Skipping Exit Step ${step.id} because we are in ENTRY phase.`);
+            return false;
+        }
+
         const stepId = step.id || a.workflowStepId;
         const stepKey = step.key;
 
@@ -341,8 +358,6 @@ export function JournalistProfile() {
         const userAuthStep = user?.authorizedWorkflowSteps?.find(s => Number(s.id) === Number(stepId));
 
         if (!userAuthStep) {
-            console.log(`[Step Authorization Trace] ❌ User DOES NOT have Step ID:${stepId} in their authorizedWorkflowSteps.`);
-            // console.log(`[Step Authorization Trace] User's authorized step IDs:`, user?.authorizedWorkflowSteps?.map(s => s.id));
             return false;
         }
 
@@ -416,6 +431,16 @@ export function JournalistProfile() {
                         <Download className="h-4 w-4" />
                         Export PDF
                     </Button>
+                    {application.equipment?.some((e: any) => e.status === 'APPROVED') && (
+                        <Button
+                            variant="default"
+                            onClick={() => exportClearanceLetterToPDF(application)}
+                            className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                        >
+                            <ShieldCheck className="h-4 w-4" />
+                            Clearance Letter
+                        </Button>
+                    )}
                 </div>
             </div>
 
