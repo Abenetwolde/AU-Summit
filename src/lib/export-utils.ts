@@ -150,8 +150,11 @@ export function exportJournalistsToCSV(journalists: any[]) {
         // Add equipment summary - only approved ones if possible, but keep it simple for now as it's a general list
         if (j.equipment && Array.isArray(j.equipment) && j.equipment.length > 0) {
             row['Equipment'] = j.equipment
-                .map((e: any) => `${e.type}: ${e.description}${e.serialNumber ? ` (SN: ${e.serialNumber})` : ''}`)
-                .join('; ');
+                .map((e: any, index: number) => {
+                    const sn = e.serialNumber ? ` (SN: ${e.serialNumber})` : '';
+                    return `${index + 1}. ${e.type}: ${e.description}${sn}`;
+                })
+                .join('\n');
         } else {
             row['Equipment'] = 'None';
         }
@@ -187,8 +190,11 @@ export function exportJournalistsToPDF(journalists: any[]) {
         let equipmentSummary = 'None';
         if (j.equipment && Array.isArray(j.equipment) && j.equipment.length > 0) {
             equipmentSummary = j.equipment
-                .map((e: any) => `${e.type}: ${e.description}${e.serialNumber ? ` (SN: ${e.serialNumber})` : ''}`)
-                .join('; ');
+                .map((e: any, index: number) => {
+                    const sn = e.serialNumber ? ` (SN: ${e.serialNumber})` : '';
+                    return `${index + 1}. ${e.type}: ${e.description}${sn}`;
+                })
+                .join('\n');
         }
 
         return {
@@ -547,9 +553,11 @@ export function exportJournalistDetailToCSV(journalist: any) {
 
     // 3. Equipment Summary
     if (journalist.equipment && Array.isArray(journalist.equipment) && journalist.equipment.length > 0) {
-        row['Equipment Summary'] = journalist.equipment.map((e: any) =>
-            `${e.type}: ${e.description}${e.serialNumber ? ` (SN: ${e.serialNumber})` : ''} - Value: ${e.value} ${e.currency || 'USD'}`
-        ).join('; ');
+        row['Equipment Summary'] = journalist.equipment.map((e: any, index: number) => {
+            const sn = e.serialNumber ? ` (SN: ${e.serialNumber})` : '';
+            const val = ` - Value: ${e.value} ${e.currency || 'USD'}`;
+            return `${index + 1}. ${e.type}: ${e.description}${sn}${val}`;
+        }).join('\n');
     }
 
     const filename = generateFilename(`journalist_${journalist.id || 'profile'}`, 'csv');
