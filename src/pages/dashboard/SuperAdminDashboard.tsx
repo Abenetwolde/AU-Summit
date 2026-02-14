@@ -574,7 +574,7 @@ export default function SuperAdminDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-sm bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white overflow-hidden relative group">
+            {/* <Card className="border-0 shadow-sm bg-gradient-to-br from-purple-500 to-fuchsia-600 text-white overflow-hidden relative group">
               <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">
                 <Plane className="h-24 w-24" />
               </div>
@@ -586,17 +586,12 @@ export default function SuperAdminDashboard() {
                   </h3>
                   <span className="text-white/60 text-sm mb-1 font-medium">Recorded</span>
                 </div>
-                {/* {overview?.totalEntered?.trend && (
-                  <div className={cn("absolute bottom-6 right-6 flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/10")}>
-                    {overview.totalEntered.trend === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingUp className="h-3 w-3 rotate-180" />}
-                    {overview.totalEntered.percentage}%
-                  </div>
-                )} */}
+               
               </CardContent>
-            </Card>
+            </Card> */}
 
             {/* Total Exited */}
-            <Card className="border-0 shadow-sm bg-gradient-to-br from-orange-500 to-red-600 text-white overflow-hidden relative group">
+            {/* <Card className="border-0 shadow-sm bg-gradient-to-br from-orange-500 to-red-600 text-white overflow-hidden relative group">
               <div className="absolute top-0 right-0 -p-4 opacity-10 group-hover:scale-110 transition-transform">
                 <LogOut className="h-24 w-24" />
               </div>
@@ -608,14 +603,9 @@ export default function SuperAdminDashboard() {
                   </h3>
                   <span className="text-white/60 text-sm mb-1 font-medium">Recorded</span>
                 </div>
-                {/* {overview?.totalExited?.trend && (
-                  <div className={cn("absolute bottom-6 right-6 flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/10")}>
-                    {overview.totalExited.trend === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingUp className="h-3 w-3 rotate-180" />}
-                    {overview.totalExited.percentage}%
-                  </div>
-                )} */}
+              
               </CardContent>
-            </Card>
+            </Card> */}
 
           </div>
 
