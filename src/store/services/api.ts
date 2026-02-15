@@ -2089,8 +2089,11 @@ export const api = createApi({
             query: () => '/super-admin/stakeholders',
             transformResponse: (response: SuperAdminStakeholdersResponse) => response.data,
         }),
-        getSuperAdminStakeholderStatus: builder.query<SuperAdminStakeholderStatus, void>({
-            query: () => '/super-admin/stakeholder-status',
+        getSuperAdminStakeholderStatus: builder.query<SuperAdminStakeholderStatus, { type?: 'ENTRY' | 'EXIT' } | void>({
+            query: (params) => {
+                const type = params && 'type' in params ? params.type : 'ENTRY';
+                return `/super-admin/stakeholder-status?type=${type}`;
+            },
             transformResponse: (response: SuperAdminStakeholderStatusResponse) => response.data,
         }),
         getSuperAdminPerformance: builder.query<SuperAdminPerformance[], void>({

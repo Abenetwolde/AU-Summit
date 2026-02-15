@@ -119,7 +119,8 @@ export default function SuperAdminDashboard() {
   const { data: overview, isLoading: isOverviewLoading } = useGetSuperAdminOverviewQuery();
   const { data: adminCharts, isLoading: isChartsLoading } = useGetSuperAdminChartsQuery();
 
-  const { data: stakeholderStatus, isLoading: isStatusLoading } = useGetSuperAdminStakeholderStatusQuery();
+  const { data: entryStakeholderStatus, isLoading: isEntryStatusLoading } = useGetSuperAdminStakeholderStatusQuery({ type: 'ENTRY' });
+  const { data: exitStakeholderStatus, isLoading: isExitStatusLoading } = useGetSuperAdminStakeholderStatusQuery({ type: 'EXIT' });
   const { data: performanceData = [], isLoading: isPerformanceLoading } = useGetSuperAdminPerformanceQuery();
   const { data: entryExitStats, isLoading: isEntryExitLoading } = useGetSuperAdminEntryExitStatsQuery({ timeframe: 'month' });
   const { data: officerKPIs, isLoading: isOfficerLoading } = useGetSuperAdminOfficerPerformanceQuery({ timeframe: 'month' });
@@ -233,8 +234,8 @@ export default function SuperAdminDashboard() {
 
   if (!mounted) return null;
 
-  const isLoading = isDashboardLoading || isOverviewLoading || isChartsLoading || isStatusLoading || isPerformanceLoading || isEntryExitLoading;
-  const isError = isDashboardError || !dashboardData || !overview || !adminCharts || !stakeholderStatus || !performanceData || !entryExitStats;
+  const isLoading = isDashboardLoading || isOverviewLoading || isChartsLoading || isEntryStatusLoading || isExitStatusLoading || isPerformanceLoading || isEntryExitLoading;
+  const isError = isDashboardError || !dashboardData || !overview || !adminCharts || !entryStakeholderStatus || !performanceData || !entryExitStats;
 
   if (isLoading) return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 gap-4">
@@ -809,7 +810,45 @@ export default function SuperAdminDashboard() {
                 <ResponsiveContainer width="100%" height="100%" minWidth={400}>
                   <BarChart
                     layout="vertical"
-                    data={Object.entries(stakeholderStatus || {}).map(([name, stats]: any) => ({ name, ...stats }))}
+                    data={Object.entries(entryStakeholderStatus || {}).map(([name, stats]: any) => ({ name, ...stats }))}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }} />
+                    <YAxis
+                      dataKey="name"
+                      type="category"
+                      axisLine={false}
+                      tickLine={false}
+                      width={150}
+                      tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }}
+                      interval={0}
+                    />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: '12px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}
+                      cursor={{ fill: '#f8fafc' }}
+                    />
+                    <Legend iconType="circle" />
+                    <Bar dataKey="APPROVED" name="Approved" stackId="a" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20} />
+                    <Bar dataKey="PENDING" name="Pending" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={20} />
+                    <Bar dataKey="REJECTED" name="Rejected" stackId="a" fill="#ef4444" radius={[4, 0, 0, 4]} barSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Stakeholder Status Breakdown (Exit) */}
+          <Card id="chart-stakeholder-breakdown-exit" className="border-0 shadow-sm animate-slide-up mt-6" style={{ animationDelay: '0.25s' }}>
+            <CardHeader className="pb-3 border-b border-slate-50">
+              <CardTitle>Stakeholder Status Breakdown (Exit Workflow)</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
+              <div className="h-[500px] sm:h-[600px] md:h-[700px] lg:h-[800px] overflow-x-auto">
+                <ResponsiveContainer width="100%" height="100%" minWidth={400}>
+                  <BarChart
+                    layout="vertical"
+                    data={Object.entries(exitStakeholderStatus || {}).map(([name, stats]: any) => ({ name, ...stats }))}
                     margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
@@ -1115,11 +1154,11 @@ export default function SuperAdminDashboard() {
 
           </div>
 
-          {/* Stakeholder Status Breakdown */}
+          {/* Stakeholder Status Breakdown (Entry) */}
           <div className="animate-slide-up" style={{ animationDelay: '0.55s' }}>
-            <h2 className="text-2xl font-bold text-slate-800 mb-6">Stakeholder Status Breakdown</h2>
+            <h2 className="text-2xl font-bold text-slate-800 mb-6">Stakeholder Status Breakdown (Entry Workflow)</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {Object.entries(stakeholderStatus).map(([name, status], i) => {
+              {entryStakeholderStatus && Object.entries(entryStakeholderStatus).map(([name, status], i) => {
                 const data = [
                   { name: 'Approved', value: status.APPROVED, color: '#10b981' },
                   { name: 'Rejected', value: status.REJECTED, color: '#ef4444' },
@@ -1131,6 +1170,58 @@ export default function SuperAdminDashboard() {
                   <Card key={i} className="border-0 shadow-sm bg-white overflow-hidden group hover:shadow-md transition-shadow">
                     <CardHeader className="pb-2 border-b border-slate-50 flex flex-row items-center justify-between">
                       <CardTitle className="text-base border-l-4 pl-3" style={{ borderColor: '#3b82f6' }}>{name}</CardTitle>
+                      <span className="text-xs font-bold text-slate-400">Total: {total}</span>
+                    </CardHeader>
+                    <CardContent className="p-5 flex items-center gap-5">
+                      <div className="flex-1 h-[160px] relative">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie data={data} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={3} dataKey="value" stroke="none">
+                              {data.map((entry, idx) => <Cell key={`cell-${idx}`} fill={entry.color} />)}
+                            </Pie>
+                            <Tooltip contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 3px 10px rgba(0,0,0,0.1)' }} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <span className="text-xl font-bold text-slate-800">
+                            {total > 0 ? Math.round((status.APPROVED / total) * 100) : 0}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-2.5 min-w-[110px]">
+                        {data.map((item, idx) => (
+                          <div key={idx} className="flex items-center gap-2.5 text-xs">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                            <span className="text-slate-600 font-medium">{item.name}</span>
+                            <span className="font-bold text-slate-900 ml-auto">{item.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="my-8 border-t border-slate-200" />
+
+          {/* Stakeholder Status Breakdown (Exit) */}
+          <div className="animate-slide-up" style={{ animationDelay: '0.60s' }}>
+            <h2 className="text-2xl font-bold text-slate-800 mb-6">Stakeholder Status Breakdown (Exit Workflow)</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {exitStakeholderStatus && Object.entries(exitStakeholderStatus).map(([name, status], i) => {
+                const data = [
+                  { name: 'Approved', value: status.APPROVED, color: '#10b981' },
+                  { name: 'Rejected', value: status.REJECTED, color: '#ef4444' },
+                  { name: 'Pending', value: status.PENDING, color: '#f59e0b' },
+                ];
+                const total = status.APPROVED + status.REJECTED + status.PENDING;
+
+                return (
+                  <Card key={i} className="border-0 shadow-sm bg-white overflow-hidden group hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-2 border-b border-slate-50 flex flex-row items-center justify-between">
+                      <CardTitle className="text-base border-l-4 pl-3" style={{ borderColor: '#f97316' }}>{name}</CardTitle>
                       <span className="text-xs font-bold text-slate-400">Total: {total}</span>
                     </CardHeader>
                     <CardContent className="p-5 flex items-center gap-5">
