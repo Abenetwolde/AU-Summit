@@ -8,7 +8,7 @@ import {
   Download as DownloadIcon, FileText as FileTextIcon,
   Plus, Minus, LogOut
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, Legend, BarChart, Bar } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, Legend, BarChart, Bar, LabelList } from 'recharts';
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -867,9 +867,15 @@ export default function SuperAdminDashboard() {
                       cursor={{ fill: '#f8fafc' }}
                     />
                     <Legend iconType="circle" />
-                    <Bar dataKey="APPROVED" name="Approved" stackId="a" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20} />
-                    <Bar dataKey="PENDING" name="Pending" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={20} />
-                    <Bar dataKey="REJECTED" name="Rejected" stackId="a" fill="#ef4444" radius={[4, 0, 0, 4]} barSize={20} />
+                    <Bar dataKey="APPROVED" name="Approved" stackId="a" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20}>
+                      <LabelList dataKey="APPROVED" position="right" style={{ fill: '#334155', fontSize: '12px', fontWeight: 'bold' }} />
+                    </Bar>
+                    <Bar dataKey="PENDING" name="Pending" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={20}>
+                      <LabelList dataKey="PENDING" position="right" style={{ fill: '#334155', fontSize: '12px', fontWeight: 'bold' }} />
+                    </Bar>
+                    <Bar dataKey="REJECTED" name="Rejected" stackId="a" fill="#ef4444" radius={[4, 0, 0, 4]} barSize={20}>
+                      <LabelList dataKey="REJECTED" position="right" style={{ fill: '#334155', fontSize: '12px', fontWeight: 'bold' }} />
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>

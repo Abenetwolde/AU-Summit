@@ -845,7 +845,7 @@ export interface UpdateEquipmentStatusPayload {
 }
 
 export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
-// export const FILE_BASE_URL = 'http://localhost:3000';
+// export const FILE_BASE_URL = 'http://localhost:3001';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
