@@ -2128,6 +2128,13 @@ export const api = createApi({
             }),
             transformResponse: (response: any) => response.data,
         }),
+        getSuperAdminCountryDistribution: builder.query<{ code: string; name: string; count: number }[], { filter?: 'ALL' | 'APPROVED' | 'ENTERED' | 'EXITED' } | void>({
+            query: (params) => {
+                const filter = params && 'filter' in params ? params.filter : 'ALL';
+                return `/super-admin/country-distribution?filter=${filter}`;
+            },
+            transformResponse: (response: any) => response.data,
+        }),
         // Entry Endpoints
         getEntries: builder.query<EntriesResponse, { page: number; limit: number; search?: string; status?: string }>({
             query: ({ page, limit, search, status }) => ({
@@ -2281,6 +2288,7 @@ export const {
 
     useGetAdminOfficerKPIsQuery,
     useGetSuperAdminOfficerPerformanceQuery,
+    useGetSuperAdminCountryDistributionQuery,
 
     // API Management Hooks
     useGetApiProvidersQuery,

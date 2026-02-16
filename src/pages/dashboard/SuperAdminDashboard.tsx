@@ -9,7 +9,6 @@ import {
   Plus, Minus, LogOut
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, Legend, BarChart, Bar, LabelList } from 'recharts';
-import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import en from 'react-phone-number-input/locale/en';
@@ -30,6 +29,7 @@ import {
 } from '@/store/services/api';
 import { exportDashboardAnalyticsToCSV, exportDashboardAnalyticsToPDF, captureElement, type DashboardExportData } from '@/lib/export-utils';
 import { OfficerPerformance } from '@/components/dashboard/OfficerPerformance';
+import CountryDistributionWidget from '@/components/dashboard/CountryDistributionWidget';
 
 // --- UTILITY ---
 function cn(...inputs: ClassValue[]) {
@@ -37,7 +37,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 // --- CONSTANTS ---
-const GEO_URL = "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson";
+
 
 
 // --- UI COMPONENTS ---
@@ -103,8 +103,6 @@ Progress.displayName = "Progress";
 
 // --- MAIN PAGE ---
 export default function SuperAdminDashboard() {
-  const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(1);
   const [mounted, setMounted] = useState(false);
   const [selectedForm, setSelectedForm] = useState<string>("all");
 
@@ -174,47 +172,7 @@ export default function SuperAdminDashboard() {
     setMounted(true);
   }, []);
 
-  const countryDataMap = React.useMemo(() => {
-    if (!dashboardData?.countries) return new Map();
 
-    // Map 2-letter codes to 3-letter codes for the GeoJSON compatibility
-    const iso2to3: Record<string, string> = {
-      'AF': 'AFG', 'AX': 'ALA', 'AL': 'ALB', 'DZ': 'DZA', 'AS': 'ASM', 'AD': 'AND', 'AO': 'AGO', 'AI': 'AIA', 'AQ': 'ATA', 'AG': 'ATG',
-      'AR': 'ARG', 'AM': 'ARM', 'AW': 'ABW', 'AU': 'AUS', 'AT': 'AUT', 'AZ': 'AZE', 'BS': 'BHS', 'BH': 'BHR', 'BD': 'BGD', 'BB': 'BRB',
-      'BY': 'BLR', 'BE': 'BEL', 'BZ': 'BLZ', 'BJ': 'BEN', 'BM': 'BMU', 'BT': 'BTN', 'BO': 'BOL', 'BQ': 'BES', 'BA': 'BIH', 'BW': 'BWA',
-      'BV': 'BVT', 'BR': 'BRA', 'IO': 'IOT', 'BN': 'BRN', 'BG': 'BGR', 'BF': 'BFA', 'BI': 'BDI', 'CV': 'CPV', 'KH': 'KHM', 'CM': 'CMR',
-      'CA': 'CAN', 'KY': 'CYM', 'CF': 'CAF', 'TD': 'TCD', 'CL': 'CHL', 'CN': 'CHN', 'CX': 'CXR', 'CC': 'CCK', 'CO': 'COL', 'KM': 'COM',
-      'CD': 'COD', 'CG': 'COG', 'CK': 'COK', 'CR': 'CRI', 'CI': 'CIV', 'HR': 'HRV', 'CU': 'CUB', 'CW': 'CUW', 'CY': 'CYP', 'CZ': 'CZE',
-      'DK': 'DNK', 'DJ': 'DJI', 'DM': 'DMA', 'DO': 'DOM', 'EC': 'ECU', 'EG': 'EGY', 'SV': 'SLV', 'GQ': 'GNQ', 'ER': 'ERI', 'EE': 'EST',
-      'SZ': 'SWZ', 'ET': 'ETH', 'FK': 'FLK', 'FO': 'FRO', 'FJ': 'FJI', 'FI': 'FIN', 'FR': 'FRA', 'GF': 'GUF', 'PF': 'PYF', 'TF': 'ATF',
-      'GA': 'GAB', 'GM': 'GMB', 'GE': 'GEO', 'DE': 'DEU', 'GH': 'GHA', 'GI': 'GIB', 'GR': 'GRC', 'GL': 'GRL', 'GD': 'GRD', 'GP': 'GLP',
-      'GU': 'GUM', 'GT': 'GTM', 'GG': 'GGY', 'GN': 'GIN', 'GW': 'GNB', 'GY': 'GUY', 'HT': 'HTI', 'HM': 'HMD', 'VA': 'VAT', 'HN': 'HND',
-      'HK': 'HKG', 'HU': 'HUN', 'IS': 'ISL', 'IN': 'IND', 'ID': 'IDN', 'IR': 'IRN', 'IQ': 'IRQ', 'IE': 'IRL', 'IM': 'IMN', 'IL': 'ISR',
-      'IT': 'ITA', 'JM': 'JAM', 'JP': 'JPN', 'JE': 'JEY', 'JO': 'JOR', 'KZ': 'KAZ', 'KE': 'KEN', 'KI': 'KIR', 'KP': 'PRK', 'KR': 'KOR',
-      'KW': 'KWT', 'KG': 'KGZ', 'LA': 'LAO', 'LV': 'LVA', 'LB': 'LBN', 'LS': 'LSO', 'LR': 'LBR', 'LY': 'LBY', 'LI': 'LIE', 'LT': 'LTU',
-      'LU': 'LUX', 'MO': 'MAC', 'MG': 'MDG', 'MW': 'MWI', 'MY': 'MYS', 'MV': 'MDV', 'ML': 'MLI', 'MT': 'MLT', 'MH': 'MHL', 'MQ': 'MTQ',
-      'MR': 'MRT', 'MU': 'MUS', 'YT': 'MYT', 'MX': 'MEX', 'FM': 'FSM', 'MD': 'MDA', 'MC': 'MCO', 'MN': 'MNG', 'ME': 'MNE', 'MS': 'MSR',
-      'MA': 'MAR', 'MZ': 'MOZ', 'MM': 'MMR', 'NA': 'NAM', 'NR': 'NRU', 'NP': 'NPL', 'NL': 'NLD', 'NC': 'NCL', 'NZ': 'NZL', 'NI': 'NIC',
-      'NE': 'NER', 'NG': 'NGA', 'NU': 'NIU', 'NF': 'NFK', 'MP': 'MNP', 'NO': 'NOR', 'OM': 'OMN', 'PK': 'PAK', 'PW': 'PLW', 'PS': 'PSE',
-      'PA': 'PAN', 'PG': 'PNG', 'PY': 'PRY', 'PE': 'PER', 'PH': 'PHL', 'PN': 'PCN', 'PL': 'POL', 'PT': 'PRT', 'PR': 'PRI', 'QA': 'QAT',
-      'RE': 'REU', 'RO': 'ROU', 'RU': 'RUS', 'RW': 'RWA', 'BL': 'BLM', 'SH': 'SHN', 'KN': 'KNA', 'LC': 'LCA', 'MF': 'MAF', 'PM': 'SPM',
-      'VC': 'VCT', 'WS': 'WSM', 'SM': 'SMR', 'ST': 'STP', 'SA': 'SAU', 'SN': 'SEN', 'RS': 'SRB', 'SC': 'SYC', 'SL': 'SLE', 'SG': 'SGP',
-      'SX': 'SXM', 'SK': 'SVK', 'SI': 'SVN', 'SB': 'SLB', 'SO': 'SOM', 'ZA': 'ZAF', 'GS': 'SGS', 'SS': 'SSD', 'ES': 'ESP', 'LK': 'LKA',
-      'SD': 'SDN', 'SR': 'SUR', 'SJ': 'SJM', 'SE': 'SWE', 'CH': 'CHE', 'SY': 'SYR', 'TW': 'TWN', 'TJ': 'TJK', 'TZ': 'TZA', 'TH': 'THA',
-      'TL': 'TLS', 'TG': 'TGO', 'TK': 'TKL', 'TO': 'TON', 'TT': 'TTO', 'TN': 'TUN', 'TR': 'TUR', 'TM': 'TKM', 'TC': 'TCA', 'TV': 'TUV',
-      'UG': 'UGA', 'UA': 'UKR', 'AE': 'ARE', 'GB': 'GBR', 'UM': 'UMI', 'US': 'USA', 'UY': 'URY', 'UZ': 'UZB', 'VU': 'VUT', 'VE': 'VEN',
-      'VN': 'VNM', 'VG': 'VGB', 'VI': 'VIR', 'WF': 'WLF', 'EH': 'ESH', 'YE': 'YEM', 'ZM': 'ZMB', 'ZW': 'ZWE'
-    };
-
-    // Filter out Ethiopia (ETH) from the map
-    return new Map(dashboardData.countries
-      .filter(c => c.code?.toUpperCase() !== 'ETH')
-      .map(c => {
-        const upperCode = (c.code || '').toUpperCase().trim();
-        const code = upperCode.length === 2 ? iso2to3[upperCode] || upperCode : upperCode;
-        return [code, c];
-      }));
-  }, [dashboardData?.countries]);
 
   // Derived metrics from Journalists Status chart data for mini cards consistency
   const chartDerivedStats = React.useMemo(() => {
@@ -254,8 +212,7 @@ export default function SuperAdminDashboard() {
     </div>
   );
 
-  const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.3, 8));
-  const handleZoomOut = () => setZoom(prev => Math.max(prev / 1.3, 1));
+
 
   const totalDistribution = adminCharts.statusDistribution.reduce((acc: number, curr: { count: number }) => acc + curr.count, 0);
   const donutData = adminCharts.statusDistribution.map((item: { status: string; count: number }) => ({
@@ -278,25 +235,7 @@ export default function SuperAdminDashboard() {
     }
   };
 
-  const getCountryName = (code: string) => {
-    if (!code) return 'Unknown';
-    const upper = code.toUpperCase().trim();
 
-    // ISO-2 to Name mapping (from react-phone-number-input)
-    const iso2Name = en[upper as keyof typeof en];
-    if (iso2Name) return iso2Name;
-
-    // ISO-3 fallback (a few common ones if needed, but backend usually provides full name now)
-    const iso3Map: Record<string, string> = {
-      'ETH': 'Ethiopia',
-      'USA': 'United States',
-      'GBR': 'United Kingdom',
-      'CAN': 'Canada',
-      'FRA': 'France'
-    };
-
-    return iso3Map[upper] || code;
-  };
 
   const selectedPerformance = performanceData.find(
     p => p.stakeholder === selectedStakeholder
@@ -706,99 +645,10 @@ export default function SuperAdminDashboard() {
               </CardContent>
             </Card>
           </div>
-          {/* ROW 2: Geographic Distribution – full width, taller */}
-          <Card id="chart-geographic-dist" className="border-0 shadow-sm animate-slide-up" style={{ animationDelay: '0.25s' }}>
-            <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-slate-50">
-              <CardTitle>Geographic Distribution</CardTitle>
-              <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
-                <Button variant="ghost" size="icon" className="h-7 w-7 bg-white shadow-sm hover:bg-slate-50 text-blue-600 border border-slate-200" onClick={handleZoomIn}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7 bg-white shadow-sm hover:bg-slate-50 text-blue-600 border border-slate-200" onClick={handleZoomOut}>
-                  <Minus className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex flex-col lg:flex-row gap-6 sm:gap-8">
-                <div className="h-[300px] sm:h-[400px] lg:h-[480px] lg:flex-1 relative bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 shadow-inner">
-                  <ComposableMap
-                    projection="geoMercator"
-                    style={{ width: "100%", height: "100%" }}
-                  >
-                    <ZoomableGroup
-                      zoom={zoom}
-                      center={[20, 0]}
-                      onMoveEnd={({ zoom }) => setZoom(zoom)}
-                    >
-                      <Geographies geography={GEO_URL}>
-                        {({ geographies }) => geographies.map((geo) => {
-                          const countryData = countryDataMap.get(geo.id);
-                          return (
-                            <Geography
-                              key={geo.rsmKey}
-                              geography={geo}
-                              onMouseEnter={() => setHoveredCountry(`${geo.properties.name}${countryData ? `: ${countryData.count}` : ''}`)}
-                              onMouseLeave={() => setHoveredCountry(null)}
-                              fill={countryData ? countryData.color : "#cbd5e1"}
-                              stroke="#ffffff"
-                              strokeWidth={0.5}
-                              style={{ default: { outline: "none" }, hover: { fill: "#94a3b8", outline: "none" }, pressed: { outline: "none" } }}
-                            />
-                          );
-                        })}
-                      </Geographies>
-                    </ZoomableGroup>
-                  </ComposableMap>
-                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md shadow-lg border border-slate-100 rounded-xl px-4 py-2.5">
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Selected</div>
-                    <div className="text-sm font-bold text-slate-900 mt-0.5 max-w-[200px] truncate">{hoveredCountry || "Hover a country"}</div>
-                  </div>
-                </div>
 
-                <div className="lg:w-80 space-y-3 sm:space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Top Nationalities</div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-2 py-0.5 rounded-full">Top 10</div>
-                  </div>
-                  <div className="space-y-3 sm:space-y-4 h-[250px] sm:h-[350px] lg:h-[420px] pr-2 overflow-y-auto custom-scrollbar">
-                    {dashboardData.countries.filter(c => c.code?.toUpperCase() !== 'ETH').slice(0, 10).map((country, idx) => {
-                      const maxCount = Math.max(...dashboardData.countries.filter(c => c.code?.toUpperCase() !== 'ETH').slice(0, 10).map(c => c.count), 1);
-                      const percentage = (country.count / maxCount) * 100;
-                      return (
-                        <div key={idx} className="group relative">
-                          <div className="flex items-center justify-between mb-1.5">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-md bg-slate-100 text-[10px] font-bold text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
-                                {idx + 1}
-                              </span>
-                              <span className="text-sm font-bold text-slate-700 truncate group-hover:text-slate-900 transition-colors">
-                                {country.name}
-                              </span>
-                              <span className="flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-400 uppercase tracking-tight">
-                                {country.code}
-                              </span>
-                            </div>
-                            <span className="text-sm font-black text-slate-900">{country.count}</span>
-                          </div>
-                          <Progress
-                            value={percentage}
-                            className="h-1.5 bg-slate-100"
-                            indicatorClassName={cn(
-                              "transition-all duration-1000",
-                              idx === 0 ? "bg-blue-600" :
-                                idx === 1 ? "bg-indigo-500" :
-                                  idx === 2 ? "bg-violet-500" : "bg-slate-300 group-hover:bg-blue-400"
-                            )}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+
+          {/* New Country Distribution Widget */}
+          <CountryDistributionWidget />
 
           {/* Stakeholder Status Breakdown (Entry) */}
           <Card id="chart-stakeholder-breakdown" className="border-0 shadow-sm animate-slide-up" style={{ animationDelay: '0.2s' }}>
@@ -1351,7 +1201,7 @@ export default function SuperAdminDashboard() {
           </div>
 
         </div>
-      </main>
-    </div>
+      </main >
+    </div >
   );
 }
