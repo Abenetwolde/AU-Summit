@@ -845,7 +845,7 @@ export interface UpdateEquipmentStatusPayload {
 }
 
 export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
-// export const FILE_BASE_URL = 'http://localhost:3000';
+// export const FILE_BASE_URL = 'http://localhost:3001';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -2089,8 +2089,11 @@ export const api = createApi({
             query: () => '/super-admin/stakeholders',
             transformResponse: (response: SuperAdminStakeholdersResponse) => response.data,
         }),
-        getSuperAdminStakeholderStatus: builder.query<SuperAdminStakeholderStatus, void>({
-            query: () => '/super-admin/stakeholder-status',
+        getSuperAdminStakeholderStatus: builder.query<SuperAdminStakeholderStatus, { type?: 'ENTRY' | 'EXIT' } | void>({
+            query: (params) => {
+                const type = params && 'type' in params ? params.type : 'ENTRY';
+                return `/super-admin/stakeholder-status?type=${type}`;
+            },
             transformResponse: (response: SuperAdminStakeholderStatusResponse) => response.data,
         }),
         getSuperAdminPerformance: builder.query<SuperAdminPerformance[], void>({
