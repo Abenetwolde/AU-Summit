@@ -64,10 +64,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const API_BASE_URL = 'https://api.arrivalclearance.gov.et/api/v1'; // Should match FILE_BASE_URL in api.ts
+    const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/v1`; 
 
     useEffect(() => {
         const initAuth = async () => {
+            // Check if we have a hint that a user was previously logged in
+            // This avoids a redundant fetch on first load if the user is clearly logged out
+            if (!localStorage.getItem(USER_STORAGE_KEY)) {
+                setLoading(false);
+                return;
+            }
+
             try {
                 // Try to get current user session using HttpOnly cookie
                 const response = await fetch(`${API_BASE_URL}/auth/me`, {
