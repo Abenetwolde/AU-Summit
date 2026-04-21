@@ -62,6 +62,7 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog';
+import { FormFilter } from '@/components/dashboard/FormFilter';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -362,11 +363,11 @@ function WorkflowBuilderContent() {
     const [selectedPhase, setSelectedPhase] = useState<'ENTRY' | 'EXIT'>('ENTRY');
 
     const filteredSteps = useMemo(() => {
-        if (!workflowSteps) return [];
+        if (!workflowSteps || selectedFormId === null) return [];
+        
         return workflowSteps.filter(step => {
-            // Filter by Form
-            if (selectedFormId !== null && step.formId !== null && step.formId !== selectedFormId) return false;
-            // Global steps (formId: null) are shown across all form contexts
+            // Filter STRICTLY by Form ID (exclude global steps unless they match)
+            if (step.formId !== selectedFormId) return false;
 
             // Filter by Audience
             if (step.targetAudience !== selectedAudience) return false;
@@ -396,8 +397,9 @@ function WorkflowBuilderContent() {
 
     // Load Data
     useEffect(() => {
-        if (forms && forms.length > 0 && selectedFormId === null) {
-            setSelectedFormId(forms[0].form_id);
+        const publishedForms = forms?.filter((f: any) => f.status === 'PUBLISHED') || [];
+        if (publishedForms.length > 0 && selectedFormId === null) {
+            setSelectedFormId(publishedForms[0].form_id);
         }
     }, [forms]);
 
@@ -685,14 +687,12 @@ function WorkflowBuilderContent() {
                     <div className="flex items-center gap-4">
                         <div className="flex flex-col gap-1.5 min-w-[200px]">
                             <Label className="text-[10px] uppercase text-slate-500 font-bold px-1">Filter by Form</Label>
-                            <Select value={selectedFormId?.toString() || ''} onValueChange={v => setSelectedFormId(Number(v))}>
-                                <SelectTrigger className="h-9 bg-slate-50">
-                                    <SelectValue placeholder="Select Form" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {forms?.map(f => <SelectItem key={f.form_id} value={f.form_id.toString()}>{f.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                            <FormFilter 
+                                value={selectedFormId?.toString()}
+                                onChange={(val) => setSelectedFormId(val ? Number(val) : null)}
+                                hideDefault={true}
+                                className="w-full"
+                            />
                         </div>
 
                         <div className="flex flex-col gap-1.5 min-w-[150px]">

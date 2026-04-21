@@ -24,12 +24,14 @@ import { toast } from 'sonner';
 import { useGetExitWorkflowApplicationsQuery, useInitializeExitWorkflowMutation } from '@/store/services/api';
 import { useAuth } from '@/auth/context';
 import { exportJournalistsToCSV, exportJournalistsToPDF } from '@/lib/export-utils';
+import { FormFilter } from '@/components/dashboard/FormFilter';
 
 export function ExitWorkflowDashboard() {
     const navigate = useNavigate();
     const { user, checkPermission } = useAuth();
     const [page, setPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedFormId, setSelectedFormId] = useState<string | undefined>(undefined);
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [nationalityFilter, setNationalityFilter] = useState('');
     const [hasDroneFilter, setHasDroneFilter] = useState<boolean | undefined>(undefined);
@@ -66,7 +68,8 @@ export function ExitWorkflowDashboard() {
         startDate: dateRange.start || undefined,
         endDate: dateRange.end || undefined,
         hasDrone: hasDroneFilter,
-        declarationStatus: declarationStatusFilter
+        declarationStatus: declarationStatusFilter,
+        formId: selectedFormId ? Number(selectedFormId) : undefined
     });
 
     const [initializeExit, { isLoading: isInitializing }] = useInitializeExitWorkflowMutation();
@@ -80,7 +83,8 @@ export function ExitWorkflowDashboard() {
         startDate: dateRange.start || undefined,
         endDate: dateRange.end || undefined,
         hasDrone: hasDroneFilter,
-        declarationStatus: declarationStatusFilter
+        declarationStatus: declarationStatusFilter,
+        formId: selectedFormId ? Number(selectedFormId) : undefined
     }, { skip: !isExporting });
 
     useEffect(() => {
@@ -262,9 +266,21 @@ export function ExitWorkflowDashboard() {
 
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 tracking-wide">
-                                <Globe className="w-3 h-3 text-purple-500" />
-                                Nationality
+                                <Filter className="w-3 h-3 text-purple-500" />
+                                Event Form
                             </label>
+                            <FormFilter 
+                                value={selectedFormId}
+                                onChange={setSelectedFormId}
+                                className="w-full"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                             <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 tracking-wide">
+                                 <Globe className="w-3 h-3 text-purple-500" />
+                                 Nationality
+                             </label>
                             <div className="relative group">
                                 <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-purple-500 transition-colors" />
                                 <Input

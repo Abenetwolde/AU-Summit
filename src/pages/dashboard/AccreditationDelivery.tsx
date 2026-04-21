@@ -9,6 +9,7 @@ import {
     AccreditationStatus
 } from '@/store/services/api';
 import { toast } from 'sonner';
+import { FormFilter } from '@/components/dashboard/FormFilter';
 import {
     Tooltip,
     TooltipContent,
@@ -18,6 +19,7 @@ import {
 
 export function AccreditationDelivery() {
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedFormId, setSelectedFormId] = useState<string | undefined>(undefined);
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
 
@@ -25,7 +27,8 @@ export function AccreditationDelivery() {
     const { data, isLoading, refetch, isFetching } = useGetAccreditationStatusesQuery({
         page: currentPage,
         limit: itemsPerPage,
-        search: searchTerm
+        search: searchTerm,
+        formId: selectedFormId ? Number(selectedFormId) : undefined
     });
     const [resendAccreditation, { isLoading: isResending }] = useResendAccreditationMutation();
     const [syncAccreditation, { isLoading: isSyncing }] = useSyncAccreditationMutation();
@@ -123,6 +126,14 @@ export function AccreditationDelivery() {
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
+                        </div>
+                        <div className="w-[280px] space-y-2">
+                            <label className="text-sm font-medium text-gray-500">Event Form</label>
+                            <FormFilter 
+                                value={selectedFormId}
+                                onChange={setSelectedFormId}
+                                className="w-full"
+                            />
                         </div>
                         <Button className="bg-blue-700 hover:bg-blue-800 text-white h-11" onClick={() => setCurrentPage(1)}>
                             Search
