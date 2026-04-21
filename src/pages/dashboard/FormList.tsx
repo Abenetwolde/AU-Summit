@@ -19,6 +19,14 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
     Plus,
@@ -40,51 +48,78 @@ import { useAuth } from '@/auth/context';
 
 export default function FormList() {
     const navigate = useNavigate();
-    const { data: forms, isLoading, isError } = useGetFormsQuery();
+    const { data: forms, isLoading, isError, refetch } = useGetFormsQuery();
     const [deleteForm] = useDeleteFormMutation();
     const [updateForm] = useUpdateFormMutation();
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Confirmation Modals State
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+    
+    const [isChangingStatus, setIsChangingStatus] = useState(false);
+    const [statusTarget, setStatusTarget] = useState<{ id: number; status: string; statusName: string } | null>(null);
+    
+    const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+    const [isConfirmingStatus, setIsConfirmingStatus] = useState(false);
 
     const { checkPermission } = useAuth();
     const canCreateForm = checkPermission('form:create');
     const canUpdateForm = checkPermission('form:update');
     const canDeleteForm = checkPermission('form:delete');
 
-    const handleDelete = async (id: number) => {
+    const handleDeleteClick = (id: number) => {
         if (!canDeleteForm) {
             toast.error("You don't have permission to delete forms");
             return;
         }
-        if (confirm('Are you sure you want to delete this form? This action cannot be undone.')) {
-            try {
-                await deleteForm(id).unwrap();
-                toast.success('Form deleted successfully');
-            } catch (error) {
-                toast.error('Failed to delete form');
-            }
+        setDeleteTarget(id);
+        setIsConfirmingDelete(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
+        
+        setIsDeleting(true);
+        try {
+            await deleteForm(deleteTarget).unwrap();
+            toast.success('Form deleted successfully');
+            refetch(); // Manually refetch for instant update
+        } catch (error) {
+            toast.error('Failed to delete form');
+        } finally {
+            setIsDeleting(false);
+            setIsConfirmingDelete(false);
+            setDeleteTarget(null);
         }
     };
 
-    const handleStatusChange = async (id: number, newStatus: string, statusName: string) => {
+    const handleStatusChangeClick = (id: number, newStatus: string, statusName: string) => {
         if (!canUpdateForm) {
             toast.error("You don't have permission to update forms");
             return;
         }
+        setStatusTarget({ id, status: newStatus, statusName });
+        setIsConfirmingStatus(true);
+    };
+
+    const confirmStatusChange = async () => {
+        if (!statusTarget) return;
         
-        let confirmMessage = `Are you sure you want to change this form's status to ${statusName}?`;
-        if (newStatus === 'PUBLISHED') {
-            confirmMessage = "Are you sure you want to publish this form? Publishing this form will automatically archive any currently published form.";
-        }
-        
-        if (confirm(confirmMessage)) {
-            try {
-                const formData = new FormData();
-                formData.append('status', newStatus);
-                await updateForm({ id, data: formData }).unwrap();
-                toast.success(`Form marked as ${statusName} successfully`);
-            } catch (error: any) {
-                toast.error(error?.data?.error || `Failed to change form status to ${statusName}`);
-            }
+        const { id, status: newStatus, statusName } = statusTarget;
+        setIsChangingStatus(true);
+        try {
+            const formData = new FormData();
+            formData.append('status', newStatus);
+            await updateForm({ id, data: formData }).unwrap();
+            toast.success(`Form marked as ${statusName} successfully`);
+            refetch(); // Manually refetch for instant update
+        } catch (error: any) {
+            toast.error(error?.data?.error || `Failed to change form status to ${statusName}`);
+        } finally {
+            setIsChangingStatus(false);
+            setIsConfirmingStatus(false);
+            setStatusTarget(null);
         }
     };
 
@@ -210,19 +245,19 @@ export default function FormList() {
                                                                     <DropdownMenuLabel className="text-xs text-gray-500 font-normal py-1">Change Status</DropdownMenuLabel>
                                                                     
                                                                     {form.status !== 'PUBLISHED' && (
-                                                                        <DropdownMenuItem onClick={() => handleStatusChange(form.form_id, 'PUBLISHED', 'Published')}>
+                                                                        <DropdownMenuItem onClick={() => handleStatusChangeClick(form.form_id, 'PUBLISHED', 'Published')}>
                                                                             <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" /> Publish Form
                                                                         </DropdownMenuItem>
                                                                     )}
                                                                     
                                                                     {form.status !== 'DRAFT' && (
-                                                                        <DropdownMenuItem onClick={() => handleStatusChange(form.form_id, 'DRAFT', 'Draft')}>
+                                                                        <DropdownMenuItem onClick={() => handleStatusChangeClick(form.form_id, 'DRAFT', 'Draft')}>
                                                                             <FileText className="mr-2 h-4 w-4 text-gray-600" /> Mark as Draft
                                                                         </DropdownMenuItem>
                                                                     )}
                                                                     
                                                                     {form.status !== 'ARCHIVED' && (
-                                                                        <DropdownMenuItem onClick={() => handleStatusChange(form.form_id, 'ARCHIVED', 'Archived')}>
+                                                                        <DropdownMenuItem onClick={() => handleStatusChangeClick(form.form_id, 'ARCHIVED', 'Archived')}>
                                                                             <Archive className="mr-2 h-4 w-4 text-amber-600" /> Archive Form
                                                                         </DropdownMenuItem>
                                                                     )}
@@ -231,7 +266,7 @@ export default function FormList() {
 
                                                             <DropdownMenuSeparator />
                                                             {canDeleteForm && (
-                                                                <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(form.form_id)}>
+                                                                <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteClick(form.form_id)}>
                                                                     <Trash2 className="mr-2 h-4 w-4" /> Delete
                                                                 </DropdownMenuItem>
                                                             )}
@@ -247,6 +282,54 @@ export default function FormList() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Delete Confirmation Modal */}
+            <Dialog open={isConfirmingDelete} onOpenChange={setIsConfirmingDelete}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Are you sure you want to delete this form?</DialogTitle>
+                        <DialogDescription>
+                            This action cannot be undone. This will permanently delete the form and all its associated data.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsConfirmingDelete(false)} disabled={isDeleting}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
+                            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                            Delete Form
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Status Change Confirmation Modal */}
+            <Dialog open={isConfirmingStatus} onOpenChange={setIsConfirmingStatus}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirm Status Change</DialogTitle>
+                        <DialogDescription>
+                            {statusTarget?.status === 'PUBLISHED' 
+                                ? "Are you sure you want to publish this form? Publishing this form will automatically archive any currently published form and make this form live for new applications."
+                                : `Are you sure you want to change this form's status to ${statusTarget?.statusName}?`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsConfirmingStatus(false)} disabled={isChangingStatus}>
+                            Cancel
+                        </Button>
+                        <Button 
+                            className={statusTarget?.status === 'PUBLISHED' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-black hover:bg-gray-800 text-white'} 
+                            onClick={confirmStatusChange} 
+                            disabled={isChangingStatus}
+                        >
+                            {isChangingStatus ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                            Confirm {statusTarget?.statusName}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

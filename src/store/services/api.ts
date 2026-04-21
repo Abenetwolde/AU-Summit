@@ -1662,9 +1662,11 @@ export const api = createApi({
                 method: 'POST',
                 body,
             }),
+            invalidatesTags: ['Form'],
         }),
         getFormById: builder.query<any, string>({
             query: (id) => `/forms/${id}`,
+            providesTags: (_result, _error, id) => [{ type: 'Form', id }, 'Form'],
         }),
         updateForm: builder.mutation<any, { id: number; data: any }>({
             query: ({ id, data }) => ({
@@ -1679,6 +1681,7 @@ export const api = createApi({
                 url: `/forms/${id}`,
                 method: 'DELETE',
             }),
+            invalidatesTags: ['Form'],
         }),
         // Email Templates
         getEmailTemplates: builder.query<EmailTemplatesResponse['data'], { page?: number; limit?: number } | void>({
@@ -1788,6 +1791,7 @@ export const api = createApi({
         getForms: builder.query<Form[], void>({
             query: () => '/forms',
             transformResponse: (response: { forms: Form[] }) => response.forms,
+            providesTags: ['Form'],
         }),
         // Badge Templates
         getBadgeTemplates: builder.query<BadgeTemplate[], void>({
