@@ -30,6 +30,7 @@ import {
 import { exportDashboardAnalyticsToCSV, exportDashboardAnalyticsToPDF, captureElement, type DashboardExportData } from '@/lib/export-utils';
 import { OfficerPerformance } from '@/components/dashboard/OfficerPerformance';
 import CountryDistributionWidget from '@/components/dashboard/CountryDistributionWidget';
+import { FormFilter } from '@/components/dashboard/FormFilter';
 
 // --- UTILITY ---
 function cn(...inputs: ClassValue[]) {
@@ -104,24 +105,41 @@ Progress.displayName = "Progress";
 // --- MAIN PAGE ---
 export default function SuperAdminDashboard() {
   const [mounted, setMounted] = useState(false);
-  const [selectedForm, setSelectedForm] = useState<string>("all");
+  const [selectedFormId, setSelectedFormId] = useState<string | undefined>(undefined);
 
   // Dashboard Data
-  // Dashboard Data
-  const { data: forms = [] } = useGetDashboardFormsQuery();
   const { data: dashboardData, isLoading: isDashboardLoading, isError: isDashboardError } = useGetDashboardDataQuery({
-    formName: selectedForm === 'all' ? undefined : selectedForm
+    // Keep using formName if needed elsewhere, but ideally we should migrate this too if possible
+    // For now, let's stick to the SuperAdmin metrics using formId
   });
 
   // New Super Admin Data
-  const { data: overview, isLoading: isOverviewLoading } = useGetSuperAdminOverviewQuery();
-  const { data: adminCharts, isLoading: isChartsLoading } = useGetSuperAdminChartsQuery();
+  const { data: overview, isLoading: isOverviewLoading } = useGetSuperAdminOverviewQuery({ 
+    formId: selectedFormId ? Number(selectedFormId) : undefined 
+  });
+  const { data: adminCharts, isLoading: isChartsLoading } = useGetSuperAdminChartsQuery({ 
+    formId: selectedFormId ? Number(selectedFormId) : undefined 
+  });
 
-  const { data: entryStakeholderStatus, isLoading: isEntryStatusLoading } = useGetSuperAdminStakeholderStatusQuery({ type: 'ENTRY' });
-  const { data: exitStakeholderStatus, isLoading: isExitStatusLoading } = useGetSuperAdminStakeholderStatusQuery({ type: 'EXIT' });
-  const { data: performanceData = [], isLoading: isPerformanceLoading } = useGetSuperAdminPerformanceQuery();
-  const { data: entryExitStats, isLoading: isEntryExitLoading } = useGetSuperAdminEntryExitStatsQuery({ timeframe: 'month' });
-  const { data: officerKPIs, isLoading: isOfficerLoading } = useGetSuperAdminOfficerPerformanceQuery({ timeframe: 'month' });
+  const { data: entryStakeholderStatus, isLoading: isEntryStatusLoading } = useGetSuperAdminStakeholderStatusQuery({ 
+    type: 'ENTRY',
+    formId: selectedFormId ? Number(selectedFormId) : undefined 
+  });
+  const { data: exitStakeholderStatus, isLoading: isExitStatusLoading } = useGetSuperAdminStakeholderStatusQuery({ 
+    type: 'EXIT',
+    formId: selectedFormId ? Number(selectedFormId) : undefined 
+  });
+  const { data: performanceData = [], isLoading: isPerformanceLoading } = useGetSuperAdminPerformanceQuery({ 
+    formId: selectedFormId ? Number(selectedFormId) : undefined 
+  });
+  const { data: entryExitStats, isLoading: isEntryExitLoading } = useGetSuperAdminEntryExitStatsQuery({ 
+    timeframe: 'month',
+    formId: selectedFormId ? Number(selectedFormId) : undefined 
+  });
+  const { data: officerKPIs, isLoading: isOfficerLoading } = useGetSuperAdminOfficerPerformanceQuery({ 
+    timeframe: 'month',
+    formId: selectedFormId ? Number(selectedFormId) : undefined 
+  });
   const { data: registrationStats } = useGetRegistrationStatsQuery();
 
   const [selectedStakeholder, setSelectedStakeholder] = useState<string>("");
@@ -354,22 +372,10 @@ export default function SuperAdminDashboard() {
 
           {/* Export + Form Selector */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 mb-4">
-            <div className="relative group">
-              <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-4 py-2.5 bg-white w-full sm:min-w-[280px] sm:w-auto hover:border-blue-400 transition-colors">
-                <CalendarDays className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                <select
-                  value={selectedForm}
-                  onChange={(e) => setSelectedForm(e.target.value)}
-                  className="appearance-none border-0 outline-none text-sm flex-1 bg-transparent text-slate-700 font-medium cursor-pointer"
-                >
-                  <option value="all">All Events</option>
-                  {forms.map((form) => (
-                    <option key={form.id} value={form.name}>{form.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="h-4 w-4 text-slate-400 pointer-events-none group-hover:text-blue-500 transition-colors flex-shrink-0" />
-              </div>
-            </div>
+            <FormFilter 
+              value={selectedFormId} 
+              onChange={setSelectedFormId} 
+            />
             <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-2 flex-1 sm:flex-initial justify-center">
               <DownloadIcon className="h-4 w-4" /> <span className="hidden sm:inline">Export</span> CSV
             </Button>

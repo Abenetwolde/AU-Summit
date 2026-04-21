@@ -62,6 +62,7 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog';
+import { FormFilter } from '@/components/dashboard/FormFilter';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -686,14 +687,12 @@ function WorkflowBuilderContent() {
                     <div className="flex items-center gap-4">
                         <div className="flex flex-col gap-1.5 min-w-[200px]">
                             <Label className="text-[10px] uppercase text-slate-500 font-bold px-1">Filter by Form</Label>
-                            <Select value={selectedFormId?.toString() || ''} onValueChange={v => setSelectedFormId(Number(v))}>
-                                <SelectTrigger className="h-9 bg-slate-50">
-                                    <SelectValue placeholder="Select Form" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {forms?.filter((f: any) => f.status === 'PUBLISHED').map((f: any) => <SelectItem key={f.form_id} value={f.form_id.toString()}>{f.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                            <FormFilter 
+                                value={selectedFormId?.toString()}
+                                onChange={(val) => setSelectedFormId(val ? Number(val) : null)}
+                                hideDefault={true}
+                                className="w-full"
+                            />
                         </div>
 
                         <div className="flex flex-col gap-1.5 min-w-[150px]">

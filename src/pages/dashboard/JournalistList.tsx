@@ -12,6 +12,7 @@ import {
     useGetApplicationsQuery,
     useGetWorkflowApplicationsQuery,
 } from '@/store/services/api';
+import { FormFilter } from '@/components/dashboard/FormFilter';
 
 // Type for workflow step info
 interface WorkflowStepInfo {
@@ -24,6 +25,7 @@ export function JournalistList() {
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCountry, setSelectedCountry] = useState('');
+    const [selectedFormId, setSelectedFormId] = useState<string | undefined>(undefined);
     const [page, setPage] = useState(1);
     const limit = 50;
 
@@ -34,13 +36,24 @@ export function JournalistList() {
 
     // Use workflow API for non-super-admin users
     const { data: workflowData, isLoading: isWorkflowLoading, isError: isWorkflowError } = useGetWorkflowApplicationsQuery(
-        { page, limit, search: searchTerm, nationality: selectedCountry },
+        { 
+            page, 
+            limit, 
+            search: searchTerm, 
+            nationality: selectedCountry,
+            formId: selectedFormId ? Number(selectedFormId) : undefined 
+        },
         { skip: isSuperAdmin } // Skip this query if user is super admin
     );
 
     // Use regular API for super admin
     const { data: regularData, isLoading: isRegularLoading, isError: isRegularError } = useGetApplicationsQuery(
-        { page, limit },
+        { 
+            page, 
+            limit, 
+            search: searchTerm,
+            formId: selectedFormId ? Number(selectedFormId) : undefined 
+        },
         { skip: !isSuperAdmin } // Skip this query if user is NOT super admin
     );
 
@@ -285,6 +298,14 @@ export function JournalistList() {
                                     value={selectedCountry}
                                     onChange={setSelectedCountry}
                                     placeholder="All Nationalities"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-500">Event Form</label>
+                                <FormFilter 
+                                    value={selectedFormId}
+                                    onChange={setSelectedFormId}
+                                    className="w-full"
                                 />
                             </div>
                         </div>

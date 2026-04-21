@@ -1127,8 +1127,16 @@ export const api = createApi({
                 body: credentials,
             }),
         }),
-        getAccreditationStatuses: builder.query<AccreditationStatusesResponse, { page?: number; limit?: number; search?: string }>({
-            query: ({ page = 1, limit = 10, search = '' }) => `/accreditation/statuses?page=${page}&limit=${limit}&search=${search}`,
+        getAccreditationStatuses: builder.query<AccreditationStatusesResponse, { page?: number; limit?: number; search?: string; formId?: number }>({
+            query: ({ page = 1, limit = 10, search = '', formId }) => {
+                const params = new URLSearchParams({
+                    page: String(page),
+                    limit: String(limit),
+                    ...(search && { search }),
+                    ...(formId && { formId: String(formId) })
+                });
+                return `/accreditation/statuses?${params}`;
+            },
             providesTags: ['AccreditationStatus']
         }),
         resendAccreditation: builder.mutation<{ message: string }, number>({
@@ -1344,11 +1352,22 @@ export const api = createApi({
             }),
             invalidatesTags: ['Integration' as any],
         }),
-        getApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number } | void>({
+        getApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; is_manual?: boolean; formId?: number } | void>({
             query: (params) => {
                 const page = params && 'page' in params ? params.page : 1;
                 const limit = params && 'limit' in params ? params.limit : 10;
-                return `/applications?page=${page}&limit=${limit}`;
+                const search = params && 'search' in params ? params.search : '';
+                const is_manual = params && 'is_manual' in params ? params.is_manual : undefined;
+                const formId = params && 'formId' in params ? params.formId : undefined;
+
+                const queryParams = new URLSearchParams({
+                    page: String(page),
+                    limit: String(limit),
+                    ...(search && { search }),
+                    ...(is_manual !== undefined && { is_manual: String(is_manual) }),
+                    ...(formId && { formId: String(formId) })
+                });
+                return `/applications?${queryParams}`;
             },
             transformResponse: (response: ApplicationsResponse) => response.data,
             providesTags: ['Application'],
@@ -1457,9 +1476,9 @@ export const api = createApi({
             invalidatesTags: (_result, _error, id) => [{ type: 'Application', id }],
         }),
         // Two-Phase Workflow Endpoints
-        getEntryWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string; nationality?: string; startDate?: string; endDate?: string; hasDrone?: boolean; declarationStatus?: boolean }>({
+        getEntryWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string; nationality?: string; startDate?: string; endDate?: string; hasDrone?: boolean; declarationStatus?: boolean; formId?: number }>({
             query: (params = {}) => {
-                const { page = 1, limit = 10, search = '', status = '', nationality = '', startDate = '', endDate = '', hasDrone, declarationStatus } = params;
+                const { page = 1, limit = 10, search = '', status = '', nationality = '', startDate = '', endDate = '', hasDrone, declarationStatus, formId } = params;
                 const queryParams = new URLSearchParams({
                     page: String(page),
                     limit: String(limit),
@@ -1469,16 +1488,17 @@ export const api = createApi({
                     ...(startDate && { startDate }),
                     ...(endDate && { endDate }),
                     ...(hasDrone !== undefined && { hasDrone: String(hasDrone) }),
-                    ...(declarationStatus !== undefined && { declarationStatus: String(declarationStatus) })
+                    ...(declarationStatus !== undefined && { declarationStatus: String(declarationStatus) }),
+                    ...(formId && { formId: String(formId) })
                 });
                 return `/applications/entry-workflow?${queryParams}`;
             },
             transformResponse: (response: ApplicationsResponse) => response.data,
             providesTags: ['Application'],
         }),
-        getExitWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string; nationality?: string; startDate?: string; endDate?: string; hasDrone?: boolean; declarationStatus?: boolean }>({
+        getExitWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string; nationality?: string; startDate?: string; endDate?: string; hasDrone?: boolean; declarationStatus?: boolean; formId?: number }>({
             query: (params = {}) => {
-                const { page = 1, limit = 10, search = '', status = '', nationality = '', startDate = '', endDate = '', hasDrone, declarationStatus } = params;
+                const { page = 1, limit = 10, search = '', status = '', nationality = '', startDate = '', endDate = '', hasDrone, declarationStatus, formId } = params;
                 const queryParams = new URLSearchParams({
                     page: String(page),
                     limit: String(limit),
@@ -1488,7 +1508,8 @@ export const api = createApi({
                     ...(startDate && { startDate }),
                     ...(endDate && { endDate }),
                     ...(hasDrone !== undefined && { hasDrone: String(hasDrone) }),
-                    ...(declarationStatus !== undefined && { declarationStatus: String(declarationStatus) })
+                    ...(declarationStatus !== undefined && { declarationStatus: String(declarationStatus) }),
+                    ...(formId && { formId: String(formId) })
                 });
                 return `/applications/exit-workflow?${queryParams}`;
             },
@@ -1507,20 +1528,24 @@ export const api = createApi({
             transformResponse: (response: any) => response.data || response,
             providesTags: (_result, _error, id) => [{ type: 'Application', id }],
         }),
-        getApprovedApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; country?: string; date?: string } | void>({
+        getApprovedApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; country?: string; date?: string; formId?: number } | void>({
             query: (params) => {
                 const page = params && 'page' in params ? params.page : 1;
                 const limit = params && 'limit' in params ? params.limit : 10;
                 const search = params && 'search' in params ? params.search : '';
                 const country = params && 'country' in params ? params.country : '';
                 const date = params && 'date' in params ? params.date : '';
+                const formId = params && 'formId' in params ? params.formId : undefined;
 
-                let url = `/applications/approved?page=${page}&limit=${limit}`;
-                if (search) url += `&search=${encodeURIComponent(search)}`;
-                if (country) url += `&country=${encodeURIComponent(country)}`;
-                if (date) url += `&date=${encodeURIComponent(date)}`;
-
-                return url;
+                const queryParams = new URLSearchParams({
+                    page: String(page),
+                    limit: String(limit),
+                    ...(search && { search }),
+                    ...(country && { country }),
+                    ...(date && { date }),
+                    ...(formId && { formId: String(formId) })
+                });
+                return `/applications/approved?${queryParams}`;
             },
             transformResponse: (response: ApplicationsResponse) => response.data,
             providesTags: ['Application'],
@@ -1536,9 +1561,16 @@ export const api = createApi({
             transformResponse: (response: ApplicationsResponse) => response.data,
             providesTags: ['Application'],
         }),
-        getFilteredApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; country: string }>({
-            query: ({ page = 1, limit = 10, search = '', country }) => {
-                return `/applications/filter/country?page=${page}&limit=${limit}&search=${search}&country=${country}`;
+        getFilteredApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; country: string; formId?: number }>({
+            query: ({ page = 1, limit = 10, search = '', country, formId }) => {
+                const queryParams = new URLSearchParams({
+                    page: String(page),
+                    limit: String(limit),
+                    ...(search && { search }),
+                    ...(country && { country }),
+                    ...(formId && { formId: String(formId) })
+                });
+                return `/applications/filter/country?${queryParams}`;
             },
             transformResponse: (response: ApplicationsResponse) => response.data,
             providesTags: ['Application'],
@@ -2070,15 +2102,21 @@ export const api = createApi({
         }),
 
         // Super Admin Dashboard Endpoints
-        getSuperAdminOverview: builder.query<SuperAdminOverview, void>({
-            query: () => '/super-admin/overview',
+        getSuperAdminOverview: builder.query<SuperAdminOverview, { formId?: number } | void>({
+            query: (params) => ({
+                url: '/super-admin/overview',
+                params: params || {}
+            }),
             transformResponse: (response: SuperAdminOverviewResponse) => response.data,
         }),
-        getSuperAdminCharts: builder.query<SuperAdminCharts, void>({
-            query: () => '/super-admin/charts',
+        getSuperAdminCharts: builder.query<SuperAdminCharts, { formId?: number } | void>({
+            query: (params) => ({
+                url: '/super-admin/charts',
+                params: params || {}
+            }),
             transformResponse: (response: SuperAdminChartsResponse) => response.data,
         }),
-        getSuperAdminEntryExitStats: builder.query<EntryExitStats, { timeframe?: string }>({
+        getSuperAdminEntryExitStats: builder.query<EntryExitStats, { timeframe?: string; formId?: number }>({
             query: (params) => ({
                 url: '/dashboard/entry-exit-stats',
                 method: 'GET',
@@ -2086,19 +2124,25 @@ export const api = createApi({
             }),
             transformResponse: (response: EntryExitStatsResponse) => response.data,
         }),
-        getSuperAdminStakeholders: builder.query<SuperAdminStakeholder[], void>({
-            query: () => '/super-admin/stakeholders',
+        getSuperAdminStakeholders: builder.query<SuperAdminStakeholder[], { formId?: number } | void>({
+            query: (params) => ({
+                url: '/super-admin/stakeholders',
+                params: params || {}
+            }),
             transformResponse: (response: SuperAdminStakeholdersResponse) => response.data,
         }),
-        getSuperAdminStakeholderStatus: builder.query<SuperAdminStakeholderStatus, { type?: 'ENTRY' | 'EXIT' } | void>({
-            query: (params) => {
-                const type = params && 'type' in params ? params.type : 'ENTRY';
-                return `/super-admin/stakeholder-status?type=${type}`;
-            },
+        getSuperAdminStakeholderStatus: builder.query<SuperAdminStakeholderStatus, { type?: 'ENTRY' | 'EXIT'; formId?: number } | void>({
+            query: (params) => ({
+                url: '/super-admin/stakeholder-status',
+                params: params || {}
+            }),
             transformResponse: (response: SuperAdminStakeholderStatusResponse) => response.data,
         }),
-        getSuperAdminPerformance: builder.query<SuperAdminPerformance[], void>({
-            query: () => '/super-admin/performance',
+        getSuperAdminPerformance: builder.query<SuperAdminPerformance[], { formId?: number } | void>({
+            query: (params) => ({
+                url: '/super-admin/performance',
+                params: params || {}
+            }),
             transformResponse: (response: SuperAdminPerformanceResponse) => response.data,
         }),
         getAdminAnalytics: builder.query<AdminAnalyticsData, void>({
@@ -2121,7 +2165,7 @@ export const api = createApi({
             }),
             transformResponse: (response: any) => response.data,
         }),
-        getSuperAdminOfficerPerformance: builder.query<OfficerPerformanceResponse, { timeframe?: string }>({
+        getSuperAdminOfficerPerformance: builder.query<OfficerPerformanceResponse, { timeframe?: string; formId?: number }>({
             query: (params) => ({
                 url: '/super-admin/officer-performance',
                 method: 'GET',
@@ -2129,11 +2173,11 @@ export const api = createApi({
             }),
             transformResponse: (response: any) => response.data,
         }),
-        getSuperAdminCountryDistribution: builder.query<{ code: string; name: string; count: number }[], { filter?: 'ALL' | 'APPROVED' | 'ENTERED' | 'EXITED' } | void>({
-            query: (params) => {
-                const filter = params && 'filter' in params ? params.filter : 'ALL';
-                return `/super-admin/country-distribution?filter=${filter}`;
-            },
+        getSuperAdminCountryDistribution: builder.query<{ code: string; name: string; count: number }[], { filter?: 'ALL' | 'APPROVED' | 'ENTERED' | 'EXITED'; formId?: number } | void>({
+            query: (params) => ({
+                url: '/super-admin/country-distribution',
+                params: params || {}
+            }),
             transformResponse: (response: any) => response.data,
         }),
         // Entry Endpoints

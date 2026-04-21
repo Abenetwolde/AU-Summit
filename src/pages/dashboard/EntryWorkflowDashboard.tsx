@@ -24,12 +24,14 @@ import { toast } from 'sonner';
 import { useGetEntryWorkflowApplicationsQuery } from '@/store/services/api';
 import { exportJournalistsToCSV, exportJournalistsToPDF } from '@/lib/export-utils';
 import { useAuth } from '@/auth/context';
+import { FormFilter } from '@/components/dashboard/FormFilter';
 
 export function EntryWorkflowDashboard() {
     const navigate = useNavigate();
     const { user, checkPermission } = useAuth();
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
+    const [selectedFormId, setSelectedFormId] = useState<string | undefined>(undefined);
     const [statusFilter, setStatusFilter] = useState<string>('PENDING');
     const [nationalityFilter, setNationalityFilter] = useState('');
     const [hasDroneFilter, setHasDroneFilter] = useState<boolean | undefined>(undefined);
@@ -66,7 +68,8 @@ export function EntryWorkflowDashboard() {
         startDate: dateRange.start || undefined,
         endDate: dateRange.end || undefined,
         hasDrone: hasDroneFilter,
-        declarationStatus: declarationStatusFilter
+        declarationStatus: declarationStatusFilter,
+        formId: selectedFormId ? Number(selectedFormId) : undefined
     });
 
     const { data: exportData, isFetching: isExportFetching } = useGetEntryWorkflowApplicationsQuery({
@@ -78,7 +81,8 @@ export function EntryWorkflowDashboard() {
         startDate: dateRange.start || undefined,
         endDate: dateRange.end || undefined,
         hasDrone: hasDroneFilter,
-        declarationStatus: declarationStatusFilter
+        declarationStatus: declarationStatusFilter,
+        formId: selectedFormId ? Number(selectedFormId) : undefined
     }, { skip: !isExporting });
 
     useEffect(() => {
@@ -249,6 +253,18 @@ export function EntryWorkflowDashboard() {
                                     <SelectItem value="EXITED">Exited Country</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 tracking-wide">
+                                <Filter className="w-3 h-3" />
+                                Event Form
+                            </label>
+                            <FormFilter 
+                                value={selectedFormId}
+                                onChange={setSelectedFormId}
+                                className="w-full"
+                            />
                         </div>
 
                         <div className="space-y-2">
