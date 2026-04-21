@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw } from 'lucide-react';
+import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw, History } from 'lucide-react';
 import { getFlagEmoji } from '@/lib/utils';
 import en from 'react-phone-number-input/locale/en';
 import { SystemCheckSuccess } from '@/components/SystemCheckSuccess';
@@ -54,6 +54,7 @@ export function JournalistProfile() {
     // Equipment approval states
     const [selectedEquipment, setSelectedEquipment] = useState<EquipmentType | null>(null);
     const [showEquipmentDialog, setShowEquipmentDialog] = useState(false);
+    const [showHistoryDialog, setShowHistoryDialog] = useState(false);
     const [equipmentStatus, setEquipmentStatus] = useState<EquipmentStatus>(EquipmentStatus.PENDING);
     const [rejectionReason, setRejectionReason] = useState('');
     const [equipmentNotes, setEquipmentNotes] = useState('');
@@ -658,19 +659,30 @@ export function JournalistProfile() {
                 <div className="lg:col-span-4 space-y-6 order-1 lg:order-2">
                     <Card className="bg-white border-0 shadow-sm">
                         <CardHeader>
-                            <div className="flex items-start gap-3">
-                                <ShieldCheck className="h-5 w-5 text-blue-600" />
-                                <div>
-                                    <h3 className="font-bold text-gray-900">Decision Panel</h3>
-                                    <div className="flex flex-col gap-1">
-                                        <p className="text-xs text-gray-500 leading-tight">Current Status: <span className="font-bold">{application.status}</span></p>
-                                        {userActionableApproval?.isResubmitted && (
-                                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 w-fit animate-pulse border border-amber-200 uppercase tracking-wider">
-                                                <RotateCcw className="h-2.5 w-2.5" /> Resubmitted / Updated
-                                            </span>
-                                        )}
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-start gap-3">
+                                    <ShieldCheck className="h-5 w-5 text-blue-600" />
+                                    <div>
+                                        <h3 className="font-bold text-gray-900">Decision Panel</h3>
+                                        <div className="flex flex-col gap-1">
+                                            <p className="text-xs text-gray-500 leading-tight">Current Status: <span className="font-bold">{application.status}</span></p>
+                                            {userActionableApproval?.isResubmitted && (
+                                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 w-fit animate-pulse border border-amber-200 uppercase tracking-wider">
+                                                    <RotateCcw className="h-2.5 w-2.5" /> Resubmitted / Updated
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-blue-600 border-blue-200 hover:bg-blue-50 font-bold"
+                                    onClick={() => setShowHistoryDialog(true)}
+                                >
+                                    <History className="h-4 w-4 mr-2" />
+                                    History
+                                </Button>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -925,6 +937,107 @@ export function JournalistProfile() {
                             )}
                             {equipmentStatus === EquipmentStatus.APPROVED ? 'Approve Equipment' : 'Reject Equipment'}
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Decision Notes History Dialog */}
+            <Dialog open={showHistoryDialog} onOpenChange={setShowHistoryDialog}>
+                <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <History className="h-5 w-5 text-blue-600" /> Decision History
+                        </DialogTitle>
+                        <DialogDescription>
+                            Past decisions and notes applied to this application during its workflow.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex-1 overflow-y-auto pr-2 space-y-6 pt-4 pb-4">
+                        {approvals && approvals.length > 0 ? (
+                            <div className="relative border-l-2 border-gray-200 ml-3 space-y-8">
+                                {approvals
+                                    .slice()
+                                    .sort((a: any, b: any) => {
+                                        const dateA = a.verifiedAt ? new Date(a.verifiedAt).getTime() : new Date(a.updatedAt).getTime();
+                                        const dateB = b.verifiedAt ? new Date(b.verifiedAt).getTime() : new Date(b.updatedAt).getTime();
+                                        return dateB - dateA; // Descending (newest first)
+                                    })
+                                    .filter((appr: any) => appr.status !== 'PENDING') // Only show concluded actions
+                                    .map((appr: any, idx: number) => {
+                                        const step = appr.workflowStep || appr.approvalWorkflowStep;
+                                        const stepName = step?.name || 'Unknown Step';
+                                        const timestamp = appr.verifiedAt || appr.updatedAt;
+
+                                        const isApproved = appr.status === 'APPROVED' || appr.status === 'NOT_APPLICABLE';
+                                        const isRejected = appr.status === 'REJECTED';
+
+                                        return (
+                                            <div key={appr.id || idx} className="relative pl-6">
+                                                {/* Timeline dot */}
+                                                <div className={`absolute -left-[9px] top-1 h-4 w-4 rounded-full border-2 border-white ${isApproved ? 'bg-green-500' : isRejected ? 'bg-red-500' : 'bg-gray-400'
+                                                    }`} />
+
+                                                <div className="bg-gray-50 border rounded-lg p-4 shadow-sm">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div>
+                                                            <h4 className="font-bold text-gray-900">{stepName}</h4>
+                                                            <p className="text-xs text-gray-500">
+                                                                {timestamp ? new Date(timestamp).toLocaleString() : 'N/A'}
+                                                                {appr.verifier ? ` • by ${appr.verifier.fullName || 'Admin'}` : ''}
+                                                            </p>
+                                                        </div>
+                                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${isApproved ? 'bg-green-100 text-green-700' :
+                                                                isRejected ? 'bg-red-100 text-red-700' :
+                                                                    'bg-gray-200 text-gray-700'
+                                                            }`}>
+                                                            {appr.status}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Primary Decision Note */}
+                                                    {appr.notes ? (
+                                                        <div className="mt-3 bg-white border border-gray-100 p-3 rounded text-sm text-gray-700 whitespace-pre-wrap">
+                                                            {appr.notes}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="mt-3 text-sm text-gray-400 italic">No notes provided for this decision.</div>
+                                                    )}
+
+                                                    {/* Field-level Rejection Details if present */}
+                                                    {appr.rejectionDetails && Object.keys(appr.rejectionDetails).length > 0 && (
+                                                        <div className="mt-3 pt-3 border-t border-gray-200">
+                                                            <h5 className="text-xs font-bold text-gray-700 uppercase mb-2 flex items-center gap-1">
+                                                                <FileText className="h-3 w-3" /> Field Modifications Required
+                                                            </h5>
+                                                            <div className="space-y-2">
+                                                                {Object.entries(appr.rejectionDetails).map(([fieldName, detailNote]) => (
+                                                                    <div key={fieldName} className="bg-red-50 text-red-800 p-2 rounded text-xs">
+                                                                        <span className="font-bold">{fieldName}:</span> {String(detailNote)}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
+                                {approvals.filter((appr: any) => appr.status !== 'PENDING').length === 0 && (
+                                    <div className="text-center py-6 text-gray-500 italic">
+                                        No previous decisions found.
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="text-center py-6 text-gray-500 italic">
+                                No history available for this application.
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter className="pt-4 border-t">
+                        <Button variant="outline" onClick={() => setShowHistoryDialog(false)}>Close</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
