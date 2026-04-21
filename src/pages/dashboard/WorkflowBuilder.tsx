@@ -333,7 +333,15 @@ function WorkflowBuilderContent() {
     const [deleteStep] = useDeleteWorkflowStepMutation();
     const [bulkUpdate, { isLoading: isSaving }] = useBulkUpdateWorkflowStepsMutation();
 
-    const { data: rolesData } = useGetRolesQuery();
+    const [roleSearchCreate, setRoleSearchCreate] = useState('');
+    const [roleSearchEdit, setRoleSearchEdit] = useState('');
+
+    const { data: rolesDataCreate, isFetching: isRolesCreateFetching } = useGetRolesQuery({ limit: 200, search: roleSearchCreate });
+    const { data: rolesDataEdit, isFetching: isRolesEditFetching } = useGetRolesQuery({ limit: 200, search: roleSearchEdit });
+    const rolesCreate = rolesDataCreate?.roles || [];
+    const rolesEdit = rolesDataEdit?.roles || [];
+    // kept for sidebar table view (no search needed there)
+    const { data: rolesData } = useGetRolesQuery({ limit: 200 });
     const roles = rolesData?.roles || [];
     const { data: forms } = useGetFormsQuery();
     const { data: emailTemplatesData } = useGetEmailTemplatesQuery({ limit: 100 });
@@ -364,7 +372,7 @@ function WorkflowBuilderContent() {
 
     const filteredSteps = useMemo(() => {
         if (!workflowSteps || selectedFormId === null) return [];
-        
+
         return workflowSteps.filter(step => {
             // Filter STRICTLY by Form ID (exclude global steps unless they match)
             if (step.formId !== selectedFormId) return false;
@@ -392,6 +400,7 @@ function WorkflowBuilderContent() {
         } else {
             setCurrentStep(step);
         }
+        setRoleSearchEdit('');
         setIsEditOpen(true);
     }, []);
 
@@ -687,7 +696,7 @@ function WorkflowBuilderContent() {
                     <div className="flex items-center gap-4">
                         <div className="flex flex-col gap-1.5 min-w-[200px]">
                             <Label className="text-[10px] uppercase text-slate-500 font-bold px-1">Filter by Form</Label>
-                            <FormFilter 
+                            <FormFilter
                                 value={selectedFormId?.toString()}
                                 onChange={(val) => setSelectedFormId(val ? Number(val) : null)}
                                 hideDefault={true}
@@ -739,7 +748,7 @@ function WorkflowBuilderContent() {
                 <div className={cn("bg-white border-r flex flex-col transition-all duration-300 relative z-10", isSidebarOpen ? "w-80" : "w-0 overflow-hidden")}>
                     <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
                         <span className="font-semibold text-xs uppercase tracking-wider text-slate-500">Unplaced Steps</span>
-                        <Button size="sm" onClick={() => { setCurrentStep({ color: '#3b82f6', isActive: true, targetAudience: 'INTERNATIONAL', formId: selectedFormId, isExitStep: selectedPhase === 'EXIT' }); setIsCreateOpen(true); }} className="h-7 text-xs">
+                        <Button size="sm" onClick={() => { setCurrentStep({ color: '#3b82f6', isActive: true, targetAudience: 'INTERNATIONAL', formId: selectedFormId, isExitStep: selectedPhase === 'EXIT' }); setRoleSearchCreate(''); setIsCreateOpen(true); }} className="h-7 text-xs">
                             <Plus className="mr-1 h-3 w-3" /> New
                         </Button>
                     </div>
@@ -1077,17 +1086,48 @@ function WorkflowBuilderContent() {
                             </div>
                             <div className="space-y-2">
                                 <Label>Role *</Label>
-                                <Select value={currentStep.requiredRole} onValueChange={v => setCurrentStep({ ...currentStep, requiredRole: v })}>
-                                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="ICS">ICS</SelectItem>
-                                        <SelectItem value="SECURITY_OFFICER">Security Officer</SelectItem>
-                                        <SelectItem value="CUSTOM_OFFICER">Custom Officer</SelectItem>
-                                        <SelectItem value="INSA_OFFICER">INSA Officer</SelectItem>
-                                        <SelectItem value="MEDIA_LIAISON">Media Liaison</SelectItem>
-                                        {roles?.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
+                                <div className="relative">
+                                    <div className="flex items-center border rounded-md bg-slate-50 focus-within:ring-1 focus-within:ring-blue-400 focus-within:border-blue-400">
+                                        <Search className="ml-3 h-4 w-4 text-slate-400 shrink-0" />
+                                        <Input
+                                            placeholder="Search role by name..."
+                                            value={roleSearchCreate}
+                                            onChange={e => setRoleSearchCreate(e.target.value)}
+                                            className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-9 text-sm"
+                                        />
+                                        {currentStep.requiredRole && (
+                                            <span className="mr-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs font-medium truncate max-w-[120px]">{currentStep.requiredRole}</span>
+                                        )}
+                                    </div>
+                                    {roleSearchCreate && (
+                                        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                            {isRolesCreateFetching ? (
+                                                <div className="flex items-center justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-slate-400" /></div>
+                                            ) : rolesCreate.length === 0 ? (
+                                                <div className="py-3 text-center text-xs text-slate-500">No roles found</div>
+                                            ) : (
+                                                rolesCreate.map(r => (
+                                                    <button
+                                                        key={r.id}
+                                                        type="button"
+                                                        className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${currentStep.requiredRole === r.name ? 'bg-blue-100 text-blue-800 font-medium' : 'text-slate-700'
+                                                            }`}
+                                                        onClick={() => {
+                                                            setCurrentStep({ ...currentStep, requiredRole: r.name });
+                                                            setRoleSearchCreate('');
+                                                        }}
+                                                    >
+                                                        {r.name}
+                                                        {r.description && <span className="text-xs text-slate-400 ml-2">{r.description}</span>}
+                                                    </button>
+                                                ))
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                {currentStep.requiredRole && !roleSearchCreate && (
+                                    <p className="text-[10px] text-slate-500">Selected: <span className="font-semibold text-blue-700">{currentStep.requiredRole}</span> <button type="button" className="text-slate-400 hover:text-red-500 ml-1" onClick={() => setCurrentStep({ ...currentStep, requiredRole: undefined })}>✕ clear</button></p>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <Label>Color</Label>
@@ -1269,17 +1309,48 @@ function WorkflowBuilderContent() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Role</Label>
-                                    <Select value={currentStep.requiredRole} onValueChange={v => setCurrentStep({ ...currentStep, requiredRole: v })}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="ICS">ICS</SelectItem>
-                                            <SelectItem value="SECURITY_OFFICER">Security</SelectItem>
-                                            <SelectItem value="CUSTOM_OFFICER">Customs</SelectItem>
-                                            <SelectItem value="INSA_OFFICER">INSA</SelectItem>
-                                            <SelectItem value="MEDIA_LIAISON">Media</SelectItem>
-                                            {roles?.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
+                                    <div className="relative">
+                                        <div className="flex items-center border rounded-md bg-slate-50 focus-within:ring-1 focus-within:ring-blue-400 focus-within:border-blue-400">
+                                            <Search className="ml-3 h-4 w-4 text-slate-400 shrink-0" />
+                                            <Input
+                                                placeholder="Search role..."
+                                                value={roleSearchEdit}
+                                                onChange={e => setRoleSearchEdit(e.target.value)}
+                                                className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-9 text-sm"
+                                            />
+                                            {currentStep.requiredRole && !roleSearchEdit && (
+                                                <span className="mr-2 px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-xs font-medium truncate max-w-[90px]">{currentStep.requiredRole}</span>
+                                            )}
+                                        </div>
+                                        {roleSearchEdit && (
+                                            <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                                {isRolesEditFetching ? (
+                                                    <div className="flex items-center justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-slate-400" /></div>
+                                                ) : rolesEdit.length === 0 ? (
+                                                    <div className="py-3 text-center text-xs text-slate-500">No roles found</div>
+                                                ) : (
+                                                    rolesEdit.map(r => (
+                                                        <button
+                                                            key={r.id}
+                                                            type="button"
+                                                            className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${currentStep.requiredRole === r.name ? 'bg-blue-100 text-blue-800 font-medium' : 'text-slate-700'
+                                                                }`}
+                                                            onClick={() => {
+                                                                setCurrentStep({ ...currentStep, requiredRole: r.name });
+                                                                setRoleSearchEdit('');
+                                                            }}
+                                                        >
+                                                            {r.name}
+                                                            {r.description && <span className="text-xs text-slate-400 ml-2">{r.description}</span>}
+                                                        </button>
+                                                    ))
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                    {currentStep.requiredRole && !roleSearchEdit && (
+                                        <p className="text-[10px] text-slate-500">Selected: <span className="font-semibold text-blue-700">{currentStep.requiredRole}</span></p>
+                                    )}
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Dependency Type</Label>
