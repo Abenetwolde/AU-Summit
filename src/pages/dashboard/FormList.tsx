@@ -33,7 +33,7 @@ import {
     Archive
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useGetFormsQuery, useDeleteFormMutation, Form } from '@/store/services/api';
+import { useGetFormsQuery, useDeleteFormMutation, useUpdateFormMutation, Form } from '@/store/services/api';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useAuth } from '@/auth/context';
@@ -42,6 +42,7 @@ export default function FormList() {
     const navigate = useNavigate();
     const { data: forms, isLoading, isError } = useGetFormsQuery();
     const [deleteForm] = useDeleteFormMutation();
+    const [updateForm] = useUpdateFormMutation();
     const [searchTerm, setSearchTerm] = useState('');
 
     const { checkPermission } = useAuth();
@@ -60,6 +61,29 @@ export default function FormList() {
                 toast.success('Form deleted successfully');
             } catch (error) {
                 toast.error('Failed to delete form');
+            }
+        }
+    };
+
+    const handleStatusChange = async (id: number, newStatus: string, statusName: string) => {
+        if (!canUpdateForm) {
+            toast.error("You don't have permission to update forms");
+            return;
+        }
+        
+        let confirmMessage = `Are you sure you want to change this form's status to ${statusName}?`;
+        if (newStatus === 'PUBLISHED') {
+            confirmMessage = "Are you sure you want to publish this form? Publishing this form will automatically archive any currently published form.";
+        }
+        
+        if (confirm(confirmMessage)) {
+            try {
+                const formData = new FormData();
+                formData.append('status', newStatus);
+                await updateForm({ id, data: formData }).unwrap();
+                toast.success(`Form marked as ${statusName} successfully`);
+            } catch (error: any) {
+                toast.error(error?.data?.error || `Failed to change form status to ${statusName}`);
             }
         }
     };
@@ -179,6 +203,32 @@ export default function FormList() {
                                                                     <Pencil className="mr-2 h-4 w-4" /> Edit
                                                                 </DropdownMenuItem>
                                                             )}
+                                                            
+                                                            {canUpdateForm && (
+                                                                <>
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuLabel className="text-xs text-gray-500 font-normal py-1">Change Status</DropdownMenuLabel>
+                                                                    
+                                                                    {form.status !== 'PUBLISHED' && (
+                                                                        <DropdownMenuItem onClick={() => handleStatusChange(form.form_id, 'PUBLISHED', 'Published')}>
+                                                                            <CheckCircle2 className="mr-2 h-4 w-4 text-green-600" /> Publish Form
+                                                                        </DropdownMenuItem>
+                                                                    )}
+                                                                    
+                                                                    {form.status !== 'DRAFT' && (
+                                                                        <DropdownMenuItem onClick={() => handleStatusChange(form.form_id, 'DRAFT', 'Draft')}>
+                                                                            <FileText className="mr-2 h-4 w-4 text-gray-600" /> Mark as Draft
+                                                                        </DropdownMenuItem>
+                                                                    )}
+                                                                    
+                                                                    {form.status !== 'ARCHIVED' && (
+                                                                        <DropdownMenuItem onClick={() => handleStatusChange(form.form_id, 'ARCHIVED', 'Archived')}>
+                                                                            <Archive className="mr-2 h-4 w-4 text-amber-600" /> Archive Form
+                                                                        </DropdownMenuItem>
+                                                                    )}
+                                                                </>
+                                                            )}
+
                                                             <DropdownMenuSeparator />
                                                             {canDeleteForm && (
                                                                 <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(form.form_id)}>

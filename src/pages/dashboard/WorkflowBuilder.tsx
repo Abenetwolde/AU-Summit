@@ -362,11 +362,11 @@ function WorkflowBuilderContent() {
     const [selectedPhase, setSelectedPhase] = useState<'ENTRY' | 'EXIT'>('ENTRY');
 
     const filteredSteps = useMemo(() => {
-        if (!workflowSteps) return [];
+        if (!workflowSteps || selectedFormId === null) return [];
+        
         return workflowSteps.filter(step => {
-            // Filter by Form
-            if (selectedFormId !== null && step.formId !== null && step.formId !== selectedFormId) return false;
-            // Global steps (formId: null) are shown across all form contexts
+            // Filter STRICTLY by Form ID (exclude global steps unless they match)
+            if (step.formId !== selectedFormId) return false;
 
             // Filter by Audience
             if (step.targetAudience !== selectedAudience) return false;
@@ -396,8 +396,9 @@ function WorkflowBuilderContent() {
 
     // Load Data
     useEffect(() => {
-        if (forms && forms.length > 0 && selectedFormId === null) {
-            setSelectedFormId(forms[0].form_id);
+        const publishedForms = forms?.filter((f: any) => f.status === 'PUBLISHED') || [];
+        if (publishedForms.length > 0 && selectedFormId === null) {
+            setSelectedFormId(publishedForms[0].form_id);
         }
     }, [forms]);
 
@@ -690,7 +691,7 @@ function WorkflowBuilderContent() {
                                     <SelectValue placeholder="Select Form" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {forms?.map(f => <SelectItem key={f.form_id} value={f.form_id.toString()}>{f.name}</SelectItem>)}
+                                    {forms?.filter((f: any) => f.status === 'PUBLISHED').map((f: any) => <SelectItem key={f.form_id} value={f.form_id.toString()}>{f.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>

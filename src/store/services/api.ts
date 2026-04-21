@@ -844,8 +844,8 @@ export interface UpdateEquipmentStatusPayload {
     notes?: string;
 }
 
-export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
-// export const FILE_BASE_URL = 'http://localhost:3001';
+// export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
+export const FILE_BASE_URL = 'http://localhost:3000';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -1640,6 +1640,7 @@ export const api = createApi({
                 method: 'PUT',
                 body: data,
             }),
+            invalidatesTags: ['Form'],
         }),
         deleteForm: builder.mutation<void, number>({
             query: (id) => ({
