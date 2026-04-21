@@ -171,7 +171,9 @@ export function FormEditor() {
             sortedCategories.forEach((cat: any) => {
                 const mapped = (cat.fields || []).map((f: any) => ({
                     id: String(f.field_id || Math.random()),
-                    type: f.field_type === 'boolean' ? 'radio' : f.field_type,
+                    type: f.field_type === 'boolean' ? 'radio'
+                        : (f.field_type === 'select' || f.field_type === 'dropdown') ? 'dropdown'
+                            : f.field_type,
                     label: f.label,
                     required: f.is_required,
                     placeholder: f.placeholder || `Enter ${f.label.toLowerCase()}`,
@@ -190,7 +192,9 @@ export function FormEditor() {
             if (existingForm.uncategorizedFields) {
                 const mappedUncategorized = existingForm.uncategorizedFields.map((f: any) => ({
                     id: String(f.field_id || Math.random()),
-                    type: f.field_type === 'boolean' ? 'radio' : f.field_type,
+                    type: f.field_type === 'boolean' ? 'radio'
+                        : (f.field_type === 'select' || f.field_type === 'dropdown') ? 'dropdown'
+                            : f.field_type,
                     label: f.label,
                     required: f.is_required,
                     placeholder: f.placeholder || `Enter ${f.label.toLowerCase()}`,
