@@ -40,7 +40,8 @@ import {
     Edit,
     GripVertical,
     X,
-    GitBranch
+    GitBranch,
+    Search
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
