@@ -47,6 +47,7 @@ export interface Equipment {
     applicationId: number;
     type: string;
     description: string;
+    model?: string | null;
     serialNumber: string | null;
     quantity: number;
     value: string;
@@ -58,6 +59,10 @@ export interface Equipment {
     rejectionReason: string | null;
     createdAt: string;
     updatedAt: string;
+    // Drone specific fields occasionally used in UI
+    weight?: string;
+    frequency?: string;
+    category?: string;
 }
 
 export interface ApplicationFormData {
@@ -844,8 +849,8 @@ export interface UpdateEquipmentStatusPayload {
     notes?: string;
 }
 
-export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
-// export const FILE_BASE_URL = 'http://localhost:3000';
+// export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
+export const FILE_BASE_URL = 'http://localhost:3000';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -1823,6 +1828,50 @@ export const api = createApi({
             invalidatesTags: ['Badge'],
         }),
 
+        getEquipmentByApplication: builder.query<{
+            total: number;
+            pages: number;
+            currentPage: number;
+            limit: number;
+            equipment: Equipment[]
+        }, { applicationId: number; page?: number; limit?: number; status?: string }>({
+            query: ({ applicationId, page = 1, limit = 10, status }) => {
+                const params = new URLSearchParams({
+                    page: String(page),
+                    limit: String(limit),
+                    ...(status && { status })
+                });
+                return `/equipment/applications/${applicationId}/equipment?${params}`;
+            },
+            providesTags: (result, error, { applicationId }) => [
+                { type: 'Application', id: applicationId },
+                'Application'
+            ]
+        }),
+        addEquipment: builder.mutation<Equipment, { applicationId: number; data: any }>({
+            query: ({ applicationId, data }) => ({
+                url: `/equipment/applications/${applicationId}/equipment`,
+                method: 'POST',
+                body: data,
+            }),
+            invalidatesTags: (result, error, { applicationId }) => [{ type: 'Application', id: applicationId }, 'Application']
+        }),
+        updateEquipment: builder.mutation<Equipment, { id: number; data: any }>({
+            query: ({ id, data }) => ({
+                url: `/equipment/${id}`,
+                method: 'PUT',
+                body: data,
+            }),
+            invalidatesTags: (result) => result ? [{ type: 'Application', id: result.applicationId }, 'Application'] : ['Application']
+        }),
+        deleteEquipment: builder.mutation<void, number>({
+            query: (id) => ({
+                url: `/equipment/${id}`,
+                method: 'DELETE',
+            }),
+            invalidatesTags: ['Application']
+        }),
+
         // Add this endpoint to the endpoints builder (you can place it near other equipment/verification endpoints)
         updateEquipmentStatus: builder.mutation<Equipment, UpdateEquipmentStatusPayload>({
             query: ({ equipmentId, status, rejectionReason, notes }) => ({
@@ -2263,6 +2312,10 @@ export const {
     useCreateLandingPageSettingsMutation,
     useDeleteLandingPageSettingsMutation,
     useUpdateEquipmentStatusMutation,
+    useAddEquipmentMutation,
+    useUpdateEquipmentMutation,
+    useDeleteEquipmentMutation,
+    useGetEquipmentByApplicationQuery,
     useGetEntryWorkflowApplicationsQuery,
     useGetExitWorkflowApplicationsQuery,
     useInitializeExitWorkflowMutation,

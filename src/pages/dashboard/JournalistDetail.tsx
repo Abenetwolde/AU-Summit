@@ -263,11 +263,7 @@ export function JournalistDetail() {
 
                     {/* Equipment List - Enhanced */}
                     <EquipmentVerification
-                        equipment={[
-                            { type: 'Lens', model: 'Sony FE 24-70mm GM' },
-                            { type: 'Drone', model: 'Sony A7S III' },
-                            { type: 'Drone', model: 'Rode VideoMic Pro' },
-                        ]}
+                        applicationId={Number(journalist.id.replace(/\D/g, '')) || 1} // Fallback for mock IDs like 'j1'
                         onApprove={() => console.log('Equipment approved')}
                         onReject={() => console.log('Equipment rejected')}
                         showActions={!isReadOnly}

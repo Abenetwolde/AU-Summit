@@ -1,70 +1,49 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Check, X, ShieldCheck, Forward, RotateCcw } from 'lucide-react';
+import { Check, X, ShieldCheck, RotateCcw, ChevronLeft, ChevronRight, Filter, Loader2 } from 'lucide-react';
 import { useAuth, UserRole } from '@/auth/context';
-import { useUpdateEquipmentStatusMutation, EquipmentStatus } from '@/store/services/api';
+import { useUpdateEquipmentStatusMutation, EquipmentStatus, useGetEquipmentByApplicationQuery, Equipment } from '@/store/services/api';
 import { toast } from 'sonner';
-
-interface Equipment {
-    id: number;
-    type: string;
-    model: string;
-    status: EquipmentStatus;
-    // Drone specific fields
-    weight?: string;
-    frequency?: string;
-    category?: string;
-}
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface EquipmentVerificationProps {
-    equipment: Equipment[];
+    applicationId: number;
     onApprove?: () => void;
     onReject?: () => void;
     showActions?: boolean;
 }
 
 export function EquipmentVerification({
-    equipment: initialEquipment,
+    applicationId,
     onApprove,
     onReject,
     showActions = true
 }: EquipmentVerificationProps) {
     const { user, checkPermission } = useAuth();
+
+    // Pagination and Filtering State
+    const [page, setPage] = useState(1);
+    const [limit] = useState(10);
+    const [statusFilter, setStatusFilter] = useState<string>('ALL');
+
+    // Fetch equipment with pagination and filtering
+    const { data, isLoading, isError, refetch } = useGetEquipmentByApplicationQuery({
+        applicationId,
+        page,
+        limit,
+        status: statusFilter === 'ALL' ? undefined : statusFilter
+    });
+
     const [updateStatus, { isLoading: isUpdating }] = useUpdateEquipmentStatusMutation();
     const [securityCheck, setSecurityCheck] = useState(false);
     const [restrictedAreaAccess, setRestrictedAreaAccess] = useState(false);
     const [equipmentVerified, setEquipmentVerified] = useState(true);
 
-    // Normalize status to uppercase for reliable enum comparison
-    const normalizeStatus = (status?: string): EquipmentStatus => {
-        if (!status) return EquipmentStatus.PENDING;
-        const upper = status.toUpperCase();
-        if (upper === 'PENDING') return EquipmentStatus.PENDING;
-        if (upper === 'APPROVED') return EquipmentStatus.APPROVED;
-        if (upper === 'REJECTED') return EquipmentStatus.REJECTED;
-        return EquipmentStatus.PENDING;
-    };
-
-    // Manage local status
-    const [items, setItems] = useState<Equipment[]>(
-        initialEquipment.map((item, idx) => ({
-            ...item,
-            id: item.id || (idx + 1), // Fallback for mock data without IDs
-            status: normalizeStatus(item.status)
-        }))
-    );
-
-    useEffect(() => {
-        setItems(
-            initialEquipment.map((item, idx) => ({
-                ...item,
-                id: item.id || (idx + 1),
-                status: normalizeStatus(item.status)
-            }))
-        );
-    }, [initialEquipment]);
+    const items = data?.equipment || [];
+    const totalPages = data?.pages || 0;
+    const totalItems = data?.total || 0;
 
     // Determine if current user can perform actions
     const hasPermission = checkPermission('verification:equipment:single:update');
@@ -73,8 +52,7 @@ export function EquipmentVerification({
     const isINSA = user?.role === UserRole.INSA_OFFICER;
     const canPerformActions = showActions && (hasPermission || isCustoms || isINSA || user?.role === UserRole.SUPER_ADMIN);
 
-    const updateItemStatus = async (index: number, newStatus: EquipmentStatus, rejectionReason?: string) => {
-        const item = items[index];
+    const updateItemStatus = async (item: Equipment, newStatus: EquipmentStatus, rejectionReason?: string) => {
         try {
             await updateStatus({
                 equipmentId: item.id,
@@ -82,18 +60,16 @@ export function EquipmentVerification({
                 rejectionReason
             }).unwrap();
 
-            const newItems = [...items];
-            newItems[index].status = newStatus;
-            setItems(newItems);
-
             toast.success(`Equipment status updated to ${newStatus}`);
+            // RTK Query will handle the cache invalidation and refetch if tags are set correctly
         } catch (error: any) {
             toast.error(error.data?.message || 'Failed to update equipment status');
         }
     };
 
-    const getStatusBadge = (status: EquipmentStatus) => {
-        switch (status) {
+    const getStatusBadge = (status: string) => {
+        const s = status as EquipmentStatus;
+        switch (s) {
             case EquipmentStatus.APPROVED:
                 return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700"><Check className="h-3 w-3 mr-1" /> Approved</span>;
             case EquipmentStatus.REJECTED:
@@ -107,15 +83,41 @@ export function EquipmentVerification({
     return (
         <Card className="bg-white border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-bold">Equipment List</CardTitle>
-                <div className="flex items-center gap-2">
-                    {isINSA && <span className="text-xs text-blue-600 font-semibold flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Security Review (INSA)</span>}
-                    {isCustoms && <span className="text-xs text-green-600 font-semibold">Customs Control</span>}
+                <div className="flex flex-col">
+                    <CardTitle className="text-lg font-bold">Equipment List</CardTitle>
+                    <p className="text-xs text-gray-500 mt-1">Total items: {totalItems}</p>
+                </div>
+                <div className="flex items-center gap-4">
+                    {/* Status Filter */}
+                    <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-gray-400" />
+                        <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
+                            <SelectTrigger className="h-8 w-[130px] text-xs">
+                                <SelectValue placeholder="Filter Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">All Status</SelectItem>
+                                <SelectItem value={EquipmentStatus.PENDING}>Pending</SelectItem>
+                                <SelectItem value={EquipmentStatus.APPROVED}>Approved</SelectItem>
+                                <SelectItem value={EquipmentStatus.REJECTED}>Rejected</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {isINSA && <span className="text-xs text-blue-600 font-semibold flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Security Review (INSA)</span>}
+                        {isCustoms && <span className="text-xs text-green-600 font-semibold">Customs Control</span>}
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
                 {/* Equipment Table */}
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="border border-gray-200 rounded-lg overflow-hidden relative">
+                    {isLoading && (
+                        <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                        </div>
+                    )}
                     <table className="w-full text-sm">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
@@ -127,79 +129,118 @@ export function EquipmentVerification({
                                 )}
                             </tr>
                         </thead>
-                        <tbody>
-                            {items.map((item, index) => (
-                                <tr key={index} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
-                                    <td className="px-4 py-3">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-gray-900">{item.type}</span>
-                                            {item.category && <span className="text-[10px] text-blue-500 font-black uppercase">{item.category}</span>}
-                                        </div>
+                        <tbody className="min-h-[200px]">
+                            {items.length === 0 && !isLoading && (
+                                <tr>
+                                    <td colSpan={canPerformActions ? 4 : 3} className="px-4 py-8 text-center text-gray-500">
+                                        No equipment found matching the criteria.
                                     </td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex flex-col gap-0.5">
-                                            <span className="text-gray-700 font-medium">{item.model}</span>
-                                            {(item.weight || item.frequency) && (
-                                                <div className="flex gap-2 mt-0.5">
-                                                    {item.weight && <span className="text-[10px] bg-gray-100 px-1.5 rounded text-gray-500">WT: {item.weight}</span>}
-                                                    {item.frequency && <span className="text-[10px] bg-amber-50 px-1.5 rounded text-amber-600 border border-amber-100">FREQ: {item.frequency}</span>}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                        {getStatusBadge(item.status)}
-                                    </td>
-                                    {canPerformActions && (
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="flex justify-end gap-1.5">
-                                                {item.status !== EquipmentStatus.APPROVED && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                                        onClick={() => updateItemStatus(index, EquipmentStatus.APPROVED)}
-                                                        disabled={isUpdating}
-                                                        title="Approve Item"
-                                                    >
-                                                        <Check className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                                {item.status === EquipmentStatus.APPROVED && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        className="h-8 w-8 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                                                        onClick={() => updateItemStatus(index, EquipmentStatus.PENDING)}
-                                                        disabled={isUpdating}
-                                                        title="Revoke Approval (Set to Pending)"
-                                                    >
-                                                        <RotateCcw className="h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                                {item.status !== EquipmentStatus.REJECTED && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                        onClick={() => {
-                                                            const reason = window.prompt('Enter rejection reason:');
-                                                            if (reason) updateItemStatus(index, EquipmentStatus.REJECTED, reason);
-                                                        }}
-                                                        disabled={isUpdating}
-                                                        title="Reject Item"
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
+                                </tr>
+                            )}
+                            {items.map((item, index) => {
+                                const itemStatus = item.status as EquipmentStatus;
+                                return (
+                                    <tr key={item.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
+                                        <td className="px-4 py-3">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-gray-900">{item.type}</span>
+                                                {item.category && <span className="text-[10px] text-blue-500 font-black uppercase">{item.category}</span>}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-gray-700 font-medium">{item.model || item.description}</span>
+                                                {(item.weight || item.frequency) && (
+                                                    <div className="flex gap-2 mt-0.5">
+                                                        {item.weight && <span className="text-[10px] bg-gray-100 px-1.5 rounded text-gray-500">WT: {item.weight}</span>}
+                                                        {item.frequency && <span className="text-[10px] bg-amber-50 px-1.5 rounded text-amber-600 border border-amber-100">FREQ: {item.frequency}</span>}
+                                                    </div>
                                                 )}
                                             </div>
                                         </td>
-                                    )}
-                                </tr>
-                            ))}
+                                        <td className="px-4 py-3 text-center">
+                                            {getStatusBadge(item.status)}
+                                        </td>
+                                        {canPerformActions && (
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex justify-end gap-1.5">
+                                                    {itemStatus !== EquipmentStatus.APPROVED && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                            onClick={() => updateItemStatus(item, EquipmentStatus.APPROVED)}
+                                                            disabled={isUpdating}
+                                                            title="Approve Item"
+                                                        >
+                                                            <Check className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
+                                                    {itemStatus === EquipmentStatus.APPROVED && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className="h-8 w-8 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                                            onClick={() => updateItemStatus(item, EquipmentStatus.PENDING)}
+                                                            disabled={isUpdating}
+                                                            title="Revoke Approval (Set to Pending)"
+                                                        >
+                                                            <RotateCcw className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
+                                                    {itemStatus !== EquipmentStatus.REJECTED && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                            onClick={() => {
+                                                                const reason = window.prompt('Enter rejection reason:');
+                                                                if (reason) updateItemStatus(item, EquipmentStatus.REJECTED, reason);
+                                                            }}
+                                                            disabled={isUpdating}
+                                                            title="Reject Item"
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        )}
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-2">
+                        <p className="text-xs text-gray-500">
+                            Showing page <span className="font-bold text-gray-900">{page}</span> of <span className="font-bold text-gray-900">{totalPages}</span>
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-3"
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                disabled={page === 1 || isLoading}
+                            >
+                                <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-3"
+                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages || isLoading}
+                            >
+                                Next <ChevronRight className="h-4 w-4 ml-1" />
+                            </Button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Verification Checklist and Actions */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
@@ -249,7 +290,7 @@ export function EquipmentVerification({
                                     className="bg-primary hover:bg-primary/90 text-white font-bold h-11 shadow-lg shadow-blue-100"
                                 >
                                     <Check className="h-4 w-4 mr-2" />
-                                    {isINSA ? 'Settle & Grant Clearance' : 'Approve All Equipment'}
+                                    {isINSA ? 'Settle & Grant Clearance' : 'Approve Application'}
                                 </Button>
                                 <Button
                                     onClick={onReject}
