@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw, History } from 'lucide-react';
+import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw, History, ChevronRight, Filter } from 'lucide-react';
 import { getFlagEmoji } from '@/lib/utils';
 import en from 'react-phone-number-input/locale/en';
 import { SystemCheckSuccess } from '@/components/SystemCheckSuccess';
@@ -16,7 +16,8 @@ import {
     useUpdateEquipmentStatusMutation,
     getFileUrl,
     useGetFormFieldTemplatesQuery,
-    useGetApplicationByIdQuery
+    useGetApplicationByIdQuery,
+    useGetEquipmentByApplicationQuery
 } from '@/store/services/api';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
@@ -59,6 +60,11 @@ export function JournalistProfile() {
     const [rejectionReason, setRejectionReason] = useState('');
     const [equipmentNotes, setEquipmentNotes] = useState('');
 
+    // Equipment pagination & filter state
+    const [eqFilter, setEqFilter] = useState<string>('PENDING');
+    const [eqPage, setEqPage] = useState(1);
+    const eqLimit = 10;
+
     // Field-specific rejection states
     const [showRejectionDialog, setShowRejectionDialog] = useState(false);
     const [selectedFields, setSelectedFields] = useState<string[]>([]);
@@ -66,6 +72,17 @@ export function JournalistProfile() {
 
     // Fetch application data solely by ID
     const { data: application, isLoading: applicationLoading } = useGetApplicationByIdQuery(Number(id), {
+        skip: !id,
+        refetchOnMountOrArgChange: true
+    });
+
+    // Server-side paginated equipment query
+    const { data: eqData, isLoading: eqLoading, isFetching: eqFetching } = useGetEquipmentByApplicationQuery({
+        applicationId: Number(id),
+        page: eqPage,
+        limit: eqLimit,
+        ...(eqFilter !== 'ALL' && { status: eqFilter })
+    }, {
         skip: !id,
         refetchOnMountOrArgChange: true
     });
@@ -236,7 +253,8 @@ export function JournalistProfile() {
 
     // Data Mapping - Extensive
     const formData = application.formData || {};
-    const equipmentList: EquipmentType[] = application.equipment || [];
+    // Equipment now fetched via dedicated paginated query (eqData)
+    const totalDeclaredEquipment = application.equipment?.length ?? eqData?.total ?? 0;
 
     const fullname = formData.first_name
         ? `${formData.first_name} ${formData.last_name || ''}`
@@ -488,6 +506,7 @@ export function JournalistProfile() {
 
                                 <TabsTrigger value="equipment" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
                                     <Briefcase className="h-4 w-4" /> Equipment
+                                    <span className="ml-1 text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded-full">{totalDeclaredEquipment}</span>
                                 </TabsTrigger>
                             </TabsList>
                         </div>
@@ -547,19 +566,51 @@ export function JournalistProfile() {
                             </TabsContent>
                         ))}
 
-                        {/* Equipment Content - Prioritized */}
+                        {/* Equipment Content - Server Paginated */}
                         <TabsContent value="equipment">
                             <Card className="bg-white border-0 shadow-sm">
-                                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                    <CardTitle className="text-lg font-bold">Equipment Details</CardTitle>
-                                    <Briefcase className="h-5 w-5 text-gray-500" />
+                                <CardHeader className="pb-2">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <CardTitle className="text-lg font-bold">Equipment Details</CardTitle>
+                                            <span className="text-xs bg-slate-100 text-slate-600 font-bold px-2 py-1 rounded-full">
+                                                {eqData?.total ?? totalDeclaredEquipment} declared
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg">
+                                            {['ALL', 'PENDING', 'APPROVED', 'REJECTED'].map((status) => (
+                                                <button
+                                                    key={status}
+                                                    onClick={() => { setEqFilter(status); setEqPage(1); }}
+                                                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
+                                                        eqFilter === status
+                                                            ? status === 'APPROVED' ? 'bg-green-600 text-white shadow-sm'
+                                                            : status === 'REJECTED' ? 'bg-red-600 text-white shadow-sm'
+                                                            : status === 'PENDING' ? 'bg-yellow-500 text-white shadow-sm'
+                                                            : 'bg-white text-gray-900 shadow-sm'
+                                                            : 'text-gray-500 hover:text-gray-700'
+                                                    }`}
+                                                >
+                                                    {status === 'ALL' ? 'All' : status.charAt(0) + status.slice(1).toLowerCase()}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </CardHeader>
                                 <CardContent className="space-y-4 pt-4">
-                                    {equipmentList.length === 0 ? (
-                                        <p className="text-gray-500 italic">No equipment declared.</p>
+                                    {eqLoading ? (
+                                        <div className="flex items-center justify-center py-12">
+                                            <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+                                            <span className="ml-2 text-sm text-gray-500">Loading equipment...</span>
+                                        </div>
+                                    ) : !eqData?.equipment || eqData.equipment.length === 0 ? (
+                                        <div className="text-center py-12">
+                                            <Briefcase className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                                            <p className="text-gray-500 italic">No equipment found{eqFilter !== 'ALL' ? ` with status "${eqFilter}"` : ''}.</p>
+                                        </div>
                                     ) : (
-                                        <div className="space-y-4">
-                                            {equipmentList.map((item, idx) => (
+                                        <div className={`space-y-4 ${eqFetching ? 'opacity-50 pointer-events-none' : ''}`}>
+                                            {eqData.equipment.map((item, idx) => (
                                                 <div key={item.id || idx} className="border rounded-md p-4 bg-gray-50/50">
                                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                                         <div>
@@ -647,6 +698,59 @@ export function JournalistProfile() {
                                                     )}
                                                 </div>
                                             ))}
+                                        </div>
+                                    )}
+
+                                    {/* Pagination Controls */}
+                                    {eqData && eqData.pages > 1 && (
+                                        <div className="flex items-center justify-between pt-4 border-t">
+                                            <p className="text-xs text-gray-500">
+                                                Showing {((eqData.currentPage - 1) * eqData.limit) + 1}–{Math.min(eqData.currentPage * eqData.limit, eqData.total)} of {eqData.total}
+                                            </p>
+                                            <div className="flex items-center gap-1">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={eqPage <= 1 || eqFetching}
+                                                    onClick={() => setEqPage(p => Math.max(1, p - 1))}
+                                                    className="h-8 w-8 p-0"
+                                                >
+                                                    <ChevronLeft className="h-4 w-4" />
+                                                </Button>
+                                                {Array.from({ length: Math.min(eqData.pages, 5) }, (_, i) => {
+                                                    let pageNum: number;
+                                                    if (eqData.pages <= 5) {
+                                                        pageNum = i + 1;
+                                                    } else if (eqPage <= 3) {
+                                                        pageNum = i + 1;
+                                                    } else if (eqPage >= eqData.pages - 2) {
+                                                        pageNum = eqData.pages - 4 + i;
+                                                    } else {
+                                                        pageNum = eqPage - 2 + i;
+                                                    }
+                                                    return (
+                                                        <Button
+                                                            key={pageNum}
+                                                            variant={eqPage === pageNum ? 'default' : 'outline'}
+                                                            size="sm"
+                                                            className={`h-8 w-8 p-0 text-xs font-bold ${eqPage === pageNum ? 'bg-blue-600 text-white' : ''}`}
+                                                            onClick={() => setEqPage(pageNum)}
+                                                            disabled={eqFetching}
+                                                        >
+                                                            {pageNum}
+                                                        </Button>
+                                                    );
+                                                })}
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={eqPage >= (eqData?.pages || 1) || eqFetching}
+                                                    onClick={() => setEqPage(p => p + 1)}
+                                                    className="h-8 w-8 p-0"
+                                                >
+                                                    <ChevronRight className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </div>
                                     )}
                                 </CardContent>

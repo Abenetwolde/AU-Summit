@@ -1843,6 +1843,7 @@ export const api = createApi({
                 });
                 return `/equipment/applications/${applicationId}/equipment?${params}`;
             },
+            transformResponse: (response: any) => response.data || response,
             providesTags: (result, error, { applicationId }) => [
                 { type: 'Application', id: applicationId },
                 'Application'
@@ -1875,7 +1876,7 @@ export const api = createApi({
         // Add this endpoint to the endpoints builder (you can place it near other equipment/verification endpoints)
         updateEquipmentStatus: builder.mutation<Equipment, UpdateEquipmentStatusPayload>({
             query: ({ equipmentId, status, rejectionReason, notes }) => ({
-                url: `/equipment/equipment/${equipmentId}/status`,
+                url: `/equipment/${equipmentId}/status`,
                 method: 'PATCH',
                 body: {
                     status,
@@ -1883,10 +1884,11 @@ export const api = createApi({
                     ...(notes && { notes }),
                 },
             }),
-            invalidatesTags: (result, error, { equipmentId }) => [
+            invalidatesTags: (result) => result ? [
                 { type: 'Application', id: 'LIST' },
-                { type: 'Application', id: equipmentId },
-            ],
+                { type: 'Application', id: result.applicationId },
+                'Application'
+            ] : ['Application'],
         }),
 
         // Dashboard Endpoints
