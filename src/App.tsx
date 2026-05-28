@@ -7,6 +7,7 @@ import { Login } from './pages/auth/Login';
 import { ChangePassword } from './pages/auth/ChangePassword';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { JournalistList } from './pages/dashboard/JournalistList';
+import { JournalistListReadonly } from './pages/dashboard/JournalistListReadonly';
 import { AccreditedJournalists } from './pages/dashboard/AccreditedJournalists';
 import { JournalistEntryControl } from './pages/dashboard/JournalistEntryControl';
 import { JournalistProfile } from './pages/dashboard/JournalistProfile';
@@ -69,6 +70,11 @@ function App() {
                                     <Route path="admin" element={<DashboardIndex />} />
                                     <Route path="journalists" element={<JournalistList />} />
                                     <Route path="duplicates" element={<DuplicateApplications />} />
+                                    
+                                    <Route element={<ProtectedRoute requiredPermission="application:view:readonly" />}>
+                                        <Route path="journalists-view" element={<JournalistListReadonly />} />
+                                    </Route>
+
                                     <Route element={<ProtectedRoute requiredPermission="application:manual-entry" />}>
                                         <Route path="manual-entry" element={<ManualEntry />} />
                                         <Route path="manual-applications" element={<ManualApplications />} />
