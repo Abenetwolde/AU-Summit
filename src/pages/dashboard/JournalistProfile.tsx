@@ -792,7 +792,7 @@ export function JournalistProfile() {
                         <CardContent className="space-y-4">
                             <SystemCheckSuccess show={showSystemCheck} />
 
-                            {/* {canApprove && ( */}
+                            {canApprove && (
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-gray-700">Decision Notes</label>
@@ -844,6 +844,7 @@ export function JournalistProfile() {
                                     </p>
                                 )}
                             </div>
+                            )}
 
                             {/* Exit Workflow Activation Button */}
                             {application.status === 'APPROVED' && !approvals.some((a: any) => ((a as any).workflowStep || (a as any).approvalWorkflowStep)?.isExitStep) && (
@@ -854,7 +855,6 @@ export function JournalistProfile() {
                                     </p>
                                 </div>
                             )}
-                            {/* )} */}
 
 
                             {!canApprove && (

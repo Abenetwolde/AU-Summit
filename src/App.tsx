@@ -73,6 +73,7 @@ function App() {
                                     
                                     <Route element={<ProtectedRoute requiredPermission="application:view:readonly" />}>
                                         <Route path="journalists-view" element={<JournalistListReadonly />} />
+                                        <Route path="journalists-view/:id" element={<JournalistProfile />} />
                                     </Route>
 
                                     <Route element={<ProtectedRoute requiredPermission="application:manual-entry" />}>
