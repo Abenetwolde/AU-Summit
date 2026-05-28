@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, Loader2 } from 'lucide-react';
+import { Search, Filter, Loader2, Eye } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CountrySelect } from '@/components/ui/country-select';
@@ -233,6 +233,8 @@ export function JournalistListReadonly() {
                                         {step.name.toUpperCase()}
                                     </th>
                                 ))}
+
+                                <th className="h-12 px-4 text-left align-middle font-medium text-gray-500 uppercase text-xs tracking-wider sticky right-0 bg-gray-50 z-20 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">ACTION</th>
                             </tr>
                         </thead>
                         <tbody className="[&_tr:last-child]:border-0">
@@ -304,12 +306,18 @@ export function JournalistListReadonly() {
                                                 </td>
                                             );
                                         })}
+
+                                        <td className="p-4 align-middle sticky right-0 bg-white group-hover:bg-muted/50 z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
+                                            <Button variant="outline" size="sm" className="hidden lg:flex h-8 text-blue-500 border-blue-200 hover:bg-blue-50 hover:text-blue-700 font-bold" onClick={() => window.location.href = `/dashboard/journalists-view/${app.id}`}>
+                                                View More <Eye className="ml-1 h-3 w-3" />
+                                            </Button>
+                                        </td>
                                     </tr>
                                 );
                             })}
                             {displayData.length === 0 && (
                                 <tr>
-                                    <td colSpan={6 + workflowStepInfo.length} className="p-8 text-center text-muted-foreground">
+                                    <td colSpan={7 + workflowStepInfo.length} className="p-8 text-center text-muted-foreground">
                                         No applications found.
                                     </td>
                                 </tr>
