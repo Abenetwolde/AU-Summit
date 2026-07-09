@@ -301,8 +301,8 @@ export default function AdminDashboard() {
                                 ];
                                 return (
                                     <Card key={i} className="border-0 shadow-sm bg-white hover:shadow-md transition-all overflow-hidden">
-                                        <CardHeader className="pb-2 border-b border-slate-50 flex flex-row items-center justify-between">
-                                            <CardTitle className="text-base truncate max-w-[200px]">{embassy.name}</CardTitle>
+                                        <CardHeader className="pb-2 border-b border-slate-50 flex flex-col gap-1">
+                                            <CardTitle className="text-base leading-snug break-words">{embassy.name}</CardTitle>
                                             <div className="text-[10px] font-bold text-slate-400">TOTAL: {embassy.total}</div>
                                         </CardHeader>
                                         <CardContent className="p-4 flex items-center gap-4">
