@@ -849,8 +849,8 @@ export interface UpdateEquipmentStatusPayload {
     notes?: string;
 }
 
-export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
-// export const FILE_BASE_URL = 'http://localhost:3000';
+// export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
+export const FILE_BASE_URL = 'http://localhost:3001';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -1481,9 +1481,9 @@ export const api = createApi({
             invalidatesTags: (_result, _error, id) => [{ type: 'Application', id }],
         }),
         // Two-Phase Workflow Endpoints
-        getEntryWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string; nationality?: string; startDate?: string; endDate?: string; hasDrone?: boolean; declarationStatus?: boolean; formId?: number }>({
+        getEntryWorkflowApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; status?: string; nationality?: string; startDate?: string; endDate?: string; hasDrone?: boolean; declarationStatus?: boolean; formId?: number; applicationPurpose?: string }>({
             query: (params = {}) => {
-                const { page = 1, limit = 10, search = '', status = '', nationality = '', startDate = '', endDate = '', hasDrone, declarationStatus, formId } = params;
+                const { page = 1, limit = 10, search = '', status = '', nationality = '', startDate = '', endDate = '', hasDrone, declarationStatus, formId, applicationPurpose } = params;
                 const queryParams = new URLSearchParams({
                     page: String(page),
                     limit: String(limit),
@@ -1494,7 +1494,8 @@ export const api = createApi({
                     ...(endDate && { endDate }),
                     ...(hasDrone !== undefined && { hasDrone: String(hasDrone) }),
                     ...(declarationStatus !== undefined && { declarationStatus: String(declarationStatus) }),
-                    ...(formId && { formId: String(formId) })
+                    ...(formId && { formId: String(formId) }),
+                    ...(applicationPurpose && { applicationPurpose })
                 });
                 return `/applications/entry-workflow?${queryParams}`;
             },

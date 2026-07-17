@@ -9,6 +9,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useGetFormByIdQuery, useGetFormsQuery } from '@/store/services/api';
 import {
     Table,
     TableBody,
@@ -32,6 +33,7 @@ export function EntryWorkflowDashboard() {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
     const [selectedFormId, setSelectedFormId] = useState<string | undefined>(undefined);
+    const [applicationPurposeFilter, setApplicationPurposeFilter] = useState<string | undefined>(undefined);
     const [statusFilter, setStatusFilter] = useState<string>('PENDING');
     const [nationalityFilter, setNationalityFilter] = useState('');
     const [hasDroneFilter, setHasDroneFilter] = useState<boolean | undefined>(undefined);
@@ -52,12 +54,63 @@ export function EntryWorkflowDashboard() {
         setHasDroneFilter(undefined);
         setDeclarationStatusFilter(undefined);
         setDateRange({ start: '', end: '' });
+        setApplicationPurposeFilter(undefined);
         setPage(1);
         toast.success('Filters reset');
     };
 
     // Check if user has permission to approve/reject in entry workflow
     const canApproveEntry = checkPermission('application:approve:dynamic');
+
+    const { data: forms } = useGetFormsQuery();
+    const activeFormId = selectedFormId ? Number(selectedFormId) : forms?.find((form) => form.status === 'PUBLISHED')?.form_id;
+    const { data: activeFormDetails } = useGetFormByIdQuery(activeFormId?.toString() || '', { skip: !activeFormId });
+
+    const allFormFields = [
+        ...(activeFormDetails?.FormFields || []),
+        ...(activeFormDetails?.uncategorizedFields || []),
+        ...((activeFormDetails?.categories || []).flatMap((category: any) => category.fields || []))
+    ];
+
+    const applicationPurposeField = allFormFields.find((field: any) => field.field_name === 'application_purpose');
+    const purposeOptions: string[] = (() => {
+        const fieldOptions = applicationPurposeField?.field_options;
+
+        if (!fieldOptions) return [];
+        if (Array.isArray(fieldOptions?.options)) {
+            return fieldOptions.options;
+        }
+        if (typeof fieldOptions === 'string') {
+            try {
+                const parsed = JSON.parse(fieldOptions);
+                return Array.isArray(parsed?.options) ? parsed.options : [];
+            } catch {
+                return [];
+            }
+        }
+
+        return [];
+    })();
+    const firstPurposeOption = purposeOptions[0];
+
+    useEffect(() => {
+        if (!purposeOptions.length) {
+            if (applicationPurposeFilter !== undefined) {
+                setApplicationPurposeFilter(undefined);
+            }
+            return;
+        }
+
+        if (!applicationPurposeFilter || (!purposeOptions.includes(applicationPurposeFilter) && applicationPurposeFilter !== 'ALL')) {
+            setApplicationPurposeFilter('ALL');
+        }
+    }, [applicationPurposeFilter, firstPurposeOption, purposeOptions]);
+
+    const mapPurposeFilter = () => {
+        if (!purposeOptions.length || !applicationPurposeFilter || applicationPurposeFilter === 'ALL') return undefined;
+        if (applicationPurposeFilter === firstPurposeOption) return applicationPurposeFilter;
+        return `not:${firstPurposeOption}`;
+    };
 
     const { data, isLoading, error, refetch } = useGetEntryWorkflowApplicationsQuery({
         page,
@@ -69,12 +122,13 @@ export function EntryWorkflowDashboard() {
         endDate: dateRange.end || undefined,
         hasDrone: hasDroneFilter,
         declarationStatus: declarationStatusFilter,
-        formId: selectedFormId ? Number(selectedFormId) : undefined
+        formId: selectedFormId ? Number(selectedFormId) : undefined,
+        applicationPurpose: mapPurposeFilter()
     });
 
     const { data: exportData, isFetching: isExportFetching } = useGetEntryWorkflowApplicationsQuery({
         page: 1,
-        limit: exportLimit === 'all' ? 10000 : limit, // Use a large number for 'all', or current page limit
+        limit: exportLimit === 'all' ? 10000 : limit,
         search,
         status: statusFilter !== 'ALL' ? statusFilter : undefined,
         nationality: nationalityFilter || undefined,
@@ -82,7 +136,8 @@ export function EntryWorkflowDashboard() {
         endDate: dateRange.end || undefined,
         hasDrone: hasDroneFilter,
         declarationStatus: declarationStatusFilter,
-        formId: selectedFormId ? Number(selectedFormId) : undefined
+        formId: selectedFormId ? Number(selectedFormId) : undefined,
+        applicationPurpose: mapPurposeFilter()
     }, { skip: !isExporting });
 
     useEffect(() => {
@@ -282,6 +337,25 @@ export function EntryWorkflowDashboard() {
                                 />
                             </div>
                         </div>
+                        {purposeOptions.length > 0 && (
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 tracking-wide">
+                                <Filter className="w-3 h-3" />
+                                Application Purpose
+                            </label>
+                            <Select value={applicationPurposeFilter || 'ALL'} onValueChange={(value) => setApplicationPurposeFilter(value)}>
+                              <SelectTrigger className="bg-slate-50 border-slate-200 focus:bg-white text-sm h-10">
+                                <SelectValue placeholder="Select purpose" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="ALL">All Purposes</SelectItem>
+                                {purposeOptions.map((option) => (
+                                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
 
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 tracking-wide">
