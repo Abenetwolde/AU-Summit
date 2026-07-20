@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Search, RefreshCw, Download, Loader2, Image as ImageIcon, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +8,9 @@ import {
     useGetApprovedApplicationsQuery,
     useUpdateApplicationStatusMutation,
     useLazyExportProfilePicturesQuery,
+    useLazyGetApprovedApplicationsQuery,
+    useGetFormsQuery,
+    useGetFormByIdQuery,
     ApplicationStatus
 } from '@/store/services/api';
 import { toast } from 'sonner';
@@ -21,6 +24,7 @@ import {
 import { useAuth, UserRole } from '@/auth/context';
 import en from 'react-phone-number-input/locale/en';
 import { exportJournalistsToCSV, exportJournalistsToPDF } from '@/lib/export-utils';
+import { FormFilter } from '@/components/dashboard/FormFilter';
 
 export function AccreditedJournalists() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -28,9 +32,53 @@ export function AccreditedJournalists() {
     const [selectedCountry, setSelectedCountry] = useState('');
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
+    const [selectedFormId, setSelectedFormId] = useState<string | undefined>(undefined);
+    const [applicationPurposeFilter, setApplicationPurposeFilter] = useState<string | undefined>(undefined);
     const { user, checkPermission } = useAuth();
     const navigate = useNavigate();
     const isReadOnly = user?.role === UserRole.NISS_OFFICER;
+
+    // Resolve active form: selected or default published
+    const { data: forms } = useGetFormsQuery();
+    const activeFormId = selectedFormId ? Number(selectedFormId) : forms?.find((f) => f.status === 'PUBLISHED')?.form_id;
+    const { data: activeFormDetails } = useGetFormByIdQuery(activeFormId?.toString() || '', { skip: !activeFormId });
+
+    // Derive application_purpose options from active form fields
+    const allFormFields = [
+        ...(activeFormDetails?.FormFields || []),
+        ...(activeFormDetails?.uncategorizedFields || []),
+        ...((activeFormDetails?.categories || []).flatMap((category: any) => category.fields || []))
+    ];
+    const applicationPurposeField = allFormFields.find((field: any) => field.field_name === 'application_purpose');
+    const purposeOptions: string[] = (() => {
+        const fieldOptions = applicationPurposeField?.field_options;
+        if (!fieldOptions) return [];
+        if (Array.isArray(fieldOptions?.options)) return fieldOptions.options;
+        if (typeof fieldOptions === 'string') {
+            try {
+                const parsed = JSON.parse(fieldOptions);
+                return Array.isArray(parsed?.options) ? parsed.options : [];
+            } catch { return []; }
+        }
+        return [];
+    })();
+    const firstPurposeOption = purposeOptions[0];
+
+    useEffect(() => {
+        if (!purposeOptions.length) {
+            if (applicationPurposeFilter !== undefined) setApplicationPurposeFilter(undefined);
+            return;
+        }
+        if (!applicationPurposeFilter || (!purposeOptions.includes(applicationPurposeFilter) && applicationPurposeFilter !== 'ALL')) {
+            setApplicationPurposeFilter('ALL');
+        }
+    }, [applicationPurposeFilter, firstPurposeOption, purposeOptions]);
+
+    const mapPurposeFilter = () => {
+        if (!purposeOptions.length || !applicationPurposeFilter || applicationPurposeFilter === 'ALL') return undefined;
+        if (applicationPurposeFilter === firstPurposeOption) return applicationPurposeFilter;
+        return `not:${firstPurposeOption}`;
+    };
 
     // API Hooks
     const { data, isLoading, refetch } = useGetApprovedApplicationsQuery({
@@ -38,11 +86,14 @@ export function AccreditedJournalists() {
         limit: itemsPerPage,
         search: searchTerm,
         country: selectedCountry,
-        date: date
+        date: date,
+        formId: activeFormId,
+        applicationPurpose: mapPurposeFilter()
     });
 
     const [updateStatus, { isLoading: isUpdating }] = useUpdateApplicationStatusMutation();
     const [triggerExport, { isFetching: isExportingPhotos }] = useLazyExportProfilePicturesQuery();
+    const [fetchAllForExport, { isFetching: isExportingCSVPDF }] = useLazyGetApprovedApplicationsQuery();
 
     const applications = data?.applications || [];
     const totalPages = data?.totalPages || 1;
@@ -84,17 +135,41 @@ export function AccreditedJournalists() {
     };
 
     // Export handlers
-    const handleExportCSV = () => {
-        exportJournalistsToCSV(applications);
+    const handleExportCSV = async () => {
+        const result = await fetchAllForExport({
+            page: 1,
+            limit: 10000,
+            search: searchTerm,
+            country: selectedCountry,
+            date: date,
+            formId: activeFormId,
+            applicationPurpose: mapPurposeFilter()
+        });
+        exportJournalistsToCSV(result.data?.applications || []);
     };
 
-    const handleExportPDF = () => {
-        exportJournalistsToPDF(applications);
+    const handleExportPDF = async () => {
+        const result = await fetchAllForExport({
+            page: 1,
+            limit: 10000,
+            search: searchTerm,
+            country: selectedCountry,
+            date: date,
+            formId: activeFormId,
+            applicationPurpose: mapPurposeFilter()
+        });
+        exportJournalistsToPDF(result.data?.applications || []);
     };
 
     const handleExportProfilePictures = async () => {
         try {
-            const blob = await triggerExport().unwrap();
+            const blob = await triggerExport({
+                formId: activeFormId,
+                country: selectedCountry || undefined,
+                date: date || undefined,
+                search: searchTerm || undefined,
+                applicationPurpose: mapPurposeFilter()
+            }).unwrap();
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
@@ -130,17 +205,19 @@ export function AccreditedJournalists() {
                     <Button
                         variant="outline"
                         onClick={handleExportCSV}
+                        disabled={isExportingCSVPDF}
                         className="gap-2"
                     >
-                        <Download className="h-4 w-4" />
+                        {isExportingCSVPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         Export CSV
                     </Button>
                     <Button
                         variant="outline"
                         onClick={handleExportPDF}
+                        disabled={isExportingCSVPDF}
                         className="gap-2"
                     >
-                        <Download className="h-4 w-4" />
+                        {isExportingCSVPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         Export PDF
                     </Button>
                     <Button
@@ -166,7 +243,47 @@ export function AccreditedJournalists() {
 
             {/* Filter Section */}
             <Card className="bg-gray-50/50">
-                <CardContent className="p-6">
+                <CardContent className="p-6 space-y-4">
+                    {/* Row 1: Form + Purpose filters */}
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                        <div className="md:col-span-5 space-y-2">
+                            <label className="text-sm font-medium">Event Form</label>
+                            <FormFilter
+                                value={selectedFormId}
+                                onChange={(val) => {
+                                    setSelectedFormId(val);
+                                    setApplicationPurposeFilter(undefined);
+                                    setCurrentPage(1);
+                                }}
+                                className="w-full"
+                            />
+                        </div>
+
+                        {purposeOptions.length > 0 && (
+                            <div className="md:col-span-4 space-y-2">
+                                <label className="text-sm font-medium">Application Purpose</label>
+                                <Select
+                                    value={applicationPurposeFilter || 'ALL'}
+                                    onValueChange={(val) => {
+                                        setApplicationPurposeFilter(val);
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="All purposes" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ALL">All Purposes</SelectItem>
+                                        {purposeOptions.map((opt) => (
+                                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Row 2: Search, Country, Date, Actions */}
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                         <div className="md:col-span-4 space-y-2">
                             <label className="text-sm font-medium">Search</label>
@@ -217,6 +334,8 @@ export function AccreditedJournalists() {
                                 setSearchTerm('');
                                 setDate('');
                                 setSelectedCountry('');
+                                setSelectedFormId(undefined);
+                                setApplicationPurposeFilter(undefined);
                                 setCurrentPage(1);
                             }}>
                                 <RefreshCw className="h-4 w-4" />

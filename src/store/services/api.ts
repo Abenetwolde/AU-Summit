@@ -1534,7 +1534,7 @@ export const api = createApi({
             transformResponse: (response: any) => response.data || response,
             providesTags: (_result, _error, id) => [{ type: 'Application', id }],
         }),
-        getApprovedApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; country?: string; date?: string; formId?: number } | void>({
+        getApprovedApplications: builder.query<ApplicationsResponse['data'], { page?: number; limit?: number; search?: string; country?: string; date?: string; formId?: number; applicationPurpose?: string } | void>({
             query: (params) => {
                 const page = params && 'page' in params ? params.page : 1;
                 const limit = params && 'limit' in params ? params.limit : 10;
@@ -1542,6 +1542,7 @@ export const api = createApi({
                 const country = params && 'country' in params ? params.country : '';
                 const date = params && 'date' in params ? params.date : '';
                 const formId = params && 'formId' in params ? params.formId : undefined;
+                const applicationPurpose = params && 'applicationPurpose' in params ? params.applicationPurpose : undefined;
 
                 const queryParams = new URLSearchParams({
                     page: String(page),
@@ -1549,7 +1550,8 @@ export const api = createApi({
                     ...(search && { search }),
                     ...(country && { country }),
                     ...(date && { date }),
-                    ...(formId && { formId: String(formId) })
+                    ...(formId && { formId: String(formId) }),
+                    ...(applicationPurpose && { applicationPurpose })
                 });
                 return `/applications/approved?${queryParams}`;
             },
@@ -1907,12 +1909,21 @@ export const api = createApi({
             },
             transformResponse: (response: DashboardDataResponse) => response.data,
         }),
-        exportProfilePictures: builder.query<Blob, void>({
-            query: () => ({
-                url: '/export/profile-pictures',
-                method: 'GET',
-                responseHandler: (response: any) => response.blob()
-            }),
+        exportProfilePictures: builder.query<Blob, { formId?: number; country?: string; date?: string; search?: string; applicationPurpose?: string } | void>({
+            query: (params) => {
+                const queryParams = new URLSearchParams();
+                if (params && 'formId' in params && params.formId) queryParams.set('formId', String(params.formId));
+                if (params && 'country' in params && params.country) queryParams.set('country', params.country);
+                if (params && 'date' in params && params.date) queryParams.set('date', params.date);
+                if (params && 'search' in params && params.search) queryParams.set('search', params.search);
+                if (params && 'applicationPurpose' in params && params.applicationPurpose) queryParams.set('applicationPurpose', params.applicationPurpose);
+                const qs = queryParams.toString();
+                return {
+                    url: `/export/profile-pictures${qs ? `?${qs}` : ''}`,
+                    method: 'GET',
+                    responseHandler: (response: any) => response.blob()
+                };
+            },
         }),
         // Invitation Endpoints
         getInvitationTemplates: builder.query<InvitationTemplate[], void>({
@@ -2296,6 +2307,7 @@ export const {
     useApproveWorkflowStepMutation,
     useActivateExitWorkflowMutation,
     useGetApprovedApplicationsQuery,
+    useLazyGetApprovedApplicationsQuery,
     useGetWorkflowApplicationsQuery,
     useLazyGetWorkflowApplicationsQuery,
     useGetOrganizationsQuery,
