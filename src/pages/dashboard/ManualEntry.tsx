@@ -604,6 +604,23 @@ export default function ManualEntry() {
                 );
             case 'select':
                 register(field_name, getValidationRules(field));
+
+                let parsedOptsObj: { options?: any[]; descriptions?: Record<string, string> } = {};
+                if (typeof field_options === 'string') {
+                    try {
+                        parsedOptsObj = JSON.parse(field_options);
+                    } catch {
+                        parsedOptsObj = {};
+                    }
+                } else if (field_options && typeof field_options === 'object') {
+                    parsedOptsObj = field_options;
+                }
+
+                const optionsList: any[] = Array.isArray(parsedOptsObj?.options)
+                    ? parsedOptsObj.options
+                    : (Array.isArray(field_options) ? field_options : []);
+                const optionDescriptions: Record<string, string> = parsedOptsObj?.descriptions || {};
+
                 return (
                     <div key={field_name} className="space-y-2">
                         <Label className="text-sm font-medium">{label} {is_required && '*'}</Label>
@@ -621,11 +638,20 @@ export default function ManualEntry() {
                                 <SelectValue placeholder={`Select ${label.toLowerCase()}...`} />
                             </SelectTrigger>
                             <SelectContent>
-                                {field_options?.options?.map((opt: any) => (
-                                    <SelectItem key={typeof opt === 'string' ? opt : opt.value} value={typeof opt === 'string' ? opt : opt.value}>
-                                        {typeof opt === 'string' ? opt : opt.label}
-                                    </SelectItem>
-                                ))}
+                                {optionsList.map((opt: any) => {
+                                    const optValue = typeof opt === 'string' ? opt : (opt?.value || String(opt));
+                                    const optLabel = typeof opt === 'string' ? opt : (opt?.label || String(opt));
+                                    const optDesc = optionDescriptions[optValue] || (typeof opt === 'object' ? opt?.description : null);
+
+                                    return (
+                                        <SelectItem
+                                            key={optValue}
+                                            value={optValue}
+                                        >
+                                            <span className="font-medium text-gray-900">{optLabel}</span>
+                                        </SelectItem>
+                                    );
+                                })}
                             </SelectContent>
                         </Select>
                         {error && (
