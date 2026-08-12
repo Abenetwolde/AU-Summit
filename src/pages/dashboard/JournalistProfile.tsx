@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw, History, ChevronRight, Filter } from 'lucide-react';
+import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw, History, ChevronRight, Filter, Building2, UserCheck, MessageSquare, CheckCircle2, XCircle, Clock, Building } from 'lucide-react';
 import { getFlagEmoji } from '@/lib/utils';
 import en from 'react-phone-number-input/locale/en';
 import { SystemCheckSuccess } from '@/components/SystemCheckSuccess';
@@ -24,6 +24,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RichTextEditor, NoteAttachment } from '@/components/RichTextEditor';
+import { DecisionNoteViewer } from '@/components/DecisionNoteViewer';
 
 // Define EquipmentStatus enum to match backend
 enum EquipmentStatus {
@@ -33,10 +35,16 @@ enum EquipmentStatus {
 }
 
 export function JournalistProfile() {
-    const { id } = useParams();
+    const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const location = useLocation();
     const { user, checkPermission } = useAuth();
+    // const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN;
+
+    // Detect if accessed from Entry or Exit workflow pages
+    // const currentPhase = location.pathname.includes('/exit-workflow') ? 'exit' :
+                         location.pathname.includes('/entry-workflow') ? 'entry' : 'unknown';
+
     console.log(user);
 
     // Workflow Mutation
@@ -50,6 +58,7 @@ export function JournalistProfile() {
     const { data: templates, isLoading: templatesLoading } = useGetFormFieldTemplatesQuery();
 
     const [notes, setNotes] = useState('');
+    const [noteAttachments, setNoteAttachments] = useState<NoteAttachment[]>([]);
     const [showSystemCheck, setShowSystemCheck] = useState(false);
 
     // Equipment approval states
@@ -174,13 +183,15 @@ export function JournalistProfile() {
                 stepId: effectiveStepId, // NEW: Sending explicit ID
                 status: status as any,
                 notes,
-                rejectionDetails // NEW: Sending structured details
+                rejectionDetails, // NEW: Sending structured details
+                noteAttachments
             }).unwrap();
 
             toast.success(`Application ${status.toLowerCase()} successfully`);
 
             // Optimistic Update removed as application comes from RTK Query
             setNotes('');
+            setNoteAttachments([]);
             setShowRejectionDialog(false);
             setSelectedFields([]);
             setFieldNotes({});
@@ -418,6 +429,7 @@ export function JournalistProfile() {
 
     return (
         <div className="space-y-6">
+            
 
 
             {/* Header */}
@@ -795,12 +807,13 @@ export function JournalistProfile() {
                             {canApprove && (
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Decision Notes</label>
-                                    <Textarea
-                                        placeholder="Enter approval/rejection notes..."
+                                    <label className="text-sm font-medium text-gray-700">Decision Notes (Rich Text & Attachments)</label>
+                                    <RichTextEditor
+                                        placeholder="Enter approval/rejection notes, guidelines, or attach supporting documents..."
                                         value={notes}
-                                        onChange={(e) => setNotes(e.target.value)}
-                                        className="min-h-[100px] text-sm"
+                                        onChange={setNotes}
+                                        attachments={noteAttachments}
+                                        onAttachmentsChange={setNoteAttachments}
                                     />
                                 </div>
                                 {userActionableApproval?.status && ['APPROVED', 'REJECTED'].includes(userActionableApproval.status) ? (
@@ -1047,19 +1060,20 @@ export function JournalistProfile() {
 
             {/* Decision Notes History Dialog */}
             <Dialog open={showHistoryDialog} onOpenChange={setShowHistoryDialog}>
-                <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <History className="h-5 w-5 text-blue-600" /> Decision History
+                <DialogContent className="sm:max-w-[800px] max-h-[85vh] flex flex-col">
+                    <DialogHeader className="border-b pb-4">
+                        <DialogTitle className="flex items-center gap-2 text-xl text-gray-900">
+                            <History className="h-6 w-6 text-blue-600" /> Stakeholder Approval & Decision History
                         </DialogTitle>
                         <DialogDescription>
-                            Past decisions and notes applied to this application during its workflow.
+                            Complete transparent record of stakeholder approvals, feedback comments, and reviewer identities across all organizations.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="flex-1 overflow-y-auto pr-2 space-y-6 pt-4 pb-4">
+                        {/* Timeline of Decisions with Comments and Approver Info */}
                         {approvals && approvals.length > 0 ? (
-                            <div className="relative border-l-2 border-gray-200 ml-3 space-y-8">
+                            <div className="relative border-l-2 border-slate-200 ml-3 space-y-6 pt-2">
                                 {approvals
                                     .slice()
                                     .sort((a: any, b: any) => {
@@ -1076,48 +1090,94 @@ export function JournalistProfile() {
                                         const isApproved = appr.status === 'APPROVED' || appr.status === 'NOT_APPLICABLE';
                                         const isRejected = appr.status === 'REJECTED';
 
+                                        const verifier = appr.verifier;
+                                        const orgName = verifier?.organization?.name || step?.requiredRole || 'Stakeholder Organization';
+
                                         return (
                                             <div key={appr.id || idx} className="relative pl-6">
                                                 {/* Timeline dot */}
-                                                <div className={`absolute -left-[9px] top-1 h-4 w-4 rounded-full border-2 border-white ${isApproved ? 'bg-green-500' : isRejected ? 'bg-red-500' : 'bg-gray-400'
-                                                    }`} />
+                                                <div className={`absolute -left-[9px] top-2 h-4 w-4 rounded-full border-2 border-white ${
+                                                    isApproved ? 'bg-green-500 shadow-sm' : isRejected ? 'bg-red-500 shadow-sm' : 'bg-gray-400'
+                                                }`} />
 
-                                                <div className="bg-gray-50 border rounded-lg p-4 shadow-sm">
-                                                    <div className="flex justify-between items-start mb-2">
+                                                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4 hover:border-blue-200 transition-colors">
+                                                    {/* Header */}
+                                                    <div className="flex flex-wrap justify-between items-start gap-2 border-b border-gray-100 pb-3">
                                                         <div>
-                                                            <h4 className="font-bold text-gray-900">{stepName}</h4>
-                                                            <p className="text-xs text-gray-500">
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="font-bold text-gray-900 text-base">{stepName}</h4>
+                                                                {step?.isExitStep && (
+                                                                    <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full uppercase">
+                                                                        Exit Workflow
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                                                                <Clock className="h-3 w-3 text-gray-400" />
                                                                 {timestamp ? new Date(timestamp).toLocaleString() : 'N/A'}
-                                                                {appr.verifier ? ` • by ${appr.verifier.fullName || 'Admin'}` : ''}
                                                             </p>
                                                         </div>
-                                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${isApproved ? 'bg-green-100 text-green-700' :
-                                                                isRejected ? 'bg-red-100 text-red-700' :
-                                                                    'bg-gray-200 text-gray-700'
-                                                            }`}>
+                                                        <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5 ${
+                                                            isApproved ? 'bg-green-100 text-green-700 border border-green-200' :
+                                                            isRejected ? 'bg-red-100 text-red-700 border border-red-200' :
+                                                            'bg-gray-200 text-gray-700'
+                                                        }`}>
+                                                            {isApproved ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
                                                             {appr.status}
                                                         </span>
                                                     </div>
 
-                                                    {/* Primary Decision Note */}
-                                                    {appr.notes ? (
-                                                        <div className="mt-3 bg-white border border-gray-100 p-3 rounded text-sm text-gray-700 whitespace-pre-wrap">
-                                                            {appr.notes}
+                                                    {/* Stakeholder Comment Box */}
+                                                    <div className="space-y-1.5">
+                                                        <p className="text-xs font-bold uppercase text-gray-400 flex items-center gap-1">
+                                                            <MessageSquare className="h-3.5 w-3.5 text-blue-500" /> Stakeholder Feedback & Decision Notes
+                                                        </p>
+                                                        {appr.notes || (appr.noteAttachments && appr.noteAttachments.length > 0) ? (
+                                                            <DecisionNoteViewer
+                                                                htmlContent={appr.notes}
+                                                                attachments={appr.noteAttachments}
+                                                            />
+                                                        ) : (
+                                                            <div className="bg-gray-50 border border-dashed border-gray-200 p-3 rounded-lg text-xs text-gray-400 italic">
+                                                                No specific feedback comments entered for this decision.
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Stakeholder & Approver Metadata Card (Below Note) */}
+                                                    <div className="bg-slate-50 rounded-lg p-3 border border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                                        <div className="flex items-center gap-2.5">
+                                                            <div className="p-2 rounded-lg bg-blue-100 text-blue-700">
+                                                                <Building2 className="h-4 w-4" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] font-bold uppercase text-gray-400">Organization</p>
+                                                                <p className="font-bold text-gray-900">{orgName}</p>
+                                                            </div>
                                                         </div>
-                                                    ) : (
-                                                        <div className="mt-3 text-sm text-gray-400 italic">No notes provided for this decision.</div>
-                                                    )}
+
+                                                        <div className="flex items-center gap-2.5">
+                                                            <div className="p-2 rounded-lg bg-emerald-100 text-emerald-700">
+                                                                <UserCheck className="h-4 w-4" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] font-bold uppercase text-gray-400">Approved By</p>
+                                                                <p className="font-bold text-gray-900">{verifier?.fullName || 'Authorized System Officer'}</p>
+                                                                {verifier?.email && <p className="text-[10px] text-gray-500 truncate">{verifier.email}</p>}
+                                                            </div>
+                                                        </div>
+                                                    </div>
 
                                                     {/* Field-level Rejection Details if present */}
                                                     {appr.rejectionDetails && Object.keys(appr.rejectionDetails).length > 0 && (
-                                                        <div className="mt-3 pt-3 border-t border-gray-200">
-                                                            <h5 className="text-xs font-bold text-gray-700 uppercase mb-2 flex items-center gap-1">
-                                                                <FileText className="h-3 w-3" /> Field Modifications Required
+                                                        <div className="mt-3 pt-3 border-t border-gray-100">
+                                                            <h5 className="text-xs font-bold text-red-700 uppercase mb-2 flex items-center gap-1">
+                                                                <XCircle className="h-3.5 w-3.5 text-red-600" /> Field Modifications Requested
                                                             </h5>
                                                             <div className="space-y-2">
                                                                 {Object.entries(appr.rejectionDetails).map(([fieldName, detailNote]) => (
-                                                                    <div key={fieldName} className="bg-red-50 text-red-800 p-2 rounded text-xs">
-                                                                        <span className="font-bold">{fieldName}:</span> {String(detailNote)}
+                                                                    <div key={fieldName} className="bg-red-50 border border-red-200 text-red-900 p-2.5 rounded-lg text-xs">
+                                                                        <span className="font-bold text-red-700">{fieldName}:</span> {String(detailNote)}
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -1129,14 +1189,55 @@ export function JournalistProfile() {
                                     })}
 
                                 {approvals.filter((appr: any) => appr.status !== 'PENDING').length === 0 && (
-                                    <div className="text-center py-6 text-gray-500 italic">
-                                        No previous decisions found.
+                                    <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed text-gray-500 italic text-sm">
+                                        No concluded stakeholder decisions recorded yet for this application.
                                     </div>
                                 )}
                             </div>
                         ) : (
-                            <div className="text-center py-6 text-gray-500 italic">
+                            <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed text-gray-500 italic text-sm">
                                 No history available for this application.
+                            </div>
+                        )}
+
+                        {/* Stakeholder Organization Status Matrix (Positioned below all stakeholder notes/statuses) */}
+                        {approvals && approvals.length > 0 && (
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 mt-6">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                    <Building2 className="h-4 w-4 text-slate-600" /> Stakeholder Organization Status Matrix
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {approvals.map((appr: any) => {
+                                        const step = appr.workflowStep || appr.approvalWorkflowStep;
+                                        const isApproved = appr.status === 'APPROVED' || appr.status === 'NOT_APPLICABLE';
+                                        const isRejected = appr.status === 'REJECTED';
+                                        const orgName = appr.verifier?.organization?.name || step?.requiredRole || step?.name || 'Stakeholder';
+                                        const verifierName = appr.verifier?.fullName;
+
+                                        return (
+                                            <div key={appr.id} className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs flex items-center justify-between">
+                                                <div className="min-w-0 flex-1 pr-2">
+                                                    <p className="text-sm font-bold text-gray-900 truncate">{step?.name || 'Approval Step'}</p>
+                                                    <p className="text-xs text-gray-500 truncate flex items-center gap-1 mt-0.5">
+                                                        <Building className="h-3 w-3 text-gray-400" />
+                                                        <span className="font-semibold text-gray-700">{orgName}</span>
+                                                        {verifierName && <span>• {verifierName}</span>}
+                                                    </p>
+                                                </div>
+                                                <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1 uppercase tracking-wider ${
+                                                    isApproved ? 'bg-green-100 text-green-700 border border-green-200' :
+                                                    isRejected ? 'bg-red-100 text-red-700 border border-red-200' :
+                                                    'bg-amber-50 text-amber-700 border border-amber-200'
+                                                }`}>
+                                                    {isApproved ? <CheckCircle2 className="h-3 w-3" /> :
+                                                     isRejected ? <XCircle className="h-3 w-3" /> :
+                                                     <Clock className="h-3 w-3" />}
+                                                    {appr.status}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         )}
                     </div>

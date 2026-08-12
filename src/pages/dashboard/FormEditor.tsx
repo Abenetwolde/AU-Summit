@@ -103,6 +103,7 @@ interface FormField {
     required: boolean;
     helpText?: string;
     options?: string[];
+    descriptions?: Record<string, string>;
     templateId?: number;
     validation?: {
         minLength?: number;
@@ -178,6 +179,7 @@ export function FormEditor() {
                     required: f.is_required,
                     placeholder: f.placeholder || `Enter ${f.label.toLowerCase()}`,
                     options: f.field_options?.options || (f.field_type === 'boolean' ? ['True', 'False'] : undefined),
+                    descriptions: f.field_options?.descriptions || undefined,
                     validation: f.validation_criteria || {},
                     displayOrder: f.display_order,
                     fieldName: f.field_name,
@@ -199,6 +201,7 @@ export function FormEditor() {
                     required: f.is_required,
                     placeholder: f.placeholder || `Enter ${f.label.toLowerCase()}`,
                     options: f.field_options?.options || (f.field_type === 'boolean' ? ['True', 'False'] : undefined),
+                    descriptions: f.field_options?.descriptions || undefined,
                     validation: f.validation_criteria || {},
                     displayOrder: f.display_order,
                     fieldName: f.field_name,
@@ -225,10 +228,13 @@ export function FormEditor() {
 
 
                 let parsedOptions: string[] | undefined;
+                let parsedDescriptions: Record<string, string> | undefined;
                 try {
                     if (t.field_options) {
-                        const parsed = JSON.parse(t.field_options);
+                        const rawOptions = t.field_options as any;
+                        const parsed = typeof rawOptions === 'string' ? JSON.parse(rawOptions) : rawOptions;
                         parsedOptions = parsed.options || undefined;
+                        parsedDescriptions = parsed.descriptions || undefined;
                     }
                 } catch (e) {
                     console.error('Failed to parse field_options', e);
@@ -244,6 +250,7 @@ export function FormEditor() {
                     required: t.is_required,
                     placeholder: `Enter ${t.label.toLowerCase()}`,
                     options,
+                    descriptions: parsedDescriptions,
                     validation: typeof t.validation_criteria === 'string' ? JSON.parse(t.validation_criteria) : t.validation_criteria || {},
                     displayOrder: t.display_order,
                     fieldName: t.field_name,
@@ -401,7 +408,9 @@ export function FormEditor() {
                     is_required: f.required,
                     display_order: fIndex + 1,
                     validation_criteria: f.validation || {},
-                    field_options: f.options ? { options: f.options } : null
+                    field_options: f.options
+                        ? { options: f.options, ...(f.descriptions && Object.keys(f.descriptions).length > 0 ? { descriptions: f.descriptions } : {}) }
+                        : null
                 }))
             }));
 
@@ -412,7 +421,9 @@ export function FormEditor() {
             is_required: f.required,
             display_order: index + 1,
             validation_criteria: f.validation || {},
-            field_options: f.options ? { options: f.options } : null
+            field_options: f.options
+                ? { options: f.options, ...(f.descriptions && Object.keys(f.descriptions).length > 0 ? { descriptions: f.descriptions } : {}) }
+                : null
         }));
 
         const payload = {
@@ -610,8 +621,17 @@ export function FormEditor() {
                                                     value={option}
                                                     onChange={(e) => {
                                                         const newOptions = [...(selectedField.options || [])];
+                                                        const oldName = newOptions[idx];
                                                         newOptions[idx] = e.target.value;
-                                                        updateField(selectedField.id, { options: newOptions });
+                                                        // Rename key in descriptions if it existed
+                                                        if (selectedField.descriptions && selectedField.descriptions[oldName] !== undefined) {
+                                                            const newDescs = { ...selectedField.descriptions };
+                                                            newDescs[e.target.value] = newDescs[oldName];
+                                                            delete newDescs[oldName];
+                                                            updateField(selectedField.id, { options: newOptions, descriptions: newDescs });
+                                                        } else {
+                                                            updateField(selectedField.id, { options: newOptions });
+                                                        }
                                                     }}
                                                     className="h-8 text-xs"
                                                     placeholder={`Option ${idx + 1}`}
@@ -621,8 +641,11 @@ export function FormEditor() {
                                                     size="icon"
                                                     className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
                                                     onClick={() => {
+                                                        const removedOpt = (selectedField.options || [])[idx];
                                                         const newOptions = (selectedField.options || []).filter((_, i) => i !== idx);
-                                                        updateField(selectedField.id, { options: newOptions });
+                                                        const newDescs = { ...(selectedField.descriptions || {}) };
+                                                        delete newDescs[removedOpt];
+                                                        updateField(selectedField.id, { options: newOptions, descriptions: newDescs });
                                                     }}
                                                     disabled={(selectedField.options?.length || 0) <= 1}
                                                 >
@@ -631,6 +654,38 @@ export function FormEditor() {
                                             </div>
                                         ))}
                                     </div>
+
+                                    {/* Hover Descriptions per option — only for dropdown */}
+                                    {selectedField.type === 'dropdown' && (
+                                        <div className="space-y-2 pt-2">
+                                            <Label className="text-xs font-bold text-gray-600 uppercase flex items-center gap-1">
+                                                <span>Option Hover Descriptions</span>
+                                                <span className="text-[10px] font-normal text-gray-400 normal-case ml-1">(shown to applicants on hover)</span>
+                                            </Label>
+                                            <div className="space-y-2">
+                                                {(selectedField.options || []).map((option, idx) => (
+                                                    <div key={idx} className="space-y-1">
+                                                        <p className="text-[10px] font-semibold text-emerald-700 pl-1">{option || `Option ${idx + 1}`}</p>
+                                                        <Input
+                                                            value={(selectedField.descriptions || {})[option] || ''}
+                                                            onChange={(e) => {
+                                                                const newDescs = { ...(selectedField.descriptions || {}) };
+                                                                if (e.target.value.trim()) {
+                                                                    newDescs[option] = e.target.value;
+                                                                } else {
+                                                                    delete newDescs[option];
+                                                                }
+                                                                updateField(selectedField.id, { descriptions: newDescs });
+                                                            }}
+                                                            className="h-8 text-xs placeholder:text-gray-300"
+                                                            placeholder={`Describe "${option}" to applicants…`}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <Separator className="my-4" />
                                 </div>
                             )}

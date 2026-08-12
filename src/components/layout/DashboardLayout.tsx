@@ -186,7 +186,7 @@ export function DashboardLayout() {
             )}
 
             {/* List of journalists (Read Only) */}
-            {checkPermission('application:view:readonly') && (
+            {/* {checkPermission('application:view:readonly') && (
               <NavLink
                 to={`${basePath}/journalists-view`}
                 className={({ isActive }) =>
@@ -201,7 +201,7 @@ export function DashboardLayout() {
                 <Users className="h-5 w-5" />
                 Journalists (Read Only)
               </NavLink>
-            )}
+            )} */}
 
 
 

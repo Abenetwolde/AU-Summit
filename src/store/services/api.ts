@@ -102,6 +102,22 @@ export interface ApplicationApproval {
     verifiedBy: number | null;
     verifiedAt: string | null;
     workflowStep?: WorkflowStep;
+    verifier?: {
+        id: number;
+        fullName: string;
+        email: string;
+        role?: {
+            id: number;
+            name: string;
+            description?: string;
+        };
+        organization?: {
+            id: number;
+            name: string;
+            description?: string;
+            logo?: string;
+        };
+    };
 }
 
 export interface Document {
@@ -849,7 +865,7 @@ export interface UpdateEquipmentStatusPayload {
     notes?: string;
 }
 
-export const FILE_BASE_URL = 'https://api.arrivalclearance.gov.et';
+export const FILE_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.arrivalclearance.gov.et';
 // export const FILE_BASE_URL = 'http://localhost:3001';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
@@ -1465,7 +1481,7 @@ export const api = createApi({
             }),
             invalidatesTags: ['Application'],
         }),
-        approveWorkflowStep: builder.mutation<void, { applicationId: number, stepKey: string, stepId?: number, status: 'APPROVED' | 'REJECTED', notes?: string, rejectionDetails?: any }>({
+        approveWorkflowStep: builder.mutation<void, { applicationId: number, stepKey: string, stepId?: number, status: 'APPROVED' | 'REJECTED', notes?: string, rejectionDetails?: any, noteAttachments?: any[] }>({
             query: ({ applicationId, stepKey, stepId, ...body }) => ({
                 url: `/applications/${applicationId}/approve/${stepKey}`,
                 method: 'PUT',
