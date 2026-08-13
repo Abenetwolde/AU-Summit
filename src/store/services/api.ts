@@ -865,8 +865,8 @@ export interface UpdateEquipmentStatusPayload {
     notes?: string;
 }
 
-export const FILE_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.arrivalclearance.gov.et';
-// export const FILE_BASE_URL = 'http://localhost:3001';
+// export const FILE_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.arrivalclearance.gov.et';
+export const FILE_BASE_URL = 'http://localhost:3001';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;

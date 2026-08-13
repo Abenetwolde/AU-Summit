@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -317,7 +317,8 @@ export function JournalistProfile() {
                 field_name: f.field_name,
                 field_type: f.field_type,
                 label: f.label,
-                display_order: f.display_order
+                display_order: f.display_order,
+                field_options: f.field_options
             }))
         }));
 
@@ -328,7 +329,8 @@ export function JournalistProfile() {
                     field_name: f.field_name,
                     field_type: f.field_type,
                     label: f.label,
-                    display_order: f.display_order
+                    display_order: f.display_order,
+                    field_options: f.field_options
                 }))
             });
         }
@@ -341,7 +343,8 @@ export function JournalistProfile() {
                 field_name: t.field_name,
                 field_type: t.field_type,
                 label: t.label,
-                display_order: t.display_order
+                display_order: t.display_order,
+                field_options: t.field_options
             });
             return acc;
         }, {});
@@ -538,44 +541,73 @@ export function JournalistProfile() {
                                     </CardHeader>
                                     <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-4">
                                         {category.fields
-                                            .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
-                                            .map((field) => {
+                                            .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
+                                            .map((field: any) => {
                                                 const value = formData[field.field_name];
-                                                if (field.field_type === 'file') {
-                                                    const files = getFiles(value);
-                                                    if (files.length === 0) return null;
-                                                    return (
-                                                        <div key={field.field_name} className="col-span-1 sm:col-span-2 lg:col-span-4 mt-2">
-                                                            <p className="text-xs font-bold text-gray-400 uppercase mb-3">{field.label}</p>
-                                                            <div className="flex flex-wrap gap-4">
-                                                                {files.map((file: string, idx: number) => (
-                                                                    <a
-                                                                        key={idx}
-                                                                        href={getFileUrl(file)}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="group relative h-32 w-48 rounded-lg overflow-hidden border bg-gray-50 flex-shrink-0"
-                                                                    >
-                                                                        <div className="h-full w-full flex flex-col items-center justify-center p-2">
-                                                                            <FileText className="h-8 w-8 text-blue-400 mb-2" />
-                                                                            <span className="text-[10px] text-gray-500 truncate w-full text-center px-2">
-                                                                                {field.label} {idx + 1}
-                                                                            </span>
-                                                                        </div>
-                                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                                            <Download className="h-5 w-5 text-white" />
-                                                                        </div>
-                                                                    </a>
-                                                                ))}
+
+                                                let activeSubFields: any[] = [];
+                                                if ((field.field_type === 'select' || field.field_type === 'dropdown') && field.field_options) {
+                                                    let parsedOpts: any = {};
+                                                    try {
+                                                        parsedOpts = typeof field.field_options === 'string' ? JSON.parse(field.field_options) : field.field_options || {};
+                                                    } catch { }
+                                                    const nestedMap = parsedOpts?.nestedFields || parsedOpts?.nested_fields || {};
+                                                    const strVal = value ? String(value).trim() : '';
+                                                    const matchKey = strVal ? Object.keys(nestedMap).find(k => k.trim().toLowerCase() === strVal.toLowerCase()) : null;
+                                                    if (matchKey) {
+                                                        activeSubFields = nestedMap[matchKey].map((sf: any) => ({
+                                                            field_name: sf.field_name || sf.fieldName || (sf.label ? sf.label.toLowerCase().replace(/[^a-z0-9]+/g, '_') : 'sub_field'),
+                                                            field_type: sf.field_type || sf.type || 'text',
+                                                            label: sf.label || '',
+                                                            is_sub_field: true
+                                                        }));
+                                                    }
+                                                }
+
+                                                const renderFieldData = (f: any, val: any) => {
+                                                    if (f.field_type === 'file') {
+                                                        const files = getFiles(val);
+                                                        if (files.length === 0) return null;
+                                                        return (
+                                                            <div key={f.field_name} className={`col-span-1 sm:col-span-2 lg:col-span-4 mt-2 ${f.is_sub_field ? 'pl-4 border-l-2 border-emerald-500 bg-emerald-50/30 py-3 pr-3 rounded-2xl' : ''}`}>
+                                                                <p className="text-xs font-bold text-gray-400 uppercase mb-3">{f.label}</p>
+                                                                <div className="flex flex-wrap gap-4">
+                                                                    {files.map((file: string, idx: number) => (
+                                                                        <a
+                                                                            key={idx}
+                                                                            href={getFileUrl(file)}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="group relative h-32 w-48 rounded-lg overflow-hidden border bg-gray-50 flex-shrink-0"
+                                                                        >
+                                                                            <div className="h-full w-full flex flex-col items-center justify-center p-2">
+                                                                                <FileText className="h-8 w-8 text-blue-400 mb-2" />
+                                                                                <span className="text-[10px] text-gray-500 truncate w-full text-center px-2">
+                                                                                    {f.label} {idx + 1}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                                <Download className="h-5 w-5 text-white" />
+                                                                            </div>
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
                                                             </div>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <div key={f.field_name} className={`${f.field_type === 'textarea' ? 'col-span-1 sm:col-span-2 lg:col-span-4' : ''} ${f.is_sub_field ? 'pl-4 border-l-2 border-emerald-500 bg-emerald-50/30 p-3 rounded-2xl' : ''}`}>
+                                                            <p className="text-xs font-bold text-gray-400 uppercase">{f.label}</p>
+                                                            <p className="text-sm font-bold text-gray-900 mt-1">{val?.toString() || 'N/A'}</p>
                                                         </div>
                                                     );
-                                                }
+                                                };
+
                                                 return (
-                                                    <div key={field.field_name} className={field.field_type === 'textarea' ? 'col-span-1 sm:col-span-2 lg:col-span-4' : ''}>
-                                                        <p className="text-xs font-bold text-gray-400 uppercase">{field.label}</p>
-                                                        <p className="text-sm font-bold text-gray-900 mt-1">{value?.toString() || 'N/A'}</p>
-                                                    </div>
+                                                    <React.Fragment key={field.field_name}>
+                                                        {renderFieldData(field, value)}
+                                                        {activeSubFields.map(sf => renderFieldData(sf, formData[sf.field_name]))}
+                                                    </React.Fragment>
                                                 );
                                             })}
                                     </CardContent>
@@ -808,63 +840,6 @@ export function JournalistProfile() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <SystemCheckSuccess show={showSystemCheck} />
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                            {canApprove && (
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Decision Notes</label>
-                                    <Textarea
-                                        placeholder="Enter approval/rejection notes, guidelines..."
-                                        value={notes}
-                                        onChange={(e) => setNotes(e.target.value)}
-                                        rows={4}
-                                        className="w-full resize-y rounded-md border border-gray-300 p-3 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                    />
-                                </div>
-                                {userActionableApproval?.status && ['APPROVED', 'REJECTED'].includes(userActionableApproval.status) ? (
-                                    <Button
-                                        variant="outline"
-                                        className="w-full bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100 font-bold shadow-sm"
-                                        onClick={() => handleDecision('PENDING')}
-                                        disabled={isStatusUpdating}
-                                    >
-                                        <RotateCcw className="h-4 w-4 mr-2" /> Revoke Decision
-                                    </Button>
-                                ) : (
-                                    <div className="flex gap-2 w-full">
-                                        <Button
-                                            className="flex-1 bg-[#009b4d] hover:bg-[#007a3d] font-bold shadow-md"
-                                            onClick={() => handleDecision('APPROVED')}
-                                            disabled={
-                                                isStatusUpdating ||
-                                                (!isSuperAdmin && !canApprove)
-                                            }
-                                        >
-                                            {isStatusUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-                                            Approve
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            className="flex-1 bg-red-50 text-red-600 border-red-200 hover:bg-red-100 font-bold shadow-sm"
-                                            onClick={() => handleDecision('REJECTED')}
-                                            disabled={
-                                                isStatusUpdating ||
-                                                (!isSuperAdmin && !canApprove)
-                                            }
-                                        >
-                                            <X className="h-4 w-4 mr-2" /> Reject
-                                        </Button>
-=======
-
->>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
-=======
-
->>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
-=======
-
->>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
                             {isFromEntryApproval ? (
                                 canApprove ? (
                                     <div className="space-y-4">
@@ -918,13 +893,6 @@ export function JournalistProfile() {
                                                 Acting as: <span className="font-bold uppercase">{user?.workflowStepKey || relevantStep?.key}</span>
                                             </p>
                                         )}
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
-=======
->>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
                                     </div>
                                 ) : (
                                     <div className="bg-gray-100 p-3 rounded-md text-sm text-gray-600 text-center">
@@ -996,85 +964,6 @@ export function JournalistProfile() {
                                 </div>
                             )}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-                                    </div>
-                                ) : (
-                                    <div className="bg-gray-100 p-3 rounded-md text-sm text-gray-600 text-center">
-                                        Read-only view for this role.
-                                    </div>
-                                )
-                            ) : (
-                                <div className="space-y-4">
-                                    {/* Read-Only Stakeholder Notification Banner */}
-                                    <div className="bg-amber-50/90 border border-amber-200 rounded-xl p-4 space-y-2">
-                                        <div className="flex items-center gap-2 font-bold text-amber-900 text-sm">
-                                            <Clock className="h-4 w-4 text-amber-600 flex-shrink-0" />
-                                            <span>Read-Only Stakeholder View</span>
-                                        </div>
-                                        <p className="text-xs text-amber-800 leading-relaxed font-medium">
-                                            Here you can view the approval status of each organization. Decision making is only available when accessing applications from the <strong>Entry Approval Page</strong>.
-                                        </p>
-                                    </div>
-
-                                    {/* Organization Status Matrix in Decision Panel */}
-                                    {approvals && approvals.length > 0 && (
-                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
-                                            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5 border-b border-slate-200 pb-2">
-                                                <Building2 className="h-4 w-4 text-slate-600" /> Stakeholder Organization Status
-                                            </h4>
-                                            <div className="space-y-2">
-                                                {approvals.map((appr: any) => {
-                                                    const step = appr.workflowStep || appr.approvalWorkflowStep;
-                                                    const isApproved = appr.status === 'APPROVED' || appr.status === 'NOT_APPLICABLE';
-                                                    const isRejected = appr.status === 'REJECTED';
-                                                    const orgName = appr.verifier?.organization?.name || step?.requiredRole || step?.name || 'Stakeholder';
-                                                    const verifierName = appr.verifier?.fullName;
-
-                                                    return (
-                                                        <div key={appr.id} className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-xs flex items-center justify-between text-xs">
-                                                            <div className="min-w-0 flex-1 pr-2">
-                                                                <p className="font-bold text-gray-900 truncate">{step?.name || 'Approval Step'}</p>
-                                                                <p className="text-[11px] text-gray-500 truncate flex items-center gap-1 mt-0.5">
-                                                                    <Building className="h-3 w-3 text-gray-400" />
-                                                                    <span className="font-semibold text-gray-700">{orgName}</span>
-                                                                    {verifierName && <span>• {verifierName}</span>}
-                                                                </p>
-                                                            </div>
-                                                            <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1 uppercase tracking-wider ${
-                                                                isApproved ? 'bg-green-100 text-green-700 border border-green-200' :
-                                                                isRejected ? 'bg-red-100 text-red-700 border border-red-200' :
-                                                                'bg-amber-50 text-amber-700 border border-amber-200'
-                                                            }`}>
-                                                                {isApproved ? <CheckCircle2 className="h-3 w-3" /> :
-                                                                 isRejected ? <XCircle className="h-3 w-3" /> :
-                                                                 <Clock className="h-3 w-3" />}
-                                                                {appr.status}
-                                                            </span>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Exit Workflow Activation Button */}
-                            {isFromEntryApproval && application.status === 'APPROVED' && !approvals.some((a: any) => ((a as any).workflowStep || (a as any).approvalWorkflowStep)?.isExitStep) && (
-                                <div className="pt-4 border-t">
-                                    <p className="text-[10px] text-center text-gray-400 mt-2">
-                                        Click when the journalist is ready to begin the exit approval process.
-                                    </p>
-                                </div>
-                            )}
-
->>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
-=======
->>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
-=======
->>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
                             <p className="text-xs text-center text-gray-400">Applied: {application.createdAt ? new Date(application.createdAt).toLocaleDateString() : 'N/A'}</p>
                         </CardContent>
                     </Card>

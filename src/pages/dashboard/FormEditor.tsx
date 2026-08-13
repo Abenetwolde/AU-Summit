@@ -95,6 +95,24 @@ function SortableField({ id, children }: SortableFieldProps) {
     );
 }
 
+export interface NestedField {
+    id: string;
+    fieldName: string;
+    type: 'text' | 'number' | 'checkbox' | 'radio' | 'date' | 'file' | 'dropdown' | 'textarea' | 'email';
+    label: string;
+    placeholder?: string;
+    required: boolean;
+    options?: string[];
+    validation?: {
+        minLength?: number;
+        maxLength?: number;
+        pattern?: string;
+        minValue?: number;
+        maxValue?: number;
+        errorMessage?: string;
+    };
+}
+
 interface FormField {
     id: string;
     type: 'text' | 'number' | 'checkbox' | 'radio' | 'date' | 'file' | 'dropdown' | 'textarea' | 'boolean' | 'email';
@@ -104,6 +122,7 @@ interface FormField {
     helpText?: string;
     options?: string[];
     descriptions?: Record<string, string>;
+    nestedFields?: Record<string, NestedField[]>;
     templateId?: number;
     validation?: {
         minLength?: number;
@@ -151,6 +170,7 @@ export function FormEditor() {
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewStep, setPreviewStep] = useState(1);
     const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+    const [previewValues, setPreviewValues] = useState<Record<string, any>>({});
 
     const [formName, setFormName] = useState("Press Accreditation Application");
     const [formDescription, setFormDescription] = useState("Standard application form for press accreditation.");
@@ -170,42 +190,62 @@ export function FormEditor() {
             const sortedCategories = [...(existingForm.categories || [])].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
 
             sortedCategories.forEach((cat: any) => {
-                const mapped = (cat.fields || []).map((f: any) => ({
-                    id: String(f.field_id || Math.random()),
-                    type: f.field_type === 'boolean' ? 'radio'
-                        : (f.field_type === 'select' || f.field_type === 'dropdown') ? 'dropdown'
-                            : f.field_type,
-                    label: f.label,
-                    required: f.is_required,
-                    placeholder: f.placeholder || `Enter ${f.label.toLowerCase()}`,
-                    options: f.field_options?.options || (f.field_type === 'boolean' ? ['True', 'False'] : undefined),
-                    descriptions: f.field_options?.descriptions || undefined,
-                    validation: f.validation_criteria || {},
-                    displayOrder: f.display_order,
-                    fieldName: f.field_name,
-                    categoryId: cat.category_id,
-                    categoryName: cat.name,
-                }));
+                const mapped = (cat.fields || []).map((f: any) => {
+                    let parsedOpts: any = {};
+                    try {
+                        if (f.field_options) {
+                            parsedOpts = typeof f.field_options === 'string' ? JSON.parse(f.field_options) : f.field_options;
+                        }
+                    } catch (e) {}
+
+                    return {
+                        id: String(f.field_id || Math.random()),
+                        type: f.field_type === 'boolean' ? 'radio'
+                            : (f.field_type === 'select' || f.field_type === 'dropdown') ? 'dropdown'
+                                : f.field_type,
+                        label: f.label,
+                        required: f.is_required,
+                        placeholder: f.placeholder || `Enter ${f.label.toLowerCase()}`,
+                        options: parsedOpts.options || (f.field_type === 'boolean' ? ['True', 'False'] : undefined),
+                        descriptions: parsedOpts.descriptions || undefined,
+                        nestedFields: parsedOpts.nestedFields || parsedOpts.nested_fields || undefined,
+                        validation: f.validation_criteria || {},
+                        displayOrder: f.display_order,
+                        fieldName: f.field_name,
+                        categoryId: cat.category_id,
+                        categoryName: cat.name,
+                    };
+                });
                 // Sort fields within each category
                 mapped.sort((a: FormField, b: FormField) => (a.displayOrder || 0) - (b.displayOrder || 0));
                 allFields.push(...mapped);
             });
 
             if (existingForm.uncategorizedFields) {
-                const mappedUncategorized = existingForm.uncategorizedFields.map((f: any) => ({
-                    id: String(f.field_id || Math.random()),
-                    type: f.field_type === 'boolean' ? 'radio'
-                        : (f.field_type === 'select' || f.field_type === 'dropdown') ? 'dropdown'
-                            : f.field_type,
-                    label: f.label,
-                    required: f.is_required,
-                    placeholder: f.placeholder || `Enter ${f.label.toLowerCase()}`,
-                    options: f.field_options?.options || (f.field_type === 'boolean' ? ['True', 'False'] : undefined),
-                    descriptions: f.field_options?.descriptions || undefined,
-                    validation: f.validation_criteria || {},
-                    displayOrder: f.display_order,
-                    fieldName: f.field_name,
-                }));
+                const mappedUncategorized = existingForm.uncategorizedFields.map((f: any) => {
+                    let parsedOpts: any = {};
+                    try {
+                        if (f.field_options) {
+                            parsedOpts = typeof f.field_options === 'string' ? JSON.parse(f.field_options) : f.field_options;
+                        }
+                    } catch (e) {}
+
+                    return {
+                        id: String(f.field_id || Math.random()),
+                        type: f.field_type === 'boolean' ? 'radio'
+                            : (f.field_type === 'select' || f.field_type === 'dropdown') ? 'dropdown'
+                                : f.field_type,
+                        label: f.label,
+                        required: f.is_required,
+                        placeholder: f.placeholder || `Enter ${f.label.toLowerCase()}`,
+                        options: parsedOpts.options || (f.field_type === 'boolean' ? ['True', 'False'] : undefined),
+                        descriptions: parsedOpts.descriptions || undefined,
+                        nestedFields: parsedOpts.nestedFields || parsedOpts.nested_fields || undefined,
+                        validation: f.validation_criteria || {},
+                        displayOrder: f.display_order,
+                        fieldName: f.field_name,
+                    };
+                });
                 mappedUncategorized.sort((a: FormField, b: FormField) => (a.displayOrder || 0) - (b.displayOrder || 0));
                 allFields.push(...mappedUncategorized);
             }
@@ -229,12 +269,14 @@ export function FormEditor() {
 
                 let parsedOptions: string[] | undefined;
                 let parsedDescriptions: Record<string, string> | undefined;
+                let parsedNestedFields: Record<string, NestedField[]> | undefined;
                 try {
                     if (t.field_options) {
                         const rawOptions = t.field_options as any;
                         const parsed = typeof rawOptions === 'string' ? JSON.parse(rawOptions) : rawOptions;
                         parsedOptions = parsed.options || undefined;
                         parsedDescriptions = parsed.descriptions || undefined;
+                        parsedNestedFields = parsed.nestedFields || parsed.nested_fields || undefined;
                     }
                 } catch (e) {
                     console.error('Failed to parse field_options', e);
@@ -251,6 +293,7 @@ export function FormEditor() {
                     placeholder: `Enter ${t.label.toLowerCase()}`,
                     options,
                     descriptions: parsedDescriptions,
+                    nestedFields: parsedNestedFields,
                     validation: typeof t.validation_criteria === 'string' ? JSON.parse(t.validation_criteria) : t.validation_criteria || {},
                     displayOrder: t.display_order,
                     fieldName: t.field_name,
@@ -308,6 +351,63 @@ export function FormEditor() {
             }
             return f;
         }));
+    };
+
+    const addNestedField = (fieldId: string, optionName: string) => {
+        const field = fields.find(f => f.id === fieldId);
+        if (!field) return;
+
+        const currentNestedMap = field.nestedFields || {};
+        const optionSubFields = currentNestedMap[optionName] || [];
+
+        const newSubField: NestedField = {
+            id: `sub_${Math.random().toString(36).substring(2, 9)}`,
+            label: `New Sub-Field`,
+            fieldName: `sub_${optionName.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${optionSubFields.length + 1}`,
+            type: 'text',
+            required: false,
+            placeholder: '',
+        };
+
+        const updatedNestedMap = {
+            ...currentNestedMap,
+            [optionName]: [...optionSubFields, newSubField]
+        };
+
+        updateField(fieldId, { nestedFields: updatedNestedMap });
+    };
+
+    const updateNestedField = (fieldId: string, optionName: string, subFieldId: string, updates: Partial<NestedField>) => {
+        const field = fields.find(f => f.id === fieldId);
+        if (!field) return;
+
+        const currentNestedMap = { ...(field.nestedFields || {}) };
+        const optionSubFields = currentNestedMap[optionName] || [];
+
+        const updatedSubFields = optionSubFields.map(sf => {
+            if (sf.id === subFieldId) {
+                const updated = { ...sf, ...updates };
+                if (updates.label && !sf.fieldName.startsWith('custom_')) {
+                    updated.fieldName = updates.label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+                }
+                return updated;
+            }
+            return sf;
+        });
+
+        currentNestedMap[optionName] = updatedSubFields;
+        updateField(fieldId, { nestedFields: currentNestedMap });
+    };
+
+    const removeNestedField = (fieldId: string, optionName: string, subFieldId: string) => {
+        const field = fields.find(f => f.id === fieldId);
+        if (!field) return;
+
+        const currentNestedMap = { ...(field.nestedFields || {}) };
+        const optionSubFields = currentNestedMap[optionName] || [];
+
+        currentNestedMap[optionName] = optionSubFields.filter(sf => sf.id !== subFieldId);
+        updateField(fieldId, { nestedFields: currentNestedMap });
     };
 
     const selectedField = fields.find(f => f.id === selectedFieldId);
@@ -375,6 +475,29 @@ export function FormEditor() {
         }
     };
 
+    const formatNestedFields = (nestedFieldsMap: Record<string, NestedField[]> | undefined) => {
+        if (!nestedFieldsMap) return undefined;
+        const result: Record<string, any[]> = {};
+        for (const [opt, subArr] of Object.entries(nestedFieldsMap)) {
+            if (Array.isArray(subArr) && subArr.length > 0) {
+                result[opt] = subArr.map(sub => ({
+                    id: sub.id,
+                    label: sub.label,
+                    field_name: sub.fieldName || sub.label.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+                    fieldName: sub.fieldName || sub.label.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+                    field_type: sub.type || 'text',
+                    type: sub.type || 'text',
+                    is_required: !!sub.required,
+                    required: !!sub.required,
+                    placeholder: sub.placeholder || '',
+                    validation_criteria: sub.validation || {},
+                    validation: sub.validation || {}
+                }));
+            }
+        }
+        return Object.keys(result).length > 0 ? result : undefined;
+    };
+
     const handleSave = async () => {
         if (isEditMode && !canUpdateForm) {
             toast.error("You don't have permission to update forms");
@@ -409,7 +532,11 @@ export function FormEditor() {
                     display_order: fIndex + 1,
                     validation_criteria: f.validation || {},
                     field_options: f.options
-                        ? { options: f.options, ...(f.descriptions && Object.keys(f.descriptions).length > 0 ? { descriptions: f.descriptions } : {}) }
+                        ? {
+                            options: f.options,
+                            ...(f.descriptions && Object.keys(f.descriptions).length > 0 ? { descriptions: f.descriptions } : {}),
+                            ...(f.nestedFields && Object.keys(f.nestedFields).length > 0 ? { nestedFields: formatNestedFields(f.nestedFields) } : {})
+                        }
                         : null
                 }))
             }));
@@ -422,7 +549,11 @@ export function FormEditor() {
             display_order: index + 1,
             validation_criteria: f.validation || {},
             field_options: f.options
-                ? { options: f.options, ...(f.descriptions && Object.keys(f.descriptions).length > 0 ? { descriptions: f.descriptions } : {}) }
+                ? {
+                    options: f.options,
+                    ...(f.descriptions && Object.keys(f.descriptions).length > 0 ? { descriptions: f.descriptions } : {}),
+                    ...(f.nestedFields && Object.keys(f.nestedFields).length > 0 ? { nestedFields: formatNestedFields(f.nestedFields) } : {})
+                }
                 : null
         }));
 
@@ -527,7 +658,18 @@ export function FormEditor() {
                                                             <div className="flex items-center justify-between mb-4">
                                                                 <div className="flex items-center gap-3">
                                                                     <div {...attributes} {...listeners} className="cursor-grab text-gray-300 hover:text-gray-600"><GripVertical className="h-5 w-5" /></div>
-                                                                    <span className="text-sm font-bold">{field.label}</span>
+                                                                    <div>
+                                                                        <span className="text-sm font-bold">{field.label}</span>
+                                                                        {field.nestedFields && Object.values(field.nestedFields).some(arr => arr && arr.length > 0) && (
+                                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                                                {Object.entries(field.nestedFields).map(([opt, subArr]) => subArr && subArr.length > 0 ? (
+                                                                                    <span key={opt} className="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                                                                                        {opt}: +{subArr.length} field{subArr.length > 1 ? 's' : ''}
+                                                                                    </span>
+                                                                                ) : null)}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                                 <span className="text-[10px] uppercase font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{field.type}</span>
                                                             </div>
@@ -686,6 +828,108 @@ export function FormEditor() {
                                         </div>
                                     )}
 
+                                    {/* Nested Dynamic Sub-Fields per Option — only for dropdown */}
+                                    {selectedField.type === 'dropdown' && (
+                                        <div className="space-y-4 pt-3 border-t">
+                                            <div>
+                                                <Label className="text-xs font-bold text-gray-600 uppercase">
+                                                    Option Sub-Fields (Dynamic)
+                                                </Label>
+                                                <p className="text-[10px] text-gray-400 mt-0.5">
+                                                    Add dynamic extra fields revealed when an applicant selects a specific option.
+                                                </p>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                {(selectedField.options || []).map((option, idx) => {
+                                                    const subFields = (selectedField.nestedFields || {})[option] || [];
+                                                    return (
+                                                        <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-xs font-bold text-blue-900 truncate max-w-[150px]">
+                                                                    {option || `Option ${idx + 1}`}
+                                                                </span>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-6 text-[11px] px-2 text-blue-700 border-blue-200 bg-white hover:bg-blue-50"
+                                                                    onClick={() => addNestedField(selectedField.id, option)}
+                                                                >
+                                                                    + Add Field
+                                                                </Button>
+                                                            </div>
+
+                                                            {subFields.length === 0 ? (
+                                                                <p className="text-[10px] text-gray-400 italic">No extra fields for this option</p>
+                                                            ) : (
+                                                                <div className="space-y-2 pt-1">
+                                                                    {subFields.map((sub, sIdx) => (
+                                                                        <div key={sub.id || sIdx} className="p-2 bg-white border border-gray-200 rounded-md space-y-2 text-xs">
+                                                                            <div className="flex items-center justify-between gap-1">
+                                                                                <Input
+                                                                                    value={sub.label}
+                                                                                    onChange={(e) => updateNestedField(selectedField.id, option, sub.id, { label: e.target.value })}
+                                                                                    placeholder="Sub-field Label"
+                                                                                    className="h-7 text-xs font-medium"
+                                                                                />
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="icon"
+                                                                                    className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                                                                                    onClick={() => removeNestedField(selectedField.id, option, sub.id)}
+                                                                                >
+                                                                                    <X className="h-3.5 w-3.5" />
+                                                                                </Button>
+                                                                            </div>
+
+                                                                            <div className="grid grid-cols-2 gap-1.5">
+                                                                                <div>
+                                                                                    <Label className="text-[10px] text-gray-500">Field Type</Label>
+                                                                                    <Select
+                                                                                        value={sub.type}
+                                                                                        onValueChange={(val: any) => updateNestedField(selectedField.id, option, sub.id, { type: val })}
+                                                                                    >
+                                                                                        <SelectTrigger className="h-7 text-[11px]">
+                                                                                            <SelectValue />
+                                                                                        </SelectTrigger>
+                                                                                        <SelectContent>
+                                                                                            <SelectItem value="text">Text Input</SelectItem>
+                                                                                            <SelectItem value="textarea">Text Area</SelectItem>
+                                                                                            <SelectItem value="number">Number</SelectItem>
+                                                                                            <SelectItem value="date">Date</SelectItem>
+                                                                                            <SelectItem value="file">File Upload</SelectItem>
+                                                                                            <SelectItem value="email">Email</SelectItem>
+                                                                                        </SelectContent>
+                                                                                    </Select>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <Label className="text-[10px] text-gray-500">Required</Label>
+                                                                                    <div className="pt-1 flex items-center">
+                                                                                        <Switch
+                                                                                            checked={sub.required}
+                                                                                            onCheckedChange={(chk) => updateNestedField(selectedField.id, option, sub.id, { required: chk })}
+                                                                                        />
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <Input
+                                                                                value={sub.placeholder || ''}
+                                                                                onChange={(e) => updateNestedField(selectedField.id, option, sub.id, { placeholder: e.target.value })}
+                                                                                placeholder="Placeholder (optional)"
+                                                                                className="h-7 text-[11px]"
+                                                                            />
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <Separator className="my-4" />
                                 </div>
                             )}
@@ -796,12 +1040,45 @@ export function FormEditor() {
                             <p className="opacity-90">{formDescription}</p>
                         </div>
                         <div className="space-y-4">
-                            {fields.map(f => (
-                                <div key={f.id} className="space-y-2">
-                                    <label className="text-sm font-medium">{f.label}{f.required && <span className="text-red-500">*</span>}</label>
-                                    <Input placeholder={f.placeholder} disabled />
-                                </div>
-                            ))}
+                            {fields.map(f => {
+                                const isDropdown = f.type === 'dropdown';
+                                const selectedOpt = previewValues[f.id];
+                                const subFields = isDropdown && selectedOpt && f.nestedFields ? f.nestedFields[selectedOpt] || [] : [];
+
+                                return (
+                                    <div key={f.id} className="space-y-2 p-3 bg-white border rounded-xl shadow-sm">
+                                        <label className="text-sm font-semibold text-slate-800">{f.label}{f.required && <span className="text-red-500">*</span>}</label>
+                                        {isDropdown ? (
+                                            <Select value={selectedOpt || ''} onValueChange={(val) => setPreviewValues(prev => ({ ...prev, [f.id]: val }))}>
+                                                <SelectTrigger><SelectValue placeholder={`Select ${f.label}`} /></SelectTrigger>
+                                                <SelectContent>
+                                                    {(f.options || []).map(opt => (
+                                                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        ) : (
+                                            <Input placeholder={f.placeholder} disabled />
+                                        )}
+
+                                        {subFields.length > 0 && (
+                                            <div className="pl-4 border-l-2 border-blue-500 space-y-3 mt-3 pt-3 bg-blue-50/50 p-3 rounded-r-xl animate-in fade-in slide-in-from-top-1">
+                                                <p className="text-[11px] font-bold text-blue-900 uppercase tracking-wider">
+                                                    Sub-Fields for selected option "{selectedOpt}":
+                                                </p>
+                                                <div className="space-y-2">
+                                                    {subFields.map((sub, idx) => (
+                                                        <div key={idx} className="space-y-1">
+                                                            <label className="text-xs font-medium text-slate-700">{sub.label}{sub.required && <span className="text-red-500">*</span>}</label>
+                                                            <Input placeholder={sub.placeholder || `Enter ${sub.label}`} className="h-8 text-xs bg-white" disabled />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </DialogContent>
