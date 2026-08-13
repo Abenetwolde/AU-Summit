@@ -810,6 +810,7 @@ export function JournalistProfile() {
                             <SystemCheckSuccess show={showSystemCheck} />
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
                             {canApprove && (
                             <div className="space-y-4">
                                 <div className="space-y-2">
@@ -855,6 +856,9 @@ export function JournalistProfile() {
                                         >
                                             <X className="h-4 w-4 mr-2" /> Reject
                                         </Button>
+=======
+
+>>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
 =======
 
 >>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
@@ -916,6 +920,9 @@ export function JournalistProfile() {
                                         )}
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
 =======
 >>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
                                     </div>
@@ -990,6 +997,7 @@ export function JournalistProfile() {
                             )}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
                                     </div>
                                 ) : (
@@ -1062,6 +1070,8 @@ export function JournalistProfile() {
                                 </div>
                             )}
 
+>>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
+=======
 >>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
 =======
 >>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
