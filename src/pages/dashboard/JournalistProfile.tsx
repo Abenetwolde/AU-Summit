@@ -808,6 +808,7 @@ export function JournalistProfile() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <SystemCheckSuccess show={showSystemCheck} />
+<<<<<<< HEAD
                             {canApprove && (
                             <div className="space-y-4">
                                 <div className="space-y-2">
@@ -853,6 +854,9 @@ export function JournalistProfile() {
                                         >
                                             <X className="h-4 w-4 mr-2" /> Reject
                                         </Button>
+=======
+
+>>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
                             {isFromEntryApproval ? (
                                 canApprove ? (
                                     <div className="space-y-4">
@@ -906,6 +910,7 @@ export function JournalistProfile() {
                                                 Acting as: <span className="font-bold uppercase">{user?.workflowStepKey || relevantStep?.key}</span>
                                             </p>
                                         )}
+<<<<<<< HEAD
                                     </div>
                                 ) : (
                                     <div className="bg-gray-100 p-3 rounded-md text-sm text-gray-600 text-center">
@@ -977,6 +982,79 @@ export function JournalistProfile() {
                                 </div>
                             )}
 
+=======
+                                    </div>
+                                ) : (
+                                    <div className="bg-gray-100 p-3 rounded-md text-sm text-gray-600 text-center">
+                                        Read-only view for this role.
+                                    </div>
+                                )
+                            ) : (
+                                <div className="space-y-4">
+                                    {/* Read-Only Stakeholder Notification Banner */}
+                                    <div className="bg-amber-50/90 border border-amber-200 rounded-xl p-4 space-y-2">
+                                        <div className="flex items-center gap-2 font-bold text-amber-900 text-sm">
+                                            <Clock className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                                            <span>Read-Only Stakeholder View</span>
+                                        </div>
+                                        <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                                            Here you can view the approval status of each organization. Decision making is only available when accessing applications from the <strong>Entry Approval Page</strong>.
+                                        </p>
+                                    </div>
+
+                                    {/* Organization Status Matrix in Decision Panel */}
+                                    {approvals && approvals.length > 0 && (
+                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                                            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5 border-b border-slate-200 pb-2">
+                                                <Building2 className="h-4 w-4 text-slate-600" /> Stakeholder Organization Status
+                                            </h4>
+                                            <div className="space-y-2">
+                                                {approvals.map((appr: any) => {
+                                                    const step = appr.workflowStep || appr.approvalWorkflowStep;
+                                                    const isApproved = appr.status === 'APPROVED' || appr.status === 'NOT_APPLICABLE';
+                                                    const isRejected = appr.status === 'REJECTED';
+                                                    const orgName = appr.verifier?.organization?.name || step?.requiredRole || step?.name || 'Stakeholder';
+                                                    const verifierName = appr.verifier?.fullName;
+
+                                                    return (
+                                                        <div key={appr.id} className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-xs flex items-center justify-between text-xs">
+                                                            <div className="min-w-0 flex-1 pr-2">
+                                                                <p className="font-bold text-gray-900 truncate">{step?.name || 'Approval Step'}</p>
+                                                                <p className="text-[11px] text-gray-500 truncate flex items-center gap-1 mt-0.5">
+                                                                    <Building className="h-3 w-3 text-gray-400" />
+                                                                    <span className="font-semibold text-gray-700">{orgName}</span>
+                                                                    {verifierName && <span>• {verifierName}</span>}
+                                                                </p>
+                                                            </div>
+                                                            <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1 uppercase tracking-wider ${
+                                                                isApproved ? 'bg-green-100 text-green-700 border border-green-200' :
+                                                                isRejected ? 'bg-red-100 text-red-700 border border-red-200' :
+                                                                'bg-amber-50 text-amber-700 border border-amber-200'
+                                                            }`}>
+                                                                {isApproved ? <CheckCircle2 className="h-3 w-3" /> :
+                                                                 isRejected ? <XCircle className="h-3 w-3" /> :
+                                                                 <Clock className="h-3 w-3" />}
+                                                                {appr.status}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Exit Workflow Activation Button */}
+                            {isFromEntryApproval && application.status === 'APPROVED' && !approvals.some((a: any) => ((a as any).workflowStep || (a as any).approvalWorkflowStep)?.isExitStep) && (
+                                <div className="pt-4 border-t">
+                                    <p className="text-[10px] text-center text-gray-400 mt-2">
+                                        Click when the journalist is ready to begin the exit approval process.
+                                    </p>
+                                </div>
+                            )}
+
+>>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
                             <p className="text-xs text-center text-gray-400">Applied: {application.createdAt ? new Date(application.createdAt).toLocaleDateString() : 'N/A'}</p>
                         </CardContent>
                     </Card>
