@@ -76,7 +76,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             });
 
             if (!res.ok && res.status === 404) {
-                res = await fetch(`${FILE_BASE_URL}/api/applications/decision-note-files/upload`, {
+                res = await fetch(`${FILE_BASE_URL}/api/v1/applications/decision-note-files/upload`, {
                     method: 'POST',
                     headers,
                     credentials: 'include',
