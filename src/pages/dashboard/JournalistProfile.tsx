@@ -807,13 +807,13 @@ export function JournalistProfile() {
                             {canApprove && (
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-gray-700">Decision Notes (Rich Text & Attachments)</label>
-                                    <RichTextEditor
-                                        placeholder="Enter approval/rejection notes, guidelines, or attach supporting documents..."
+                                    <label className="text-sm font-medium text-gray-700">Decision Notes</label>
+                                    <Textarea
+                                        placeholder="Enter approval/rejection notes, guidelines..."
                                         value={notes}
-                                        onChange={setNotes}
-                                        attachments={noteAttachments}
-                                        onAttachmentsChange={setNoteAttachments}
+                                        onChange={(e) => setNotes(e.target.value)}
+                                        rows={4}
+                                        className="w-full resize-y rounded-md border border-gray-300 p-3 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                     />
                                 </div>
                                 {userActionableApproval?.status && ['APPROVED', 'REJECTED'].includes(userActionableApproval.status) ? (
