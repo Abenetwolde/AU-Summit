@@ -809,7 +809,6 @@ export function JournalistProfile() {
                         <CardContent className="space-y-4">
                             <SystemCheckSuccess show={showSystemCheck} />
 <<<<<<< HEAD
-<<<<<<< HEAD
                             {canApprove && (
                             <div className="space-y-4">
                                 <div className="space-y-2">
@@ -855,9 +854,6 @@ export function JournalistProfile() {
                                         >
                                             <X className="h-4 w-4 mr-2" /> Reject
                                         </Button>
-=======
-
->>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
 =======
 
 >>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
@@ -915,9 +911,6 @@ export function JournalistProfile() {
                                             </p>
                                         )}
 <<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
                                     </div>
                                 ) : (
                                     <div className="bg-gray-100 p-3 rounded-md text-sm text-gray-600 text-center">
@@ -989,7 +982,6 @@ export function JournalistProfile() {
                                 </div>
                             )}
 
-<<<<<<< HEAD
 =======
                                     </div>
                                 ) : (
@@ -1062,8 +1054,6 @@ export function JournalistProfile() {
                                 </div>
                             )}
 
->>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
-=======
 >>>>>>> 60fb2fb2db4d383d8f384e46e4d09b9e3a4faad1
                             <p className="text-xs text-center text-gray-400">Applied: {application.createdAt ? new Date(application.createdAt).toLocaleDateString() : 'N/A'}</p>
                         </CardContent>
