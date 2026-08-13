@@ -71,10 +71,8 @@ function App() {
                                     <Route path="journalists" element={<JournalistList />} />
                                     <Route path="duplicates" element={<DuplicateApplications />} />
                                     
-                                    <Route element={<ProtectedRoute requiredPermission="application:view:readonly" />}>
-                                        <Route path="journalists-view" element={<JournalistListReadonly />} />
-                                        <Route path="journalists-view/:id" element={<JournalistProfile />} />
-                                    </Route>
+                                    <Route path="journalists-view" element={<JournalistListReadonly />} />
+                                    <Route path="journalists-view/:id" element={<JournalistProfile />} />
 
                                     <Route element={<ProtectedRoute requiredPermission="application:manual-entry" />}>
                                         <Route path="manual-entry" element={<ManualEntry />} />

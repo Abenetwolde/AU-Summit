@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Loader2, Eye } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ interface WorkflowStepInfo {
 }
 
 export function JournalistListReadonly() {
+    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCountry, setSelectedCountry] = useState('');
     const [selectedFormId, setSelectedFormId] = useState<string | undefined>(undefined);
@@ -308,7 +310,7 @@ export function JournalistListReadonly() {
                                         })}
 
                                         <td className="p-4 align-middle sticky right-0 bg-white group-hover:bg-muted/50 z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
-                                            <Button variant="outline" size="sm" className="hidden lg:flex h-8 text-blue-500 border-blue-200 hover:bg-blue-50 hover:text-blue-700 font-bold" onClick={() => window.location.href = `/dashboard/journalists-view/${app.id}`}>
+                                            <Button variant="outline" size="sm" className="hidden lg:flex h-8 text-blue-500 border-blue-200 hover:bg-blue-50 hover:text-blue-700 font-bold" onClick={() => navigate(`/dashboard/journalists-view/${app.id}`, { state: { application: app, from: 'journalists-view' } })}>
                                                 View More <Eye className="ml-1 h-3 w-3" />
                                             </Button>
                                         </td>
