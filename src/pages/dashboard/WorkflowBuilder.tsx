@@ -557,6 +557,7 @@ function WorkflowBuilderContent() {
                 triggersExitStatus: currentStep.isExitStep ? !!currentStep.triggersExitStatus : false,
                 emailTemplateId: currentStep.emailStep ? currentStep.emailTemplateId : undefined,
                 branchCondition: currentStep.branchCondition || null,
+                isCommenterOnly: currentStep.isCommenterOnly || false,
                 // Automatically assign next order within this context to make it appear on canvas
                 displayOrder: ((workflowSteps || []).filter(s =>
                     s.formId === (currentStep.formId || null) &&
@@ -620,7 +621,8 @@ function WorkflowBuilderContent() {
                     targetAudience: currentStep.targetAudience,
                     isExitStep: currentStep.isExitStep,
                     triggersExitStatus: currentStep.isExitStep ? !!currentStep.triggersExitStatus : false,
-                    branchCondition: currentStep.branchCondition || null
+                    branchCondition: currentStep.branchCondition || null,
+                    isCommenterOnly: currentStep.isCommenterOnly || false
                 }
             }).unwrap();
 
@@ -1168,7 +1170,7 @@ function WorkflowBuilderContent() {
                                         <p className="text-[10px] text-slate-400 italic">If not set, uses the standard approval email.</p>
                                     </div>
                                 )}
-                            </div>
+                                </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
@@ -1266,6 +1268,29 @@ function WorkflowBuilderContent() {
                                     </div>
                                 )}
                             </div>
+
+                            <div className="space-y-4 border p-3 rounded-md bg-emerald-50 mt-4">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="create-commenter-only"
+                                        checked={!!currentStep.isCommenterOnly}
+                                        onCheckedChange={(c) => setCurrentStep({ ...currentStep, isCommenterOnly: !!c })}
+                                    />
+                                    <div className="grid gap-1.5 leading-none">
+                                        <label
+                                            htmlFor="create-commenter-only"
+                                            className="text-sm font-medium leading-none text-emerald-900"
+                                        >
+                                            Commenter Only (No Approval Authority)
+                                        </label>
+                                        <p className="text-[10px] text-emerald-700">
+                                            If checked, the assignee can only view the application and submit notes. They will not see Approve/Reject buttons.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+
                         </div>
                     </ScrollArea>
                     <DialogFooter className="p-6 pt-2 border-t mt-auto">
@@ -1552,6 +1577,27 @@ function WorkflowBuilderContent() {
                                         <p className="text-[10px] text-slate-400 italic">If not set, uses the standard approval email.</p>
                                     </div>
                                 )}
+                            </div>
+                            
+                            <div className="space-y-4 border p-3 rounded-md bg-emerald-50 mt-4">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="edit-commenter-only"
+                                        checked={!!currentStep.isCommenterOnly}
+                                        onCheckedChange={(c) => setCurrentStep({ ...currentStep, isCommenterOnly: !!c })}
+                                    />
+                                    <div className="grid gap-1.5 leading-none">
+                                        <label
+                                            htmlFor="edit-commenter-only"
+                                            className="text-sm font-medium leading-none text-emerald-900"
+                                        >
+                                            Commenter Only (No Approval Authority)
+                                        </label>
+                                        <p className="text-[10px] text-emerald-700">
+                                            If checked, the assignee can only view the application and submit notes. They will not see Approve/Reject buttons.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </ScrollArea>

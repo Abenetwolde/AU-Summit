@@ -862,6 +862,20 @@ export function JournalistProfile() {
                                             >
                                                 <RotateCcw className="h-4 w-4 mr-2" /> Revoke Decision
                                             </Button>
+                                        ) : relevantStep?.isCommenterOnly ? (
+                                            <div className="flex gap-2 w-full">
+                                                <Button
+                                                    className="flex-1 bg-blue-600 hover:bg-blue-700 font-bold shadow-md"
+                                                    onClick={() => handleDecision('APPROVED')}
+                                                    disabled={
+                                                        isStatusUpdating ||
+                                                        (!isSuperAdmin && !canApprove)
+                                                    }
+                                                >
+                                                    {isStatusUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                                                    Mark as Reviewed & Submit Notes
+                                                </Button>
+                                            </div>
                                         ) : (
                                             <div className="flex gap-2 w-full">
                                                 <Button

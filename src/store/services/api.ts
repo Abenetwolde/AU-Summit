@@ -324,6 +324,7 @@ export interface WorkflowStep {
     triggersExitStatus: boolean;
     emailTemplateId?: number;
     branchCondition?: any;
+    isCommenterOnly?: boolean;
     createdAt: string;
     updatedAt: string;
 }
@@ -345,6 +346,7 @@ export interface CreateWorkflowStepPayload {
     triggersExitStatus?: boolean;
     emailTemplateId?: number;
     branchCondition?: any;
+    isCommenterOnly?: boolean;
 }
 
 export interface UpdateWorkflowStepPayload {
@@ -365,6 +367,7 @@ export interface UpdateWorkflowStepPayload {
     triggersExitStatus?: boolean;
     emailTemplateId?: number;
     branchCondition?: any;
+    isCommenterOnly?: boolean;
 }
 
 export interface BulkUpdateWorkflowStepsPayload {
