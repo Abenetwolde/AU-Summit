@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw, History, ChevronRight, Filter, Building2, UserCheck, MessageSquare, CheckCircle2, XCircle, Clock, Building, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw, History, ChevronRight, Filter, Building2, UserCheck, MessageSquare, CheckCircle2, XCircle, Clock, Building, ChevronDown, ChevronUp, Paperclip, Image as ImageIcon } from 'lucide-react';
 import { getFlagEmoji } from '@/lib/utils';
 import en from 'react-phone-number-input/locale/en';
 import { SystemCheckSuccess } from '@/components/SystemCheckSuccess';
@@ -15,6 +15,7 @@ import {
     Equipment as EquipmentType,
     useUpdateEquipmentStatusMutation,
     getFileUrl,
+    FILE_BASE_URL,
     useGetFormFieldTemplatesQuery,
     useGetApplicationByIdQuery,
     useGetEquipmentByApplicationQuery
@@ -59,8 +60,58 @@ export function JournalistProfile() {
 
     const [notes, setNotes] = useState('');
     const [noteAttachments, setNoteAttachments] = useState<NoteAttachment[]>([]);
+    const [isUploadingNoteFile, setIsUploadingNoteFile] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [showSystemCheck, setShowSystemCheck] = useState(false);
     const [showConsentsExpanded, setShowConsentsExpanded] = useState(false);
+
+    const handleNoteFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        setIsUploadingNoteFile(true);
+        const formData = new FormData();
+        Array.from(files).forEach((file) => formData.append('files', file));
+
+        try {
+            const token = localStorage.getItem('managment_token') || localStorage.getItem('token');
+            const headers: Record<string, string> = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const uploadUrl = `${FILE_BASE_URL}/api/v1/applications/decision-note-files/upload`;
+            let res = await fetch(uploadUrl, {
+                method: 'POST',
+                headers,
+                credentials: 'include',
+                body: formData
+            });
+
+            if (!res.ok && res.status === 404) {
+                res = await fetch(`${FILE_BASE_URL}/api/v1/applications/decision-note-files/upload`, {
+                    method: 'POST',
+                    headers,
+                    credentials: 'include',
+                    body: formData
+                });
+            }
+
+            const data = await res.json();
+            if (data.success && Array.isArray(data.data)) {
+                setNoteAttachments((prev) => [...prev, ...data.data]);
+            } else if (data.data && Array.isArray(data.data)) {
+                setNoteAttachments((prev) => [...prev, ...data.data]);
+            }
+            toast.success('File attached successfully');
+        } catch (err) {
+            console.error('Failed to upload decision note attachment:', err);
+            toast.error('Failed to upload attachment');
+        } finally {
+            setIsUploadingNoteFile(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
 
     // Equipment approval states
     const [selectedEquipment, setSelectedEquipment] = useState<EquipmentType | null>(null);
@@ -948,6 +999,61 @@ export function JournalistProfile() {
                                                 rows={4}
                                                 className="w-full resize-y rounded-md border border-gray-300 p-3 shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                             />
+                                            <div className="pt-1">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs text-gray-500 font-medium">Attach supporting files (optional)</span>
+                                                    <input
+                                                        ref={fileInputRef}
+                                                        type="file"
+                                                        multiple
+                                                        className="hidden"
+                                                        onChange={handleNoteFileUpload}
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        disabled={isUploadingNoteFile}
+                                                        className="h-7 text-xs gap-1.5 border-gray-200 text-gray-700 hover:bg-gray-100"
+                                                    >
+                                                        {isUploadingNoteFile ? (
+                                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                        ) : (
+                                                            <Paperclip className="h-3.5 w-3.5" />
+                                                        )}
+                                                        Attach File
+                                                    </Button>
+                                                </div>
+                                                {noteAttachments && noteAttachments.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2 pt-2">
+                                                        {noteAttachments.map((file, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-50 border border-gray-200 text-xs text-gray-700 shadow-2xs"
+                                                            >
+                                                                {file.mimeType?.startsWith('image/') ? (
+                                                                    <ImageIcon className="h-3.5 w-3.5 text-blue-500" />
+                                                                ) : (
+                                                                    <FileText className="h-3.5 w-3.5 text-emerald-500" />
+                                                                )}
+                                                                <span className="max-w-[140px] truncate font-medium">{file.originalName}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const updated = [...noteAttachments];
+                                                                        updated.splice(idx, 1);
+                                                                        setNoteAttachments(updated);
+                                                                    }}
+                                                                    className="ml-1 text-gray-400 hover:text-red-500 rounded p-0.5"
+                                                                >
+                                                                    <X className="h-3 w-3" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                         {userActionableApproval?.status && ['APPROVED', 'REJECTED'].includes(userActionableApproval.status) ? (
                                             <Button
