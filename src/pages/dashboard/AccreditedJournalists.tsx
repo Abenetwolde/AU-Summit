@@ -75,9 +75,8 @@ export function AccreditedJournalists() {
     }, [applicationPurposeFilter, firstPurposeOption, purposeOptions]);
 
     const mapPurposeFilter = () => {
-        if (!purposeOptions.length || !applicationPurposeFilter || applicationPurposeFilter === 'ALL') return undefined;
-        if (applicationPurposeFilter === firstPurposeOption) return applicationPurposeFilter;
-        return `not:${firstPurposeOption}`;
+        if (!applicationPurposeFilter || applicationPurposeFilter === 'ALL') return undefined;
+        return applicationPurposeFilter;
     };
 
     // API Hooks
