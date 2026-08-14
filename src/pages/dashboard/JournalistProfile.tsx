@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw, History, ChevronRight, Filter, Building2, UserCheck, MessageSquare, CheckCircle2, XCircle, Clock, Building } from 'lucide-react';
+import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw, History, ChevronRight, Filter, Building2, UserCheck, MessageSquare, CheckCircle2, XCircle, Clock, Building, ChevronDown, ChevronUp } from 'lucide-react';
 import { getFlagEmoji } from '@/lib/utils';
 import en from 'react-phone-number-input/locale/en';
 import { SystemCheckSuccess } from '@/components/SystemCheckSuccess';
@@ -60,6 +60,7 @@ export function JournalistProfile() {
     const [notes, setNotes] = useState('');
     const [noteAttachments, setNoteAttachments] = useState<NoteAttachment[]>([]);
     const [showSystemCheck, setShowSystemCheck] = useState(false);
+    const [showConsentsExpanded, setShowConsentsExpanded] = useState(false);
 
     // Equipment approval states
     const [selectedEquipment, setSelectedEquipment] = useState<EquipmentType | null>(null);
@@ -291,7 +292,16 @@ export function JournalistProfile() {
 
     // Role Match Logic
     const isSuperAdmin = user?.role === UserRole.SUPER_ADMIN || user?.roleName === 'SUPER_ADMIN';
+    const userRoleStr = (user?.role || user?.roleName || user?.workflowStepKey || '').toUpperCase();
+    const isPmoOrGc = userRoleStr.includes('PMO') || userRoleStr.includes('GC');
+    const isMfaOfficer = userRoleStr.includes('MFA') || userRoleStr.includes('EFA');
     const approvals = application.approvals || [];
+
+    const pmoGcApprovals = (application?.approvals || []).filter((a: any) => {
+        const step = a.workflowStep || a.approvalWorkflowStep;
+        const key = (step?.key || step?.name || step?.requiredRole || a.verifier?.roleName || a.verifier?.organization?.name || '').toUpperCase();
+        return key.includes('PMO') || key.includes('GC');
+    });
 
     const isCustoms = user?.role === UserRole.CUSTOMS_OFFICER;
     const isFromEntryApproval = (location.state as any)?.phase === 'entry' || 
@@ -712,7 +722,7 @@ export function JournalistProfile() {
                                                                     ) : (
                                                                         <Check className="h-4 w-4 mr-2" />
                                                                     )}
-                                                                    Approve
+                                                                    {isPmoOrGc ? 'Send Consent' : 'Approve'}
                                                                 </Button>
                                                             )}
                                                             {item.status?.toUpperCase() === 'APPROVED' && (
@@ -731,7 +741,7 @@ export function JournalistProfile() {
                                                                     Revoke Approval
                                                                 </Button>
                                                             )}
-                                                            {item.status?.toUpperCase() !== 'REJECTED' && (
+                                                            {!isPmoOrGc && item.status?.toUpperCase() !== 'REJECTED' && (
                                                                 <Button
                                                                     size="sm"
                                                                     variant="outline"
@@ -843,6 +853,92 @@ export function JournalistProfile() {
                             {isFromEntryApproval ? (
                                 canApprove ? (
                                     <div className="space-y-4">
+                                        {/* PMO & GC Consents section for MFA Officer */}
+                                        {isMfaOfficer && (
+                                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <ShieldCheck className="h-4 w-4 text-blue-600" />
+                                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                                                            PMO & GC Consents
+                                                        </span>
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setShowConsentsExpanded(!showConsentsExpanded)}
+                                                        className="h-7 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 flex items-center gap-1"
+                                                    >
+                                                        {showConsentsExpanded ? 'View Less' : 'View More'}
+                                                        {showConsentsExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                                                    </Button>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    {pmoGcApprovals.length > 0 ? (
+                                                        pmoGcApprovals.map((appr: any) => {
+                                                            const step = appr.workflowStep || appr.approvalWorkflowStep;
+                                                            const isApproved = appr.status === 'APPROVED' || appr.status === 'NOT_APPLICABLE';
+                                                            const isRejected = appr.status === 'REJECTED';
+                                                            const orgName = step?.name || (step?.key?.toUpperCase().includes('PMO') ? 'PMO Consent' : 'GC Consent');
+
+                                                            return (
+                                                                <div key={appr.id} className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-xs space-y-2">
+                                                                    <div className="flex items-center justify-between text-xs">
+                                                                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                                                                            <Building2 className="h-3.5 w-3.5 text-slate-500 flex-shrink-0" />
+                                                                            <span className="font-bold text-gray-900 truncate">{orgName}</span>
+                                                                        </div>
+                                                                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider ${
+                                                                            isApproved ? 'bg-green-100 text-green-700 border border-green-200' :
+                                                                            isRejected ? 'bg-red-100 text-red-700 border border-red-200' :
+                                                                            'bg-amber-50 text-amber-700 border border-amber-200'
+                                                                        }`}>
+                                                                            {isApproved ? <CheckCircle2 className="h-3 w-3" /> :
+                                                                             isRejected ? <XCircle className="h-3 w-3" /> :
+                                                                             <Clock className="h-3 w-3" />}
+                                                                            {appr.status}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    {showConsentsExpanded && (
+                                                                        <div className="pt-2 border-t border-slate-100 space-y-2 text-xs">
+                                                                            {appr.verifier && (
+                                                                                <p className="text-[11px] text-gray-600 flex items-center gap-1">
+                                                                                    <UserCheck className="h-3 w-3 text-gray-400" />
+                                                                                    <span className="font-semibold">{appr.verifier.fullName}</span>
+                                                                                    {appr.verifier.email && <span className="text-gray-400">({appr.verifier.email})</span>}
+                                                                                </p>
+                                                                            )}
+                                                                            {appr.verifiedAt && (
+                                                                                <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                                                                                    <Clock className="h-3 w-3 text-gray-400" />
+                                                                                    {new Date(appr.verifiedAt).toLocaleString()}
+                                                                                </p>
+                                                                            )}
+                                                                            <div className="mt-1">
+                                                                                <p className="text-[10px] font-bold uppercase text-gray-400 mb-1">Decision Note / Feedback:</p>
+                                                                                {appr.notes || (appr.noteAttachments && appr.noteAttachments.length > 0) ? (
+                                                                                    <DecisionNoteViewer htmlContent={appr.notes} attachments={appr.noteAttachments} />
+                                                                                ) : (
+                                                                                    <p className="text-gray-400 italic text-[11px]">No notes provided.</p>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })
+                                                    ) : (
+                                                        <div className="bg-white border border-slate-200 rounded-lg p-3 text-xs text-gray-500 italic text-center">
+                                                            No PMO or GC approval records found.
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium text-gray-700">Decision Notes</label>
                                             <Textarea
@@ -887,19 +983,21 @@ export function JournalistProfile() {
                                                     }
                                                 >
                                                     {isStatusUpdating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-                                                    Approve
+                                                    {isPmoOrGc ? 'Send Consent' : 'Approve'}
                                                 </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    className="flex-1 bg-red-50 text-red-600 border-red-200 hover:bg-red-100 font-bold shadow-sm"
-                                                    onClick={() => handleDecision('REJECTED')}
-                                                    disabled={
-                                                        isStatusUpdating ||
-                                                        (!isSuperAdmin && !canApprove)
-                                                    }
-                                                >
-                                                    <X className="h-4 w-4 mr-2" /> Reject
-                                                </Button>
+                                                {!isPmoOrGc && (
+                                                    <Button
+                                                        variant="outline"
+                                                        className="flex-1 bg-red-50 text-red-600 border-red-200 hover:bg-red-100 font-bold shadow-sm"
+                                                        onClick={() => handleDecision('REJECTED')}
+                                                        disabled={
+                                                            isStatusUpdating ||
+                                                            (!isSuperAdmin && !canApprove)
+                                                        }
+                                                    >
+                                                        <X className="h-4 w-4 mr-2" /> Reject
+                                                    </Button>
+                                                )}
                                             </div>
                                         )}
                                         {(user?.workflowStepKey || relevantStep?.key) && (
