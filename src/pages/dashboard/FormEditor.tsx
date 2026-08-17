@@ -624,7 +624,7 @@ export function FormEditor() {
                                     <SelectItem value="VISA_SUPPORT">Visa Support</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Button size="sm" className="bg-black text-white gap-2" onClick={handleSave} disabled={isSaving || hasDuplicates || !canOperate}>
+                            <Button size="sm" className="bg-black text-white gap-2" onClick={handleSave} disabled={isSaving || !canOperate}>
                                 {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
                                 <Save className="h-4 w-4" /> Save Form
                             </Button>
