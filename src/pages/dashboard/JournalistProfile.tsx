@@ -374,6 +374,7 @@ export function JournalistProfile() {
     if (formCategories && formCategories.length > 0) {
         displayCategories = formCategories.map((cat: any) => ({
             name: cat.name,
+            depends_on: cat.depends_on,
             fields: (cat.fields || []).map((f: any) => ({
                 field_name: f.field_name,
                 field_type: f.field_type,
@@ -416,9 +417,19 @@ export function JournalistProfile() {
         }));
     }
 
-    // Filter out equipment category as it's handled separately, and sort
+    // Filter out equipment category and categories with unmet depends_on conditions
     displayCategories = displayCategories
-        .filter(cat => cat.name.toLowerCase() !== 'equipment')
+        .filter((cat: any) => {
+            if (cat.name.toLowerCase() === 'equipment') return false;
+            if (cat.depends_on) {
+                const dep = cat.depends_on;
+                const targetVal = String(formData[dep.field] || '').toLowerCase();
+                const expectedVal = String(dep.value || '').toLowerCase();
+                if (dep.operator === 'contains' && !targetVal.includes(expectedVal)) return false;
+                if (dep.operator === 'eq' && targetVal !== expectedVal) return false;
+            }
+            return true;
+        })
         .sort((a, b) => {
             // Try to maintain a reasonable default order if display_order isn't on category itself
             const order: Record<string, number> = {
@@ -656,6 +667,82 @@ export function JournalistProfile() {
                                                             </div>
                                                         );
                                                     }
+
+                                                    if (f.field_type === 'repeater' || f.field_type === 'table' || f.field_type === 'repeater_table') {
+                                                        const rows = Array.isArray(val) ? val : [];
+                                                        let opts: any = {};
+                                                        try {
+                                                            opts = typeof f.field_options === 'string' ? JSON.parse(f.field_options) : f.field_options || {};
+                                                        } catch { }
+                                                        const subfields: any[] = opts.subfields || [];
+
+                                                        return (
+                                                            <div key={f.field_name} className="col-span-1 sm:col-span-2 lg:col-span-4 mt-2">
+                                                                <p className="text-xs font-bold text-gray-400 uppercase mb-2">{f.label}</p>
+                                                                {rows.length === 0 ? (
+                                                                    <p className="text-sm font-medium text-gray-400 italic">No entries provided</p>
+                                                                ) : (
+                                                                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                                                                        <div className="overflow-x-auto">
+                                                                            <table className="w-full text-left border-collapse text-xs">
+                                                                                <thead>
+                                                                                    <tr className="bg-slate-50 border-b border-slate-200 font-bold uppercase tracking-wider text-slate-500">
+                                                                                        <th className="py-2.5 px-3 w-10 text-center">#</th>
+                                                                                        {subfields.length > 0 ? (
+                                                                                            subfields.map((sf: any) => (
+                                                                                                <th key={sf.key} className="py-2.5 px-3">{sf.label}</th>
+                                                                                            ))
+                                                                                        ) : (
+                                                                                            Object.keys(rows[0] || {}).map((k) => (
+                                                                                                <th key={k} className="py-2.5 px-3 uppercase">{k.replace(/_/g, ' ')}</th>
+                                                                                            ))
+                                                                                        )}
+                                                                                    </tr>
+                                                                                </thead>
+                                                                                <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                                                                                    {rows.map((row: any, rIdx: number) => (
+                                                                                        <tr key={rIdx} className="hover:bg-slate-50/60">
+                                                                                            <td className="py-2 px-3 text-center text-slate-400 font-bold">{rIdx + 1}</td>
+                                                                                            {subfields.length > 0 ? (
+                                                                                                subfields.map((sf: any) => (
+                                                                                                    <td key={sf.key} className="py-2 px-3">{row[sf.key] || '-'}</td>
+                                                                                                ))
+                                                                                            ) : (
+                                                                                                Object.keys(row).map((k) => (
+                                                                                                    <td key={k} className="py-2 px-3">{row[k]?.toString() || '-'}</td>
+                                                                                                ))
+                                                                                            )}
+                                                                                        </tr>
+                                                                                    ))}
+                                                                                </tbody>
+                                                                            </table>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    if (f.field_type === 'checkbox_group') {
+                                                        const items = Array.isArray(val) ? val : typeof val === 'string' && val.trim() ? [val] : [];
+                                                        return (
+                                                            <div key={f.field_name} className="col-span-1 sm:col-span-2 lg:col-span-4">
+                                                                <p className="text-xs font-bold text-gray-400 uppercase">{f.label}</p>
+                                                                <div className="flex flex-wrap gap-2 mt-1.5">
+                                                                    {items.length > 0 ? (
+                                                                        items.map((item: string, iIdx: number) => (
+                                                                            <span key={iIdx} className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/60 font-semibold text-xs rounded-lg">
+                                                                                {item}
+                                                                            </span>
+                                                                        ))
+                                                                    ) : (
+                                                                        <span className="text-sm font-medium text-gray-400 italic">None selected</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+
                                                     return (
                                                         <div key={f.field_name} className={`${f.field_type === 'textarea' ? 'col-span-1 sm:col-span-2 lg:col-span-4' : ''} ${f.is_sub_field ? 'pl-4 border-l-2 border-emerald-500 bg-emerald-50/30 p-3 rounded-2xl' : ''}`}>
                                                             <p className="text-xs font-bold text-gray-400 uppercase">{f.label}</p>
