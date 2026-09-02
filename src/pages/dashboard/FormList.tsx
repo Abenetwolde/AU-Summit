@@ -38,7 +38,9 @@ import {
     Loader2,
     Calendar,
     CheckCircle2,
-    Archive
+    Archive,
+    Users,
+    UserX
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGetFormsQuery, useDeleteFormMutation, useUpdateFormMutation, Form } from '@/store/services/api';
@@ -59,9 +61,13 @@ export default function FormList() {
     
     const [isChangingStatus, setIsChangingStatus] = useState(false);
     const [statusTarget, setStatusTarget] = useState<{ id: number; status: string; statusName: string } | null>(null);
+
+    const [isTogglingMultiMember, setIsTogglingMultiMember] = useState(false);
+    const [multiMemberTarget, setMultiMemberTarget] = useState<{ id: number; formName: string; allowMultiMember: boolean } | null>(null);
     
     const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
     const [isConfirmingStatus, setIsConfirmingStatus] = useState(false);
+    const [isConfirmingMultiMember, setIsConfirmingMultiMember] = useState(false);
 
     const { checkPermission } = useAuth();
     const canCreateForm = checkPermission('form:create');
@@ -120,6 +126,43 @@ export default function FormList() {
             setIsChangingStatus(false);
             setIsConfirmingStatus(false);
             setStatusTarget(null);
+        }
+    };
+
+    const handleMultiMemberClick = (form: Form) => {
+        if (!canUpdateForm) {
+            toast.error("You don't have permission to update forms");
+            return;
+        }
+        setMultiMemberTarget({
+            id: form.form_id,
+            formName: form.name,
+            allowMultiMember: !form.allowMultiMember
+        });
+        setIsConfirmingMultiMember(true);
+    };
+
+    const confirmMultiMemberChange = async () => {
+        if (!multiMemberTarget) return;
+
+        const { id, formName, allowMultiMember } = multiMemberTarget;
+        setIsTogglingMultiMember(true);
+        try {
+            const formData = new FormData();
+            formData.append('allowMultiMember', String(allowMultiMember));
+            await updateForm({ id, data: formData }).unwrap();
+            toast.success(
+                allowMultiMember
+                    ? `Crew applications enabled for "${formName}"`
+                    : `Crew applications disabled for "${formName}"`
+            );
+            refetch();
+        } catch (error: any) {
+            toast.error(error?.data?.error || "Failed to change form crew configuration");
+        } finally {
+            setIsTogglingMultiMember(false);
+            setIsConfirmingMultiMember(false);
+            setMultiMemberTarget(null);
         }
     };
 
@@ -211,9 +254,16 @@ export default function FormList() {
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <Badge variant="outline" className="font-mono text-xs">
-                                                    {form.type}
-                                                </Badge>
+                                                <div className="flex flex-col gap-1 items-start">
+                                                    <Badge variant="outline" className="font-mono text-xs">
+                                                        {form.type}
+                                                    </Badge>
+                                                    {form.allowMultiMember && (
+                                                        <Badge variant="secondary" className="text-[10px] font-semibold bg-indigo-50 text-indigo-700 border-indigo-200 gap-1 px-1.5 py-0">
+                                                            <Users className="h-2.5 w-2.5" /> Crew Allowed
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                             </TableCell>
                                             <TableCell>{getStatusBadge(form.status)}</TableCell>
                                             <TableCell className="text-gray-500 text-sm">
@@ -261,6 +311,24 @@ export default function FormList() {
                                                                             <Archive className="mr-2 h-4 w-4 text-amber-600" /> Archive Form
                                                                         </DropdownMenuItem>
                                                                     )}
+                                                                </>
+                                                            )}
+
+                                                            {canUpdateForm && (
+                                                                <>
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuLabel className="text-xs text-gray-500 font-normal py-1">Crew Configuration</DropdownMenuLabel>
+                                                                    <DropdownMenuItem onClick={() => handleMultiMemberClick(form)}>
+                                                                        {form.allowMultiMember ? (
+                                                                            <>
+                                                                                <UserX className="mr-2 h-4 w-4 text-amber-600" /> Disallow Crew (Single Only)
+                                                                            </>
+                                                                        ) : (
+                                                                            <>
+                                                                                <Users className="mr-2 h-4 w-4 text-indigo-600" /> Allow Crew (Multi-Member)
+                                                                            </>
+                                                                        )}
+                                                                    </DropdownMenuItem>
                                                                 </>
                                                             )}
 
@@ -326,6 +394,36 @@ export default function FormList() {
                         >
                             {isChangingStatus ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
                             Confirm {statusTarget?.statusName}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Multi-Member Crew Configuration Confirmation Modal */}
+            <Dialog open={isConfirmingMultiMember} onOpenChange={setIsConfirmingMultiMember}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Users className="h-5 w-5 text-indigo-600" />
+                            {multiMemberTarget?.allowMultiMember ? "Allow Multi-Member / Crew Applications" : "Disable Crew Applications"}
+                        </DialogTitle>
+                        <DialogDescription className="pt-2">
+                            {multiMemberTarget?.allowMultiMember
+                                ? `Are you sure you want to enable crew applications for "${multiMemberTarget?.formName}"? Applicants will be able to add and manage multiple production crew members (e.g. Director, Producer, Cameraperson) in a single application.`
+                                : `Are you sure you want to disable crew applications for "${multiMemberTarget?.formName}"? New applicants will only be able to submit standard individual applications.`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsConfirmingMultiMember(false)} disabled={isTogglingMultiMember}>
+                            Cancel
+                        </Button>
+                        <Button
+                            className={multiMemberTarget?.allowMultiMember ? "bg-indigo-600 hover:bg-indigo-700 text-white" : "bg-black hover:bg-gray-800 text-white"}
+                            onClick={confirmMultiMemberChange}
+                            disabled={isTogglingMultiMember}
+                        >
+                            {isTogglingMultiMember ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Users className="h-4 w-4 mr-2" />}
+                            {multiMemberTarget?.allowMultiMember ? "Enable Crew" : "Disable Crew"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

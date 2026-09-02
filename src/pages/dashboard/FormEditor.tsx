@@ -27,7 +27,8 @@ import {
     X,
     ArrowLeft,
     GripVertical,
-    Layers
+    Layers,
+    Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -136,6 +137,7 @@ interface FormField {
     fieldName?: string; // Original field name from API
     categoryId?: number;
     categoryName?: string;
+    applies_to_crew?: boolean;
 }
 
 const FIELD_TYPES = [
@@ -176,6 +178,7 @@ export function FormEditor() {
     const [formDescription, setFormDescription] = useState("Standard application form for press accreditation.");
     const [formType, setFormType] = useState("ACCREDITATION");
     const [formStatus, setFormStatus] = useState<"DRAFT" | "PUBLISHED" | "ARCHIVED">("PUBLISHED");
+    const [allowMultiMember, setAllowMultiMember] = useState(false);
 
     useEffect(() => {
         if (isEditMode && existingForm) {
@@ -183,6 +186,7 @@ export function FormEditor() {
             setFormDescription(existingForm.description || "");
             setFormType(existingForm.type);
             setFormStatus(existingForm.status as any);
+            setAllowMultiMember(Boolean(existingForm.allowMultiMember));
 
             const allFields: FormField[] = [];
 
@@ -214,6 +218,7 @@ export function FormEditor() {
                         fieldName: f.field_name,
                         categoryId: cat.category_id,
                         categoryName: cat.name,
+                        applies_to_crew: Boolean(f.applies_to_crew),
                     };
                 });
                 // Sort fields within each category
@@ -244,6 +249,7 @@ export function FormEditor() {
                         validation: f.validation_criteria || {},
                         displayOrder: f.display_order,
                         fieldName: f.field_name,
+                        applies_to_crew: Boolean(f.applies_to_crew),
                     };
                 });
                 mappedUncategorized.sort((a: FormField, b: FormField) => (a.displayOrder || 0) - (b.displayOrder || 0));
@@ -531,6 +537,7 @@ export function FormEditor() {
                     is_required: f.required,
                     display_order: fIndex + 1,
                     validation_criteria: f.validation || {},
+                    applies_to_crew: Boolean(f.applies_to_crew),
                     field_options: f.options
                         ? {
                             options: f.options,
@@ -548,6 +555,7 @@ export function FormEditor() {
             is_required: f.required,
             display_order: index + 1,
             validation_criteria: f.validation || {},
+            applies_to_crew: Boolean(f.applies_to_crew),
             field_options: f.options
                 ? {
                     options: f.options,
@@ -562,6 +570,7 @@ export function FormEditor() {
             description: formDescription,
             status: formStatus,
             type: formType,
+            allowMultiMember,
             icon: existingForm?.icon || null,
             categories: categoriesPayload,
             fields: uncategorizedFieldsPayload
@@ -613,9 +622,21 @@ export function FormEditor() {
             {/* Canvas */}
             <div className="flex-1">
                 <Card className="min-h-full border-none shadow-md bg-white">
-                    <CardHeader className="border-b flex flex-row items-center justify-between">
+                    <CardHeader className="border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <Input value={formName} onChange={(e) => setFormName(e.target.value)} className="text-xl font-bold border-none p-0 focus-visible:ring-0 shadow-none w-auto" />
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-slate-50">
+                                <Users className="h-4 w-4 text-indigo-600" />
+                                <label htmlFor="multi-member-toggle" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">
+                                    Allow Crew (Multi-Member)
+                                </label>
+                                <Switch
+                                    id="multi-member-toggle"
+                                    checked={allowMultiMember}
+                                    onCheckedChange={setAllowMultiMember}
+                                    disabled={!canOperate}
+                                />
+                            </div>
                             <Select value={formType} onValueChange={(val: any) => setFormType(val)}>
                                 <SelectTrigger className="w-[180px]"><SelectValue placeholder="Type" /></SelectTrigger>
                                 <SelectContent>
@@ -671,7 +692,27 @@ export function FormEditor() {
                                                                         )}
                                                                     </div>
                                                                 </div>
-                                                                <span className="text-[10px] uppercase font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{field.type}</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    {allowMultiMember && (
+                                                                        <div
+                                                                            className={cn(
+                                                                                "flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer select-none",
+                                                                                field.applies_to_crew
+                                                                                    ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                                                                    : "bg-gray-50 text-gray-400 border-gray-200 hover:text-gray-600"
+                                                                            )}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                updateField(field.id, { applies_to_crew: !field.applies_to_crew });
+                                                                            }}
+                                                                            title="Click to toggle whether this field applies to crew members"
+                                                                        >
+                                                                            <Users className="w-3 h-3" />
+                                                                            <span>{field.applies_to_crew ? "Crew Field" : "Lead Only"}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    <span className="text-[10px] uppercase font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{field.type}</span>
+                                                                </div>
                                                             </div>
                                                             <div className="h-10 w-full bg-gray-50 border rounded-md" />
                                                         </div>
@@ -945,6 +986,21 @@ export function FormEditor() {
                                         onCheckedChange={(checked) => updateField(selectedField.id, { required: checked })}
                                     />
                                 </div>
+
+                                {allowMultiMember && (
+                                    <div className="flex items-center justify-between p-2.5 rounded-lg border border-indigo-100 bg-indigo-50/50">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-xs font-semibold text-indigo-950 flex items-center gap-1.5">
+                                                <Users className="h-3.5 w-3.5 text-indigo-600" /> Applies to Crew Members
+                                            </Label>
+                                            <p className="text-[10px] text-indigo-700/80">Require this field for each crew member roster profile</p>
+                                        </div>
+                                        <Switch
+                                            checked={selectedField.applies_to_crew || false}
+                                            onCheckedChange={(checked) => updateField(selectedField.id, { applies_to_crew: checked })}
+                                        />
+                                    </div>
+                                )}
 
                                 {['text', 'textarea', 'email'].includes(selectedField.type) && (
                                     <>

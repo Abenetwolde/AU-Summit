@@ -6,7 +6,41 @@ export enum ApplicationStatus {
     SUBMITTED = 'SUBMITTED',
     APPROVED = 'APPROVED',
     REJECTED = 'REJECTED',
-    IN_REVIEW = 'IN_REVIEW'
+    IN_REVIEW = 'IN_REVIEW',
+    PARTIALLY_APPROVED = 'PARTIALLY_APPROVED'
+}
+
+export interface ApplicationMember {
+    id: number;
+    applicationId: number;
+    roleInProduction: string;
+    fullName: string;
+    email?: string | null;
+    phone?: string | null;
+    nationality: string;
+    passportNumber: string;
+    passportExpiry?: string | null;
+    visaNumber?: string | null;
+    visaExpiry?: string | null;
+    photoUrl?: string | null;
+    passportScanUrl?: string | null;
+    visaScanUrl?: string | null;
+    pressCardUrl?: string | null;
+    memberData?: any;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'ACTION_REQUIRED';
+    rejectionReason?: string | null;
+    reviewedBy?: number | null;
+    reviewedAt?: string | null;
+    badgeIssued: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+    reviewer?: {
+        id: number;
+        email: string;
+        fullName?: string;
+        firstName?: string;
+        lastName?: string;
+    };
 }
 
 export interface RegistrationStats {
@@ -162,10 +196,12 @@ export interface Application {
         form_id: number;
         name: string;
         type: string;
+        allowMultiMember?: boolean;
         categories?: any[];
         FormFields?: any[];
     };
     equipment: Equipment[];
+    members?: ApplicationMember[];
     approvals?: ApplicationApproval[];
     documents?: Document[];
     applyingFromCountryId?: number | null;
@@ -591,6 +627,7 @@ export interface Form {
     name: string;
     type: string;
     status: string;
+    allowMultiMember?: boolean;
     created_at: string;
     updated_at: string;
 }
@@ -869,7 +906,7 @@ export interface UpdateEquipmentStatusPayload {
 }
 
 // export const FILE_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.arrivalclearance.gov.et';
-export const FILE_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.arrivalclearance.gov.et';
+export const FILE_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 // Super Admin Dashboard Types
 export interface SuperAdminMetric {
     value: number;
@@ -1138,7 +1175,7 @@ const baseQueryWithReauth = async (args: any, api: any, extraOptions: any) => {
 export const api = createApi({
     reducerPath: 'api',
     baseQuery: baseQueryWithReauth,
-    tagTypes: ['Role', 'Permission', 'Application', 'Form', 'User', 'Category', 'WorkflowStep', 'Invitation', 'Badge', 'EquipCatalog', 'Integration', 'APIProvider', 'Embassy', 'Country', 'Organization', 'EmailTemplate', 'LandingPage', 'Workflow', 'Notification', 'AirlineOffice', 'AccreditationStatus', 'Entries', 'SuperAdmin'],
+    tagTypes: ['Role', 'Permission', 'Application', 'Form', 'User', 'Category', 'WorkflowStep', 'Invitation', 'Badge', 'EquipCatalog', 'Integration', 'APIProvider', 'Embassy', 'Country', 'Organization', 'EmailTemplate', 'LandingPage', 'Workflow', 'Notification', 'AirlineOffice', 'AccreditationStatus', 'Entries', 'SuperAdmin', 'ApplicationMember'],
     endpoints: (builder) => ({
         getRegistrationStats: builder.query<RegistrationStats, void>({
             query: () => '/analytics/stats',
@@ -2297,6 +2334,30 @@ export const api = createApi({
             query: () => '/entry/stats'
         }),
 
+        getApplicationMembers: builder.query<{ members: ApplicationMember[]; summary: any }, number>({
+            query: (applicationId) => `/members/applications/${applicationId}/members`,
+            transformResponse: (response: { success: boolean; data: { members: ApplicationMember[]; summary: any } }) => response.data,
+            providesTags: ['ApplicationMember'],
+        }),
+
+        reviewApplicationMember: builder.mutation<ApplicationMember, { memberId: number; status: string; rejectionReason?: string }>({
+            query: ({ memberId, status, rejectionReason }) => ({
+                url: `/members/members/${memberId}/review`,
+                method: 'PATCH',
+                body: { status, rejectionReason },
+            }),
+            invalidatesTags: ['ApplicationMember', 'Application'],
+        }),
+
+        batchReviewApplicationMembers: builder.mutation<any, { applicationId: number; memberIds: number[]; status: string; rejectionReason?: string }>({
+            query: ({ applicationId, memberIds, status, rejectionReason }) => ({
+                url: `/members/applications/${applicationId}/members/batch-review`,
+                method: 'POST',
+                body: { memberIds, status, rejectionReason },
+            }),
+            invalidatesTags: ['ApplicationMember', 'Application'],
+        }),
+
     }),
 });
 
@@ -2462,6 +2523,9 @@ export const {
     useMarkAsEnteredMutation,
     useMarkAsExitedMutation,
     useGetEntryStatsQuery,
+    useGetApplicationMembersQuery,
+    useReviewApplicationMemberMutation,
+    useBatchReviewApplicationMembersMutation,
 } = api;
 
 // Entry Management

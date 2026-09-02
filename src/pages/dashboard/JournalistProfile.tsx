@@ -3,7 +3,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw, History, ChevronRight, Filter, Building2, UserCheck, MessageSquare, CheckCircle2, XCircle, Clock, Building, ChevronDown, ChevronUp, Paperclip, Image as ImageIcon } from 'lucide-react';
+import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw, History, ChevronRight, Filter, Building2, UserCheck, MessageSquare, CheckCircle2, XCircle, Clock, Building, ChevronDown, ChevronUp, Paperclip, Image as ImageIcon, Users } from 'lucide-react';
+import { CrewMemberReviewTable } from '@/components/CrewMemberReviewTable';
 import { getFlagEmoji } from '@/lib/utils';
 import en from 'react-phone-number-input/locale/en';
 import { SystemCheckSuccess } from '@/components/SystemCheckSuccess';
@@ -18,7 +19,8 @@ import {
     FILE_BASE_URL,
     useGetFormFieldTemplatesQuery,
     useGetApplicationByIdQuery,
-    useGetEquipmentByApplicationQuery
+    useGetEquipmentByApplicationQuery,
+    useGetApplicationMembersQuery
 } from '@/store/services/api';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
@@ -57,6 +59,9 @@ export function JournalistProfile() {
 
     // Fetch dynamic form templates
     const { data: templates, isLoading: templatesLoading } = useGetFormFieldTemplatesQuery();
+
+    // Fetch individual crew members for multi-member application clearance
+    const { data: crewData } = useGetApplicationMembersQuery(Number(id), { skip: !id });
 
     const [notes, setNotes] = useState('');
     const [noteAttachments, setNoteAttachments] = useState<NoteAttachment[]>([]);
@@ -130,12 +135,16 @@ export function JournalistProfile() {
     const [showRejectionDialog, setShowRejectionDialog] = useState(false);
     const [selectedFields, setSelectedFields] = useState<string[]>([]);
     const [fieldNotes, setFieldNotes] = useState<Record<string, string>>({});
+    const [selectedCrewMembers, setSelectedCrewMembers] = useState<number[]>([]);
+    const [crewMemberNotes, setCrewMemberNotes] = useState<Record<number, string>>({});
 
     // Fetch application data solely by ID
     const { data: application, isLoading: applicationLoading } = useGetApplicationByIdQuery(Number(id), {
         skip: !id,
         refetchOnMountOrArgChange: true
     });
+
+    const crewMembersList = crewData?.members || application?.members || [];
 
     // Server-side paginated equipment query
     const { data: eqData, isLoading: eqLoading, isFetching: eqFetching } = useGetEquipmentByApplicationQuery({
@@ -247,6 +256,8 @@ export function JournalistProfile() {
             setShowRejectionDialog(false);
             setSelectedFields([]);
             setFieldNotes({});
+            setSelectedCrewMembers([]);
+            setCrewMemberNotes({});
         } catch (err: any) {
             toast.error(err?.data?.message || `Failed to ${status.toLowerCase()} application`);
         }
@@ -586,22 +597,40 @@ export function JournalistProfile() {
                     </Card>
 
                     {/* Tabs */}
-                    <Tabs defaultValue={displayCategories.length > 0 ? displayCategories[0].name : "equipment"} className="w-full">
-                        <div className="bg-white rounded-lg p-1 shadow-sm mb-4">
-                            <TabsList className="w-full justify-start bg-transparent h-auto p-0 gap-6 border-b rounded-none px-4 flex-wrap">
-                                {/* Dynamic Tabs */}
-                                {displayCategories.map((cat) => (
-                                    <TabsTrigger key={cat.name} value={cat.name} className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
-                                        <FileText className="h-4 w-4" /> {cat.name}
-                                    </TabsTrigger>
-                                ))}
+                    {(() => {
+                        const crewMembersList = crewData?.members || application?.members || [];
+                        const isMultiMemberForm = Boolean(
+                            application?.form?.allowMultiMember ||
+                            crewMembersList.length > 0
+                        );
+                        return (
+                            <Tabs defaultValue={displayCategories.length > 0 ? displayCategories[0].name : "equipment"} className="w-full">
+                                <div className="bg-white rounded-lg p-1 shadow-sm mb-4">
+                                    <TabsList className="w-full justify-start bg-transparent h-auto p-0 gap-6 border-b rounded-none px-4 flex-wrap">
+                                        {/* Dynamic Tabs */}
+                                        {displayCategories.map((cat) => (
+                                            <TabsTrigger key={cat.name} value={cat.name} className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
+                                                <FileText className="h-4 w-4" /> {cat.name}
+                                            </TabsTrigger>
+                                        ))}
 
-                                <TabsTrigger value="equipment" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
-                                    <Briefcase className="h-4 w-4" /> Equipment
-                                    <span className="ml-1 text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded-full">{totalDeclaredEquipment}</span>
-                                </TabsTrigger>
-                            </TabsList>
-                        </div>
+                                        <TabsTrigger value="equipment" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
+                                            <Briefcase className="h-4 w-4" /> Equipment
+                                            <span className="ml-1 text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded-full">{totalDeclaredEquipment}</span>
+                                        </TabsTrigger>
+
+                                        {isMultiMemberForm && (
+                                            <TabsTrigger value="crew" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
+                                                <Users className="h-4 w-4" /> Crew Members
+                                                {crewMembersList.length > 0 && (
+                                                    <span className="ml-1 text-[10px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded-full">
+                                                        {crewMembersList.length}
+                                                    </span>
+                                                )}
+                                            </TabsTrigger>
+                                        )}
+                                    </TabsList>
+                                </div>
 
                         {/* Dynamic Content Tabs */}
                         {displayCategories.map((category) => (
@@ -953,7 +982,15 @@ export function JournalistProfile() {
                                 </CardContent>
                             </Card>
                         </TabsContent>
+
+                        {isMultiMemberForm && (
+                            <TabsContent value="crew">
+                                <CrewMemberReviewTable applicationId={Number(id)} />
+                            </TabsContent>
+                        )}
                     </Tabs>
+                        );
+                    })()}
                 </div>
 
                 {/* Right Sidebar - Decision Panel */}
@@ -988,6 +1025,24 @@ export function JournalistProfile() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <SystemCheckSuccess show={showSystemCheck} />
+
+                            {/* Crew Manifest Information Card */}
+                            {Boolean(application?.form?.allowMultiMember || (crewData?.members && crewData.members.length > 0) || (application?.members && application.members.length > 0)) && (
+                                <div className="bg-gradient-to-br from-indigo-50/80 to-purple-50/50 border border-indigo-200 rounded-xl p-3.5 space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-indigo-950 font-bold text-xs uppercase tracking-wider">
+                                            <Users className="h-4 w-4 text-indigo-600" />
+                                            Crew Manifest
+                                        </div>
+                                        <span className="text-[11px] font-bold text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded-full">
+                                            {crewMembersList.length} Members
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-indigo-800/90 leading-relaxed">
+                                        Inspect personnel credentials in the <strong>Crew Members</strong> tab. If any member has issues, you can flag them with a targeted note during rejection.
+                                    </p>
+                                </div>
+                            )}
                             {isFromEntryApproval ? (
                                 canApprove ? (
                                     <div className="space-y-4">
@@ -1339,6 +1394,89 @@ export function JournalistProfile() {
                             </div>
                         )}
 
+                        {/* Crew Members Selection */}
+                        {crewMembersList && crewMembersList.length > 0 && (
+                            <div className="space-y-3 pt-4 border-t">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-bold uppercase text-gray-700 tracking-wider flex items-center gap-2">
+                                        <Users className="w-4 h-4 text-indigo-600" />
+                                        Flag Specific Crew Member(s)
+                                    </Label>
+                                    <span className="text-xs text-gray-400">Click to select member needing corrections</span>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {crewMembersList.map((member: any) => {
+                                        const isSelected = selectedCrewMembers.includes(member.id);
+                                        return (
+                                            <div
+                                                key={member.id}
+                                                className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                                                    isSelected
+                                                        ? 'border-red-300 bg-red-50 text-red-900 shadow-2xs'
+                                                        : 'border-gray-200 hover:bg-gray-50'
+                                                }`}
+                                                onClick={() => {
+                                                    if (isSelected) {
+                                                        setSelectedCrewMembers((prev) => prev.filter((mid) => mid !== member.id));
+                                                    } else {
+                                                        setSelectedCrewMembers((prev) => [...prev, member.id]);
+                                                    }
+                                                }}
+                                            >
+                                                <div
+                                                    className={`mt-0.5 h-4 w-4 rounded border flex items-center justify-center transition-colors shrink-0 ${
+                                                        isSelected ? 'bg-red-500 border-red-500 text-white' : 'border-gray-300'
+                                                    }`}
+                                                >
+                                                    {isSelected && <Check className="h-3 w-3" />}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <p className="text-sm font-bold text-gray-900 truncate">{member.fullName}</p>
+                                                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                                            {member.roleInProduction}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 truncate mt-0.5">
+                                                        Passport: {member.passportNumber || 'N/A'} • {member.nationality || 'N/A'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {selectedCrewMembers.length > 0 && (
+                                    <div className="space-y-3 pt-2">
+                                        <Label className="text-xs font-bold uppercase text-red-600 tracking-wider">
+                                            Required Action / Correction for Flagged Crew Members
+                                        </Label>
+                                        {selectedCrewMembers.map((memberId) => {
+                                            const member = crewMembersList.find((m: any) => m.id === memberId);
+                                            return (
+                                                <div key={memberId} className="space-y-1.5 p-3.5 rounded-xl bg-red-50/50 border border-red-200">
+                                                    <div className="flex items-center justify-between text-xs font-bold text-red-900">
+                                                        <span>{member?.fullName} ({member?.roleInProduction})</span>
+                                                        <span className="font-mono text-red-700 text-[11px]">Passport: {member?.passportNumber || '—'}</span>
+                                                    </div>
+                                                    <Textarea
+                                                        placeholder={`Explain what ${member?.fullName} or the coordinator must edit/re-upload (e.g. upload renewed passport, re-upload clear photo)...`}
+                                                        className="bg-white text-xs"
+                                                        rows={2}
+                                                        value={crewMemberNotes[memberId] || ''}
+                                                        onChange={(e) =>
+                                                            setCrewMemberNotes((prev) => ({ ...prev, [memberId]: e.target.value }))
+                                                        }
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         <div className="space-y-2 pt-4 border-t">
                             <Label className="text-sm font-bold uppercase text-gray-400 tracking-wider">General Rejection Note (Optional)</Label>
                             <Textarea
@@ -1350,16 +1488,42 @@ export function JournalistProfile() {
                     </div>
 
                     <DialogFooter className="pt-6 border-t mt-6">
-                        <Button variant="ghost" onClick={() => setShowRejectionDialog(false)}>Cancel</Button>
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                setShowRejectionDialog(false);
+                                setSelectedCrewMembers([]);
+                                setCrewMemberNotes({});
+                            }}
+                        >
+                            Cancel
+                        </Button>
                         <Button
                             className="bg-red-600 hover:bg-red-700 text-white font-bold px-8 shadow-lg shadow-red-100"
-                            disabled={isStatusUpdating || (selectedFields.length === 0 && !notes.trim())}
+                            disabled={isStatusUpdating || (selectedFields.length === 0 && selectedCrewMembers.length === 0 && !notes.trim())}
                             onClick={() => {
-                                const rejectionDetails: Record<string, string> = {};
+                                const rejectionDetails: Record<string, any> = {};
                                 selectedFields.forEach((fieldName: string) => {
                                     const template = templates?.find(t => t.field_name === fieldName);
                                     rejectionDetails[template?.label || fieldName] = fieldNotes[fieldName] || 'Incorrect information provided.';
                                 });
+
+                                // Add targeted crew member feedback
+                                if (selectedCrewMembers.length > 0) {
+                                    rejectionDetails.crewMembers = {};
+                                    selectedCrewMembers.forEach((memberId) => {
+                                        const member = crewMembersList.find((m: any) => m.id === memberId);
+                                        const reason = crewMemberNotes[memberId] || 'Correction required for this crew member.';
+                                        rejectionDetails[`Crew Member: ${member?.fullName || memberId} (${member?.roleInProduction || 'Crew'})`] = reason;
+                                        rejectionDetails.crewMembers[memberId] = {
+                                            id: memberId,
+                                            fullName: member?.fullName,
+                                            role: member?.roleInProduction,
+                                            reason
+                                        };
+                                    });
+                                }
+
                                 handleDecision('REJECTED', rejectionDetails);
                             }}
                         >
