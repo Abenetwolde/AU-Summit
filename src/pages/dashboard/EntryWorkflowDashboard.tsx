@@ -424,9 +424,31 @@ export function EntryWorkflowDashboard() {
             </Card>
 
             {/* Applications Table */}
-            < Card >
-                <CardHeader>
-                    <CardTitle>Entry Phase Applications</CardTitle>
+            <Card>
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4">
+                    <div>
+                        <CardTitle>Entry Phase Applications</CardTitle>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            {selectedFormId ? (
+                                <>Filtered by: <span className="font-semibold text-slate-700">{forms?.find(f => f.form_id === Number(selectedFormId))?.name || 'Selected Form'}</span></>
+                            ) : (
+                                <>Displaying incoming applications across <span className="font-semibold text-emerald-600">All Active Published Forms</span> for your workflow step</>
+                            )}
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {!selectedFormId ? (
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1.5 py-1 px-2.5 text-xs font-medium">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                Active Published Forms
+                            </Badge>
+                        ) : (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 gap-1.5 py-1 px-2.5 text-xs font-medium">
+                                <Filter className="w-3 h-3 text-blue-600" />
+                                Single Form Filtered
+                            </Badge>
+                        )}
+                    </div>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
@@ -448,6 +470,7 @@ export function EntryWorkflowDashboard() {
                                     <TableRow>
                                         <TableHead>ID</TableHead>
                                         <TableHead>Applicant</TableHead>
+                                        <TableHead>Applied Form</TableHead>
                                         <TableHead>Email</TableHead>
                                         <TableHead>Your Approval</TableHead>
                                         <TableHead>Phase Progress</TableHead>
@@ -465,6 +488,19 @@ export function EntryWorkflowDashboard() {
                                                 {app.formData?.first_name
                                                     ? `${app.formData.first_name} ${app.formData.last_name || ''}`
                                                     : app.user?.fullName || 'N/A'}
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col gap-1 items-start">
+                                                    <Badge variant="outline" className="text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 gap-1.5 py-0.5 px-2">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                                        {app.form?.name || 'Standard Form'}
+                                                    </Badge>
+                                                    {app.form?.type && (
+                                                        <span className="text-[10px] text-slate-400 capitalize font-medium pl-1">
+                                                            {app.form.type.toLowerCase().replace(/_/g, ' ')}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </TableCell>
                                             <TableCell className="text-muted-foreground">
                                                 {app.user?.email || 'N/A'}
