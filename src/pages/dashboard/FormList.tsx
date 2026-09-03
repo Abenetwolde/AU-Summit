@@ -40,7 +40,8 @@ import {
     CheckCircle2,
     Archive,
     Users,
-    UserX
+    UserX,
+    Clock
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGetFormsQuery, useDeleteFormMutation, useUpdateFormMutation, Form } from '@/store/services/api';
@@ -262,6 +263,17 @@ export default function FormList() {
                                                         <Badge variant="secondary" className="text-[10px] font-semibold bg-indigo-50 text-indigo-700 border-indigo-200 gap-1 px-1.5 py-0">
                                                             <Users className="h-2.5 w-2.5" /> Crew Allowed
                                                         </Badge>
+                                                    )}
+                                                    {form.deadline && (
+                                                        <span className={`text-[10px] font-medium flex items-center gap-1 mt-0.5 ${
+                                                            new Date(form.deadline).getTime() < Date.now()
+                                                                ? 'text-rose-600 font-semibold'
+                                                                : 'text-amber-600'
+                                                        }`}>
+                                                            <Clock className="h-2.5 w-2.5" />
+                                                            {new Date(form.deadline).getTime() < Date.now() ? 'Expired: ' : 'Deadline: '}
+                                                            {format(new Date(form.deadline), 'MMM d, yyyy HH:mm')}
+                                                        </span>
                                                     )}
                                                 </div>
                                             </TableCell>

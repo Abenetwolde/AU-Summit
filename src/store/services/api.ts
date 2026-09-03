@@ -627,6 +627,7 @@ export interface Form {
     name: string;
     type: string;
     status: string;
+    deadline?: string | null;
     allowMultiMember?: boolean;
     created_at: string;
     updated_at: string;

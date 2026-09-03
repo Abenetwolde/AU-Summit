@@ -179,6 +179,7 @@ export function FormEditor() {
     const [formType, setFormType] = useState("ACCREDITATION");
     const [formStatus, setFormStatus] = useState<"DRAFT" | "PUBLISHED" | "ARCHIVED">("PUBLISHED");
     const [allowMultiMember, setAllowMultiMember] = useState(false);
+    const [deadline, setDeadline] = useState<string>("");
 
     useEffect(() => {
         if (isEditMode && existingForm) {
@@ -187,6 +188,7 @@ export function FormEditor() {
             setFormType(existingForm.type);
             setFormStatus(existingForm.status as any);
             setAllowMultiMember(Boolean(existingForm.allowMultiMember));
+            setDeadline(existingForm.deadline ? new Date(existingForm.deadline).toISOString().slice(0, 16) : "");
 
             const allFields: FormField[] = [];
 
@@ -570,6 +572,7 @@ export function FormEditor() {
             description: formDescription,
             status: formStatus,
             type: formType,
+            deadline: deadline ? new Date(deadline).toISOString() : null,
             allowMultiMember,
             icon: existingForm?.icon || null,
             categories: categoriesPayload,
@@ -625,6 +628,30 @@ export function FormEditor() {
                     <CardHeader className="border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <Input value={formName} onChange={(e) => setFormName(e.target.value)} className="text-xl font-bold border-none p-0 focus-visible:ring-0 shadow-none w-auto" />
                         <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-slate-50">
+                                <Calendar className="h-4 w-4 text-emerald-600" />
+                                <label htmlFor="form-deadline" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">
+                                    Deadline:
+                                </label>
+                                <input
+                                    id="form-deadline"
+                                    type="datetime-local"
+                                    value={deadline}
+                                    onChange={(e) => setDeadline(e.target.value)}
+                                    disabled={!canOperate}
+                                    className="text-xs bg-white border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                                {deadline && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeadline("")}
+                                        className="text-xs text-slate-400 hover:text-red-500 ml-0.5"
+                                        title="Clear deadline"
+                                    >
+                                        ✕
+                                    </button>
+                                )}
+                            </div>
                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-slate-50">
                                 <Users className="h-4 w-4 text-indigo-600" />
                                 <label htmlFor="multi-member-toggle" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">
