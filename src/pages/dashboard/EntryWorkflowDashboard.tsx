@@ -26,6 +26,7 @@ import { useGetEntryWorkflowApplicationsQuery } from '@/store/services/api';
 import { exportJournalistsToCSV, exportJournalistsToPDF } from '@/lib/export-utils';
 import { useAuth } from '@/auth/context';
 import { FormFilter } from '@/components/dashboard/FormFilter';
+import { cn } from '@/lib/utils';
 
 export function EntryWorkflowDashboard() {
     const navigate = useNavigate();
@@ -155,21 +156,21 @@ export function EntryWorkflowDashboard() {
         }
     }, [isExporting, exportData, isExportFetching, exportType]);
 
-    const getRoleApprovalStatus = (app: any) => {
-        if (user?.role === 'SUPER_ADMIN') return app.status;
+    const getRoleApproval = (app: any) => {
+        if (user?.role === 'SUPER_ADMIN') {
+            return app.approvals?.find((a: any) => a.workflowStep && !a.workflowStep.isExitStep && (a.isResubmitted || a.status === 'PENDING' || a.status === 'IN_REVIEW')) || app.approvals?.[0];
+        }
 
-        // Try matching by recognized role strings first (roleName is more likely to match backend logic)
-        const relevantApproval = app.approvals?.find((a: any) => {
+        return app.approvals?.find((a: any) => {
             const step = a.workflowStep;
             if (!step || step.isExitStep) return false;
-
-            // Match by ID if we have authorized steps (most reliable)
-            // if (user?.authorizedWorkflowSteps?.some(s => s.id === step.id)) return true;
-
-            // Fallback to role name matching
             return step.requiredRole === user?.roleName;
         });
+    };
 
+    const getRoleApprovalStatus = (app: any) => {
+        if (user?.role === 'SUPER_ADMIN') return app.status;
+        const relevantApproval = getRoleApproval(app);
         return relevantApproval ? relevantApproval.status : app.status;
     };
 
@@ -437,6 +438,12 @@ export function EntryWorkflowDashboard() {
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
+                        {data?.applications?.some((a: any) => a.approvals?.some((ap: any) => ap.isResubmitted)) && (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-300 gap-1.5 py-1 px-2.5 text-xs font-semibold">
+                                <RotateCcw className="w-3 h-3 text-amber-600 animate-pulse" />
+                                Resubmitted Applications Present
+                            </Badge>
+                        )}
                         {!selectedFormId ? (
                             <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1.5 py-1 px-2.5 text-xs font-medium">
                                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -479,35 +486,74 @@ export function EntryWorkflowDashboard() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {data?.applications?.map((app: any) => (
-                                        <TableRow key={app.id} className="hover:bg-blue-50/50">
-                                            <TableCell className="font-mono font-medium">
-                                                #{app.id}
-                                            </TableCell>
-                                            <TableCell className="font-medium">
-                                                {app.formData?.first_name
-                                                    ? `${app.formData.first_name} ${app.formData.last_name || ''}`
-                                                    : app.user?.fullName || 'N/A'}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex flex-col gap-1 items-start">
-                                                    <Badge variant="outline" className="text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 gap-1.5 py-0.5 px-2">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                                        {app.form?.name || 'Standard Form'}
-                                                    </Badge>
-                                                    {app.form?.type && (
-                                                        <span className="text-[10px] text-slate-400 capitalize font-medium pl-1">
-                                                            {app.form.type.toLowerCase().replace(/_/g, ' ')}
+                                    {data?.applications?.map((app: any) => {
+                                        const relevantApproval = getRoleApproval(app);
+                                        const isResubmitted = Boolean(
+                                            relevantApproval?.isResubmitted ||
+                                            (user?.role === 'SUPER_ADMIN' && app.approvals?.some((a: any) => a.isResubmitted))
+                                        );
+
+                                        return (
+                                            <TableRow 
+                                                key={app.id} 
+                                                className={cn(
+                                                    "transition-colors",
+                                                    isResubmitted 
+                                                        ? "bg-amber-50/40 hover:bg-amber-100/50 border-l-4 border-l-amber-500" 
+                                                        : "hover:bg-blue-50/50"
+                                                )}
+                                            >
+                                                <TableCell className="font-mono font-medium">
+                                                    <div className="flex flex-col gap-1 items-start">
+                                                        <span>#{app.id}</span>
+                                                        {isResubmitted && (
+                                                            <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-extrabold uppercase px-1.5 py-0 h-4 shadow-2xs">
+                                                                Resubmitted
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="font-medium">
+                                                    <div className="flex flex-col gap-1 items-start">
+                                                        <span className="font-semibold text-slate-900">
+                                                            {app.formData?.first_name
+                                                                ? `${app.formData.first_name} ${app.formData.last_name || ''}`
+                                                                : app.user?.fullName || 'N/A'}
                                                         </span>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground">
-                                                {app.user?.email || 'N/A'}
-                                            </TableCell>
-                                            <TableCell>
-                                                {getStatusBadge(getRoleApprovalStatus(app))}
-                                            </TableCell>
+                                                        {isResubmitted && (
+                                                            <Badge variant="outline" className="bg-amber-100/90 text-amber-900 border-amber-300 gap-1 text-[10px] font-bold py-0.5 px-2 tracking-tight">
+                                                                <RotateCcw className="w-2.5 h-2.5 text-amber-600 animate-pulse" />
+                                                                Resubmitted
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col gap-1 items-start">
+                                                        <Badge variant="outline" className="text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200 gap-1.5 py-0.5 px-2">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                                            {app.form?.name || 'Standard Form'}
+                                                        </Badge>
+                                                        {app.form?.type && (
+                                                            <span className="text-[10px] text-slate-400 capitalize font-medium pl-1">
+                                                                {app.form.type.toLowerCase().replace(/_/g, ' ')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground">
+                                                    {app.user?.email || 'N/A'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col gap-1 items-start">
+                                                        {getStatusBadge(getRoleApprovalStatus(app))}
+                                                        {isResubmitted && (
+                                                            <Badge variant="outline" className="text-[10px] font-bold text-amber-800 bg-amber-100/70 border-amber-300 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                                                <RotateCcw className="w-2.5 h-2.5 text-amber-600" /> Resubmitted
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     <div className="text-sm font-medium text-blue-700">
@@ -530,8 +576,9 @@ export function EntryWorkflowDashboard() {
                                                     View
                                                 </Button>
                                             </TableCell>
-                                        </TableRow>
-                                    ))}
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
 
