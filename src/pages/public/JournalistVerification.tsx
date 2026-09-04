@@ -1,12 +1,16 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useGetPublicBadgeProfileByAppIdQuery } from '@/store/services/api';
 import { Card, CardContent } from '@/components/ui/card';
-import { ShieldCheck, User, Loader2, XCircle, Building2, BadgeCheck } from 'lucide-react';
+import { ShieldCheck, User, Loader2, XCircle, Building2, BadgeCheck, IdCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function JournalistVerification() {
     const { id } = useParams<{ id: string }>();
-    const { data: journalist, isLoading, error } = useGetPublicBadgeProfileByAppIdQuery(id || '');
+    const [searchParams] = useSearchParams();
+    const memberId = searchParams.get('memberId');
+    const { data: journalist, isLoading, error } = useGetPublicBadgeProfileByAppIdQuery(
+        memberId ? { applicationId: id || '', memberId } : (id || '')
+    );
 
     if (isLoading) {
         return (
@@ -76,7 +80,7 @@ export function JournalistVerification() {
                                 <BadgeCheck className="h-6 w-6 text-white" />
                             </div>
                             <span className="text-white font-black uppercase tracking-widest text-sm">
-                                VERIFIED MEDIA
+                                {journalist.isCrewMember ? "VERIFIED CREW" : "VERIFIED MEDIA"}
                             </span>
                         </div>
                         <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
@@ -124,13 +128,29 @@ export function JournalistVerification() {
                                 </div>
                             </div>
 
+                            {journalist.passportNumber && (
+                                <div className="flex items-center gap-5 p-5 rounded-3xl bg-slate-50/50 border border-slate-100 transition-colors hover:bg-slate-50">
+                                    <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100">
+                                        <IdCard className="h-6 w-6 text-slate-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Passport Number</p>
+                                        <p className="font-mono font-bold text-slate-900">{journalist.passportNumber}</p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex items-center gap-5 p-5 rounded-3xl bg-slate-50/50 border border-slate-100 transition-colors hover:bg-slate-50">
                                 <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100">
                                     <ShieldCheck className="h-6 w-6 text-slate-400" />
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Credential ID</p>
-                                    <p className="font-mono font-bold text-slate-900">AU-BDG-{String(journalist.id).padStart(6, '0')}</p>
+                                    <p className="font-mono font-bold text-slate-900">
+                                        {journalist.isCrewMember
+                                            ? `AU-BDG-${String(journalist.applicationId || id).padStart(6, '0')}-M${journalist.id}`
+                                            : `AU-BDG-${String(journalist.id || id).padStart(6, '0')}`}
+                                    </p>
                                 </div>
                             </div>
                         </div>

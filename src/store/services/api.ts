@@ -2104,8 +2104,13 @@ export const api = createApi({
             query: (hash) => `/badges/profile/${hash}`,
             transformResponse: (response: any) => response.data || response,
         }),
-        getPublicBadgeProfileByAppId: builder.query<any, number | string>({
-            query: (applicationId) => `/badges/public/application/${applicationId}`,
+        getPublicBadgeProfileByAppId: builder.query<any, number | string | { applicationId: number | string; memberId?: number | string }>({
+            query: (arg) => {
+                if (typeof arg === 'object' && arg !== null) {
+                    return `/badges/public/application/${arg.applicationId}${arg.memberId ? `?memberId=${arg.memberId}` : ''}`;
+                }
+                return `/badges/public/application/${arg}`;
+            },
             transformResponse: (response: any) => response.data || response,
         }),
         bulkGenerateBadges: builder.mutation<Blob, { applicationIds: number[]; configId?: number }>({
