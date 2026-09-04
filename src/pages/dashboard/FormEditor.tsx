@@ -1,9 +1,22 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+    Dialog,
+    DialogContent,
+    DialogTitle,
+    DialogDescription,
+    DialogHeader,
+    DialogFooter
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import {
     Settings2,
@@ -17,18 +30,18 @@ import {
     Save,
     Eye,
     ChevronDown,
+    ChevronUp,
     AlignLeft,
     Loader2,
-    ChevronRight,
-    ChevronLeft,
-    Monitor,
-    Smartphone,
-    Tablet,
     X,
     ArrowLeft,
     GripVertical,
     Layers,
-    Users
+    Users,
+    FolderPlus,
+    Pencil,
+    Plus,
+    AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -134,10 +147,17 @@ interface FormField {
         errorMessage?: string;
     };
     displayOrder?: number;
-    fieldName?: string; // Original field name from API
+    fieldName?: string;
     categoryId?: number;
     categoryName?: string;
     applies_to_crew?: boolean;
+}
+
+export interface FormCategory {
+    id: string;
+    name: string;
+    description?: string;
+    displayOrder?: number;
 }
 
 const FIELD_TYPES = [
@@ -167,12 +187,22 @@ export function FormEditor() {
     const canUpdateForm = checkPermission('form:update');
     const canOperate = isEditMode ? canUpdateForm : canCreateForm;
 
+    const [categories, setCategories] = useState<FormCategory[]>([]);
     const [fields, setFields] = useState<FormField[]>([]);
     const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
     const [previewOpen, setPreviewOpen] = useState(false);
-    const [previewStep, setPreviewStep] = useState(1);
-    const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
     const [previewValues, setPreviewValues] = useState<Record<string, any>>({});
+
+    // Category Modal states
+    const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [newCategoryDescription, setNewCategoryDescription] = useState('');
+
+    const [editingCategory, setEditingCategory] = useState<FormCategory | null>(null);
+    const [editCategoryName, setEditCategoryName] = useState('');
+    const [editCategoryDescription, setEditCategoryDescription] = useState('');
+
+    const [categoryToDelete, setCategoryToDelete] = useState<FormCategory | null>(null);
 
     const [formName, setFormName] = useState("Press Accreditation Application");
     const [formDescription, setFormDescription] = useState("Standard application form for press accreditation.");
@@ -190,10 +220,17 @@ export function FormEditor() {
             setAllowMultiMember(Boolean(existingForm.allowMultiMember));
             setDeadline(existingForm.deadline ? new Date(existingForm.deadline).toISOString().slice(0, 16) : "");
 
-            const allFields: FormField[] = [];
-
-            // Sort categories by their display order first
             const sortedCategories = [...(existingForm.categories || [])].sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+
+            const loadedCategories: FormCategory[] = sortedCategories.map((cat: any, idx: number) => ({
+                id: String(cat.category_id || `cat_${idx}`),
+                name: cat.name,
+                description: cat.description || '',
+                displayOrder: cat.display_order ?? (idx + 1)
+            }));
+            setCategories(loadedCategories);
+
+            const allFields: FormField[] = [];
 
             sortedCategories.forEach((cat: any) => {
                 const mapped = (cat.fields || []).map((f: any) => {
@@ -223,7 +260,6 @@ export function FormEditor() {
                         applies_to_crew: Boolean(f.applies_to_crew),
                     };
                 });
-                // Sort fields within each category
                 mapped.sort((a: FormField, b: FormField) => (a.displayOrder || 0) - (b.displayOrder || 0));
                 allFields.push(...mapped);
             });
@@ -260,20 +296,32 @@ export function FormEditor() {
 
             setFields(allFields);
         } else if (!isEditMode && templates && fields.length === 0) {
+            const uniqueCatsMap = new Map<string, FormCategory>();
+            templates.forEach(t => {
+                const cat = (t as any).category;
+                if (cat && cat.name && !uniqueCatsMap.has(cat.name)) {
+                    uniqueCatsMap.set(cat.name, {
+                        id: String(cat.template_category_id || `cat_${uniqueCatsMap.size}`),
+                        name: cat.name,
+                        description: cat.description || '',
+                        displayOrder: uniqueCatsMap.size + 1
+                    });
+                }
+            });
+            setCategories(Array.from(uniqueCatsMap.values()));
+
             const mappedFields: FormField[] = templates.map(t => {
                 let type: FormField['type'] = 'text';
 
-                // Map DB types to Frontend types
                 if (t.field_type === 'textarea') type = 'textarea';
                 else if (t.field_type === 'date') type = 'date';
-                else if (t.field_type === 'boolean') type = 'radio'; // render as radio with True/False
+                else if (t.field_type === 'boolean') type = 'radio';
                 else if (t.field_type === 'email') type = 'email';
                 else if (t.field_type === 'number') type = 'number';
                 else if (t.field_type === 'file') type = 'file';
                 else if (t.field_type === 'select' || t.field_type === 'dropdown') type = 'dropdown';
                 else if (t.field_type === 'radio') type = 'radio';
                 else if (t.field_type === 'checkbox') type = 'checkbox';
-
 
                 let parsedOptions: string[] | undefined;
                 let parsedDescriptions: Record<string, string> | undefined;
@@ -319,7 +367,108 @@ export function FormEditor() {
         }
     }, [isEditMode, existingForm, templates]);
 
-    const addField = (type: FormField['type']) => {
+    // CATEGORY HANDLERS
+    const handleAddCategory = () => {
+        if (!canOperate) {
+            toast.error("You don't have permission to modify this form");
+            return;
+        }
+        const trimmed = newCategoryName.trim();
+        if (!trimmed) {
+            toast.error("Section name is required");
+            return;
+        }
+        if (categories.some(c => c.name.toLowerCase() === trimmed.toLowerCase())) {
+            toast.error("A section with this name already exists");
+            return;
+        }
+        const newCat: FormCategory = {
+            id: `cat_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            name: trimmed,
+            description: newCategoryDescription.trim() || undefined,
+            displayOrder: categories.length + 1
+        };
+        setCategories([...categories, newCat]);
+        setNewCategoryName('');
+        setNewCategoryDescription('');
+        setIsAddCategoryOpen(false);
+        toast.success(`Section "${trimmed}" created!`);
+    };
+
+    const handleRenameCategory = () => {
+        if (!editingCategory) return;
+        const trimmed = editCategoryName.trim();
+        if (!trimmed) {
+            toast.error("Section name is required");
+            return;
+        }
+        if (categories.some(c => c.id !== editingCategory.id && c.name.toLowerCase() === trimmed.toLowerCase())) {
+            toast.error("A section with this name already exists");
+            return;
+        }
+        const oldName = editingCategory.name;
+        setCategories(categories.map(c => c.id === editingCategory.id ? { ...c, name: trimmed, description: editCategoryDescription.trim() || undefined } : c));
+        setFields(fields.map(f => f.categoryName === oldName ? { ...f, categoryName: trimmed } : f));
+        setEditingCategory(null);
+        toast.success(`Section updated to "${trimmed}"`);
+    };
+
+    const requestDeleteCategory = (cat: FormCategory) => {
+        if (!canOperate) {
+            toast.error("You don't have permission to modify this form");
+            return;
+        }
+        const fieldsInCat = fields.filter(f => f.categoryName === cat.name);
+        if (fieldsInCat.length === 0) {
+            setCategories(categories.filter(c => c.id !== cat.id));
+            toast.success(`Section "${cat.name}" removed`);
+        } else {
+            setCategoryToDelete(cat);
+        }
+    };
+
+    const handleConfirmDeleteCategory = (action: 'delete_all' | 'keep_uncategorized') => {
+        if (!categoryToDelete) return;
+        const catName = categoryToDelete.name;
+        if (action === 'delete_all') {
+            const deletedFieldIds = new Set(fields.filter(f => f.categoryName === catName).map(f => f.id));
+            if (selectedFieldId && deletedFieldIds.has(selectedFieldId)) {
+                setSelectedFieldId(null);
+            }
+            setFields(fields.filter(f => f.categoryName !== catName));
+            setCategories(categories.filter(c => c.id !== categoryToDelete.id));
+            toast.success(`Section "${catName}" and all its fields were deleted`);
+        } else {
+            setFields(fields.map(f => f.categoryName === catName ? { ...f, categoryName: undefined, categoryId: undefined } : f));
+            setCategories(categories.filter(c => c.id !== categoryToDelete.id));
+            toast.success(`Section "${catName}" removed. Fields moved to Uncategorized.`);
+        }
+        setCategoryToDelete(null);
+    };
+
+    const moveCategory = (index: number, direction: 'up' | 'down') => {
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        if (targetIndex < 0 || targetIndex >= categories.length) return;
+        const newCats = arrayMove(categories, index, targetIndex).map((cat, idx) => ({
+            ...cat,
+            displayOrder: idx + 1
+        }));
+        setCategories(newCats);
+
+        setFields(prevFields => {
+            const sorted: FormField[] = [];
+            newCats.forEach(cat => {
+                const catFields = prevFields.filter(f => f.categoryName === cat.name);
+                sorted.push(...catFields);
+            });
+            const uncategorized = prevFields.filter(f => !f.categoryName || !newCats.some(c => c.name === f.categoryName));
+            sorted.push(...uncategorized);
+            return sorted.map((f, idx) => ({ ...f, displayOrder: idx + 1 }));
+        });
+    };
+
+    // FIELD HANDLERS
+    const addField = (type: FormField['type'], categoryName?: string) => {
         if (!canOperate) {
             toast.error("You don't have permission to modify this form");
             return;
@@ -333,9 +482,39 @@ export function FormEditor() {
             fieldName: label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''),
             displayOrder: fields.length + 1,
             options: ['checkbox', 'radio', 'dropdown'].includes(type) ? ['Option 1', 'Option 2', 'Option 3'] : undefined,
-            validation: {}
+            validation: {},
+            categoryName: categoryName || undefined,
+            categoryId: categoryName ? (Number(categories.find(c => c.name === categoryName)?.id) || undefined) : undefined
         };
-        setFields([...fields, newField]);
+
+        setFields(prev => {
+            if (!categoryName) {
+                return [...prev, newField];
+            }
+            let lastIdx = -1;
+            for (let i = prev.length - 1; i >= 0; i--) {
+                if (prev[i].categoryName === categoryName) {
+                    lastIdx = i;
+                    break;
+                }
+            }
+            const updated = [...prev];
+            if (lastIdx !== -1) {
+                updated.splice(lastIdx + 1, 0, newField);
+            } else {
+                const catIndex = categories.findIndex(c => c.name === categoryName);
+                let insertIdx = updated.length;
+                for (let i = 0; i < updated.length; i++) {
+                    const fCatIdx = categories.findIndex(c => c.name === updated[i].categoryName);
+                    if (fCatIdx > catIndex || (!updated[i].categoryName && fCatIdx === -1)) {
+                        insertIdx = i;
+                        break;
+                    }
+                }
+                updated.splice(insertIdx, 0, newField);
+            }
+            return updated.map((f, idx) => ({ ...f, displayOrder: idx + 1 }));
+        });
         setSelectedFieldId(newField.id);
     };
 
@@ -359,6 +538,50 @@ export function FormEditor() {
             }
             return f;
         }));
+    };
+
+    const setFieldCategory = (fieldId: string, categoryName?: string) => {
+        setFields(prevFields => {
+            const field = prevFields.find(f => f.id === fieldId);
+            if (!field) return prevFields;
+
+            const targetCat = categories.find(c => c.name === categoryName);
+            const updatedField: FormField = {
+                ...field,
+                categoryName: targetCat ? targetCat.name : undefined,
+                categoryId: targetCat ? (Number(targetCat.id) || undefined) : undefined
+            };
+
+            const otherFields = prevFields.filter(f => f.id !== fieldId);
+
+            if (targetCat) {
+                let lastCatIndex = -1;
+                for (let i = otherFields.length - 1; i >= 0; i--) {
+                    if (otherFields[i].categoryName === targetCat.name) {
+                        lastCatIndex = i;
+                        break;
+                    }
+                }
+                if (lastCatIndex !== -1) {
+                    otherFields.splice(lastCatIndex + 1, 0, updatedField);
+                } else {
+                    const catIdx = categories.findIndex(c => c.name === targetCat.name);
+                    let insertIdx = otherFields.length;
+                    for (let i = 0; i < otherFields.length; i++) {
+                        const fCatIdx = categories.findIndex(c => c.name === otherFields[i].categoryName);
+                        if (fCatIdx > catIdx || (!otherFields[i].categoryName && fCatIdx === -1)) {
+                            insertIdx = i;
+                            break;
+                        }
+                    }
+                    otherFields.splice(insertIdx, 0, updatedField);
+                }
+            } else {
+                otherFields.push(updatedField);
+            }
+
+            return otherFields.map((f, idx) => ({ ...f, displayOrder: idx + 1 }));
+        });
     };
 
     const addNestedField = (fieldId: string, optionName: string) => {
@@ -462,20 +685,21 @@ export function FormEditor() {
                 const newIndex = items.findIndex((i) => i.id === over.id);
 
                 const newFields = arrayMove(items, oldIndex, newIndex);
-
                 const movedField = newFields[newIndex];
-                const prevField = newIndex > 0 ? newFields[newIndex - 1] : null;
-                const nextField = newIndex < newFields.length - 1 ? newFields[newIndex + 1] : null;
+                const targetField = items[newIndex];
 
-                if (prevField && prevField.categoryName) {
-                    movedField.categoryId = prevField.categoryId;
-                    movedField.categoryName = prevField.categoryName;
-                } else if (nextField && nextField.categoryName) {
-                    movedField.categoryId = nextField.categoryId;
-                    movedField.categoryName = nextField.categoryName;
+                if (targetField && targetField.categoryName) {
+                    movedField.categoryName = targetField.categoryName;
+                    movedField.categoryId = targetField.categoryId;
+                } else if (newIndex > 0 && newFields[newIndex - 1]?.categoryName) {
+                    movedField.categoryName = newFields[newIndex - 1].categoryName;
+                    movedField.categoryId = newFields[newIndex - 1].categoryId;
+                } else if (newIndex < newFields.length - 1 && newFields[newIndex + 1]?.categoryName) {
+                    movedField.categoryName = newFields[newIndex + 1].categoryName;
+                    movedField.categoryId = newFields[newIndex + 1].categoryId;
                 } else {
-                    movedField.categoryId = undefined;
                     movedField.categoryName = undefined;
+                    movedField.categoryId = undefined;
                 }
 
                 return newFields.map((f, idx) => ({ ...f, displayOrder: idx + 1 }));
@@ -520,17 +744,11 @@ export function FormEditor() {
             return;
         }
 
-        const categorizedFieldsMap = fields.reduce((acc: any, f) => {
-            const catName = f.categoryName || '_uncategorized';
-            if (!acc[catName]) acc[catName] = [];
-            acc[catName].push(f);
-            return acc;
-        }, {});
-
-        const categoriesPayload = Object.entries(categorizedFieldsMap)
-            .filter(([name]) => name !== '_uncategorized')
-            .map(([name, catFields]: [string, any], index) => ({
-                name,
+        const categoriesPayload = categories.map((cat, index) => {
+            const catFields = fields.filter(f => f.categoryName === cat.name);
+            return {
+                name: cat.name,
+                description: cat.description || null,
                 display_order: index + 1,
                 fields: catFields.map((f: any, fIndex: number) => ({
                     field_name: f.fieldName || f.label.toLowerCase().replace(/ /g, '_'),
@@ -548,9 +766,11 @@ export function FormEditor() {
                         }
                         : null
                 }))
-            }));
+            };
+        });
 
-        const uncategorizedFieldsPayload = (categorizedFieldsMap['_uncategorized'] || []).map((f: any, index: number) => ({
+        const uncategorizedFields = fields.filter(f => !f.categoryName || !categories.some(c => c.name === f.categoryName));
+        const uncategorizedFieldsPayload = uncategorizedFields.map((f: any, index: number) => ({
             field_name: f.fieldName || f.label.toLowerCase().replace(/ /g, '_'),
             field_type: f.type === 'radio' && f.options?.includes('True') ? 'boolean' : f.type === 'dropdown' ? 'select' : f.type,
             label: f.label,
@@ -596,26 +816,236 @@ export function FormEditor() {
     if (isLoadingForm || isLoadingTemplates) return <div className="flex h-96 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
     const isSaving = isCreating || isUpdating;
+    const uncategorizedFields = fields.filter(f => !f.categoryName || !categories.some(c => c.name === f.categoryName));
+
+    const renderFieldItem = (field: FormField) => (
+        <SortableField key={field.id} id={field.id}>
+            {({ attributes, listeners, isDragging }) => (
+                <div
+                    className={cn(
+                        "bg-white p-4 rounded-xl border group relative transition-all cursor-pointer hover:shadow-md",
+                        selectedFieldId === field.id ? "border-blue-500 ring-2 ring-blue-50 shadow-md" : "border-gray-200",
+                        isDragging && "shadow-xl ring-2 ring-blue-400 opacity-80"
+                    )}
+                    onClick={() => setSelectedFieldId(field.id)}
+                >
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                            <div {...attributes} {...listeners} className="cursor-grab text-gray-300 hover:text-gray-600">
+                                <GripVertical className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-bold text-slate-800">{field.label}</span>
+                                    {field.required && <span className="text-red-500 font-bold text-xs">*</span>}
+                                </div>
+                                {field.nestedFields && Object.values(field.nestedFields).some(arr => arr && arr.length > 0) && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                        {Object.entries(field.nestedFields).map(([opt, subArr]) => subArr && subArr.length > 0 ? (
+                                            <span key={opt} className="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                                                {opt}: +{subArr.length} field{subArr.length > 1 ? 's' : ''}
+                                            </span>
+                                        ) : null)}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {allowMultiMember && (
+                                <div
+                                    className={cn(
+                                        "flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer select-none",
+                                        field.applies_to_crew
+                                            ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                            : "bg-gray-50 text-gray-400 border-gray-200 hover:text-gray-600"
+                                    )}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateField(field.id, { applies_to_crew: !field.applies_to_crew });
+                                    }}
+                                    title="Click to toggle whether this field applies to crew members"
+                                >
+                                    <Users className="w-3 h-3" />
+                                    <span>{field.applies_to_crew ? "Crew Field" : "Lead Only"}</span>
+                                </div>
+                            )}
+                            <span className="text-[10px] uppercase font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{field.type}</span>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeField(field.id);
+                                }}
+                                title="Delete field"
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="h-8 w-full bg-gray-50/80 border border-dashed rounded-md flex items-center px-3 text-xs text-gray-400">
+                        {field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                    </div>
+                </div>
+            )}
+        </SortableField>
+    );
+
+    const renderPreviewField = (f: FormField) => {
+        const isDropdown = f.type === 'dropdown';
+        const selectedOpt = previewValues[f.id];
+        const subFields = isDropdown && selectedOpt && f.nestedFields ? f.nestedFields[selectedOpt] || [] : [];
+
+        return (
+            <div key={f.id} className="space-y-2 p-3 bg-white border rounded-xl shadow-sm">
+                <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold text-slate-800">
+                        {f.label}{f.required && <span className="text-red-500 ml-0.5">*</span>}
+                    </label>
+                    {f.applies_to_crew && (
+                        <Badge variant="outline" className="text-[10px] text-indigo-700 bg-indigo-50 border-indigo-200">
+                            Crew
+                        </Badge>
+                    )}
+                </div>
+                {isDropdown ? (
+                    <Select value={selectedOpt || ''} onValueChange={(val) => setPreviewValues(prev => ({ ...prev, [f.id]: val }))}>
+                        <SelectTrigger><SelectValue placeholder={`Select ${f.label}`} /></SelectTrigger>
+                        <SelectContent>
+                            {(f.options || []).map(opt => (
+                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                ) : f.type === 'textarea' ? (
+                    <textarea className="w-full h-20 p-2 text-xs border rounded-md bg-gray-50 resize-none" placeholder={f.placeholder} disabled />
+                ) : (
+                    <Input placeholder={f.placeholder} disabled />
+                )}
+
+                {subFields.length > 0 && (
+                    <div className="pl-4 border-l-2 border-blue-500 space-y-3 mt-3 pt-3 bg-blue-50/50 p-3 rounded-r-xl animate-in fade-in slide-in-from-top-1">
+                        <p className="text-[11px] font-bold text-blue-900 uppercase tracking-wider">
+                            Sub-Fields for "{selectedOpt}":
+                        </p>
+                        <div className="space-y-2">
+                            {subFields.map((sub, idx) => (
+                                <div key={idx} className="space-y-1">
+                                    <label className="text-xs font-medium text-slate-700">
+                                        {sub.label}{sub.required && <span className="text-red-500 ml-0.5">*</span>}
+                                    </label>
+                                    <Input placeholder={sub.placeholder || `Enter ${sub.label}`} className="h-8 text-xs bg-white" disabled />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     return (
         <div className="flex flex-col lg:flex-row min-h-[calc(100vh-140px)] gap-4 p-4 bg-gray-50/50">
             {/* Toolbox */}
-            <div className="w-full lg:w-64">
-                <Button variant="ghost" className="mb-4 gap-2 text-gray-500 hover:text-gray-900" onClick={() => navigate('/dashboard/forms')}>
+            <div className="w-full lg:w-64 space-y-4">
+                <Button variant="ghost" className="mb-2 gap-2 text-gray-500 hover:text-gray-900 w-full justify-start" onClick={() => navigate('/dashboard/forms')}>
                     <ArrowLeft className="h-4 w-4" /> Back to Forms
                 </Button>
+
+                {/* Sections Overview Card */}
                 <Card className="border-none shadow-sm">
-                    <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-wider text-gray-500">Toolbox</CardTitle></CardHeader>
+                    <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                            <Layers className="h-3.5 w-3.5 text-blue-600" /> Sections ({categories.length})
+                        </CardTitle>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs px-2 gap-1 text-blue-700 border-blue-200 bg-blue-50/50 hover:bg-blue-100"
+                            onClick={() => setIsAddCategoryOpen(true)}
+                            disabled={!canOperate}
+                        >
+                            <Plus className="h-3 w-3" /> Add
+                        </Button>
+                    </CardHeader>
+                    <CardContent className="pt-0 space-y-1.5">
+                        {categories.length === 0 ? (
+                            <div className="text-center py-3 px-2 border border-dashed rounded-lg bg-gray-50">
+                                <p className="text-xs text-gray-400 mb-2">No sections yet</p>
+                                <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    className="text-xs h-7 w-full gap-1.5"
+                                    onClick={() => setIsAddCategoryOpen(true)}
+                                    disabled={!canOperate}
+                                >
+                                    <FolderPlus className="h-3.5 w-3.5" /> Create Section
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+                                {categories.map((cat, idx) => {
+                                    const count = fields.filter(f => f.categoryName === cat.name).length;
+                                    return (
+                                        <div
+                                            key={cat.id}
+                                            className="flex items-center justify-between p-2 rounded-md bg-slate-50 border border-slate-100 text-xs hover:bg-blue-50/50 transition-colors group"
+                                        >
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                                <span className="font-mono text-[10px] text-gray-400 w-4">{idx + 1}.</span>
+                                                <span className="font-medium text-slate-700 truncate max-w-[100px]" title={cat.name}>
+                                                    {cat.name}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <Badge variant="secondary" className="text-[10px] h-4 px-1 font-normal">
+                                                    {count}
+                                                </Badge>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setEditingCategory(cat);
+                                                        setEditCategoryName(cat.name);
+                                                        setEditCategoryDescription(cat.description || '');
+                                                    }}
+                                                    className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-blue-600 transition-opacity"
+                                                    title="Edit section"
+                                                >
+                                                    <Pencil className="h-3 w-3" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => requestDeleteCategory(cat)}
+                                                    className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-600 transition-opacity"
+                                                    title="Delete section"
+                                                >
+                                                    <Trash2 className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Field Types Card */}
+                <Card className="border-none shadow-sm">
+                    <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-wider text-gray-500">Field Types</CardTitle></CardHeader>
                     <CardContent className="grid grid-cols-2 lg:grid-cols-1 gap-2">
                         {FIELD_TYPES.map((ft) => (
                             <Button
                                 key={ft.type}
                                 variant="outline"
-                                className="h-20 flex flex-col gap-2 border-dashed"
+                                className="h-12 flex flex-row items-center justify-start gap-2.5 border-dashed px-3 text-left"
                                 onClick={() => addField(ft.type as FormField['type'])}
                                 disabled={!canOperate}
                             >
-                                <ft.icon className="h-5 w-5" /> {ft.label}
+                                <ft.icon className="h-4 w-4 text-blue-600 shrink-0" />
+                                <span className="text-xs font-medium">{ft.label}</span>
                             </Button>
                         ))}
                     </CardContent>
@@ -665,89 +1095,233 @@ export function FormEditor() {
                                 />
                             </div>
                             <Select value={formType} onValueChange={(val: any) => setFormType(val)}>
-                                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Type" /></SelectTrigger>
+                                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Type" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="ACCREDITATION">Accreditation</SelectItem>
                                     <SelectItem value="EQUIPMENT_CLEARANCE">Equipment</SelectItem>
                                     <SelectItem value="VISA_SUPPORT">Visa Support</SelectItem>
                                 </SelectContent>
                             </Select>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5"
+                                onClick={() => setPreviewOpen(true)}
+                            >
+                                <Eye className="h-4 w-4" /> Preview
+                            </Button>
                             <Button size="sm" className="bg-black text-white gap-2" onClick={handleSave} disabled={isSaving || !canOperate}>
                                 {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
                                 <Save className="h-4 w-4" /> Save Form
                             </Button>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-8 bg-gray-50/30">
+                    <CardContent className="p-6 bg-gray-50/30">
                         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                             <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
-                                <div className="max-w-2xl mx-auto space-y-4">
-                                    {fields.map((field, index) => {
-                                        const prevField = index > 0 ? fields[index - 1] : null;
-                                        const showHeader = field.categoryName && (!prevField || prevField.categoryName !== field.categoryName);
+                                <div className="max-w-3xl mx-auto space-y-6">
+
+                                    {/* Empty categories state */}
+                                    {categories.length === 0 && (
+                                        <div className="text-center p-8 bg-blue-50/40 border-2 border-dashed border-blue-200 rounded-xl space-y-3">
+                                            <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 mx-auto flex items-center justify-center">
+                                                <Layers className="h-6 w-6" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-bold text-slate-800">No Sections (Categories) Created Yet</h4>
+                                                <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                                                    Sections organize form fields into clear steps (such as Personal Information, Media Organization, Passport Details) for applicants.
+                                                </p>
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
+                                                onClick={() => setIsAddCategoryOpen(true)}
+                                                disabled={!canOperate}
+                                            >
+                                                <FolderPlus className="h-4 w-4" /> Create First Section
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    {/* Render Each Category Container */}
+                                    {categories.map((cat, catIdx) => {
+                                        const catFields = fields.filter(f => f.categoryName === cat.name);
                                         return (
-                                            <div key={field.id} className="space-y-4">
-                                                {showHeader && (
-                                                    <div className="pt-6 pb-2 border-b-2 border-blue-100 flex items-center gap-2">
-                                                        <Layers className="h-4 w-4 text-blue-800" />
-                                                        <h3 className="text-sm font-black text-blue-800 uppercase tracking-widest">{field.categoryName}</h3>
-                                                    </div>
-                                                )}
-                                                <SortableField id={field.id}>
-                                                    {({ attributes, listeners, isDragging }) => (
-                                                        <div
-                                                            className={cn(
-                                                                "bg-white p-6 rounded-xl border group relative transition-all cursor-pointer hover:shadow-md",
-                                                                selectedFieldId === field.id ? "border-blue-500 ring-2 ring-blue-50 shadow-md" : "border-gray-200",
-                                                                isDragging && "shadow-xl ring-2 ring-blue-400 opacity-80"
-                                                            )}
-                                                            onClick={() => setSelectedFieldId(field.id)}
-                                                        >
-                                                            <div className="flex items-center justify-between mb-4">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div {...attributes} {...listeners} className="cursor-grab text-gray-300 hover:text-gray-600"><GripVertical className="h-5 w-5" /></div>
-                                                                    <div>
-                                                                        <span className="text-sm font-bold">{field.label}</span>
-                                                                        {field.nestedFields && Object.values(field.nestedFields).some(arr => arr && arr.length > 0) && (
-                                                                            <div className="flex flex-wrap gap-1 mt-1">
-                                                                                {Object.entries(field.nestedFields).map(([opt, subArr]) => subArr && subArr.length > 0 ? (
-                                                                                    <span key={opt} className="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                                                                                        {opt}: +{subArr.length} field{subArr.length > 1 ? 's' : ''}
-                                                                                    </span>
-                                                                                ) : null)}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    {allowMultiMember && (
-                                                                        <div
-                                                                            className={cn(
-                                                                                "flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer select-none",
-                                                                                field.applies_to_crew
-                                                                                    ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                                                                                    : "bg-gray-50 text-gray-400 border-gray-200 hover:text-gray-600"
-                                                                            )}
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                updateField(field.id, { applies_to_crew: !field.applies_to_crew });
-                                                                            }}
-                                                                            title="Click to toggle whether this field applies to crew members"
-                                                                        >
-                                                                            <Users className="w-3 h-3" />
-                                                                            <span>{field.applies_to_crew ? "Crew Field" : "Lead Only"}</span>
-                                                                        </div>
-                                                                    )}
-                                                                    <span className="text-[10px] uppercase font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{field.type}</span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="h-10 w-full bg-gray-50 border rounded-md" />
+                                            <div key={cat.id} className="rounded-xl border-2 border-slate-200 bg-white shadow-sm overflow-hidden transition-all">
+                                                {/* Section Header */}
+                                                <div className="bg-gradient-to-r from-slate-50 via-blue-50/30 to-slate-50 px-4 py-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="p-1.5 bg-blue-100/80 rounded-md text-blue-800">
+                                                            <Layers className="h-4 w-4" />
                                                         </div>
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <h3 className="text-sm font-bold text-slate-800 tracking-wide">{cat.name}</h3>
+                                                                <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-blue-50 text-blue-700 border-blue-200">
+                                                                    {catFields.length} {catFields.length === 1 ? 'field' : 'fields'}
+                                                                </Badge>
+                                                            </div>
+                                                            {cat.description && (
+                                                                <p className="text-xs text-slate-500 mt-0.5">{cat.description}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Section Controls */}
+                                                    <div className="flex items-center gap-1 sm:self-auto self-end">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-7 w-7 text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                                                            onClick={() => moveCategory(catIdx, 'up')}
+                                                            disabled={catIdx === 0 || !canOperate}
+                                                            title="Move section up"
+                                                        >
+                                                            <ChevronUp className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-7 w-7 text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                                                            onClick={() => moveCategory(catIdx, 'down')}
+                                                            disabled={catIdx === categories.length - 1 || !canOperate}
+                                                            title="Move section down"
+                                                        >
+                                                            <ChevronDown className="h-4 w-4" />
+                                                        </Button>
+
+                                                        {/* Add Field to this section Dropdown */}
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="h-7 text-xs px-2 gap-1 text-emerald-700 border-emerald-200 bg-emerald-50/60 hover:bg-emerald-100"
+                                                                    disabled={!canOperate}
+                                                                >
+                                                                    <Plus className="h-3.5 w-3.5" /> Add Field
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="w-48">
+                                                                {FIELD_TYPES.map(ft => (
+                                                                    <DropdownMenuItem
+                                                                        key={ft.type}
+                                                                        className="gap-2 text-xs cursor-pointer"
+                                                                        onClick={() => addField(ft.type as FormField['type'], cat.name)}
+                                                                    >
+                                                                        <ft.icon className="h-3.5 w-3.5 text-slate-500" />
+                                                                        <span>{ft.label}</span>
+                                                                    </DropdownMenuItem>
+                                                                ))}
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+
+                                                        {/* Edit Section */}
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-7 w-7 text-slate-400 hover:text-blue-600"
+                                                            onClick={() => {
+                                                                setEditingCategory(cat);
+                                                                setEditCategoryName(cat.name);
+                                                                setEditCategoryDescription(cat.description || '');
+                                                            }}
+                                                            disabled={!canOperate}
+                                                            title="Edit section details"
+                                                        >
+                                                            <Pencil className="h-3.5 w-3.5" />
+                                                        </Button>
+
+                                                        {/* Delete Section */}
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                                                            onClick={() => requestDeleteCategory(cat)}
+                                                            disabled={!canOperate}
+                                                            title="Delete section"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Section Fields Body */}
+                                                <div className="p-4 space-y-3 bg-slate-50/30">
+                                                    {catFields.length === 0 ? (
+                                                        <div className="text-center py-6 px-4 border border-dashed border-slate-200 rounded-lg bg-white/60">
+                                                            <Layers className="h-6 w-6 text-slate-300 mx-auto mb-1.5" />
+                                                            <p className="text-xs font-medium text-slate-600">This section has no fields yet</p>
+                                                            <p className="text-[11px] text-slate-400 mb-3">Add fields using the button above or select an existing field to move here</p>
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        className="h-7 text-xs gap-1 border-dashed text-blue-600 border-blue-300 hover:bg-blue-50"
+                                                                        disabled={!canOperate}
+                                                                    >
+                                                                        <Plus className="h-3 w-3" /> Add First Field
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="center" className="w-48">
+                                                                    {FIELD_TYPES.map(ft => (
+                                                                        <DropdownMenuItem
+                                                                            key={ft.type}
+                                                                            className="gap-2 text-xs cursor-pointer"
+                                                                            onClick={() => addField(ft.type as FormField['type'], cat.name)}
+                                                                        >
+                                                                            <ft.icon className="h-3.5 w-3.5 text-slate-500" />
+                                                                            <span>{ft.label}</span>
+                                                                        </DropdownMenuItem>
+                                                                    ))}
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        </div>
+                                                    ) : (
+                                                        catFields.map(field => renderFieldItem(field))
                                                     )}
-                                                </SortableField>
+                                                </div>
                                             </div>
                                         );
                                     })}
+
+                                    {/* Uncategorized Fields Container */}
+                                    {uncategorizedFields.length > 0 && (
+                                        <div className="rounded-xl border-2 border-dashed border-amber-200 bg-amber-50/20 shadow-sm overflow-hidden">
+                                            <div className="bg-amber-50/60 px-4 py-3 border-b border-amber-200 flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-bold text-amber-900">Uncategorized Fields</span>
+                                                    <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-amber-100 text-amber-800 border-amber-300">
+                                                        {uncategorizedFields.length} {uncategorizedFields.length === 1 ? 'field' : 'fields'}
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-[11px] text-amber-700 italic">Select a field to assign it to a section in Properties</p>
+                                            </div>
+                                            <div className="p-4 space-y-3">
+                                                {uncategorizedFields.map(field => renderFieldItem(field))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Prominent Add New Section Button */}
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="w-full py-6 border-2 border-dashed border-slate-300 hover:border-blue-500 hover:bg-blue-50/30 text-slate-600 hover:text-blue-700 rounded-xl flex items-center justify-center gap-2 transition-all font-semibold"
+                                        onClick={() => setIsAddCategoryOpen(true)}
+                                        disabled={!canOperate}
+                                    >
+                                        <FolderPlus className="h-5 w-5" /> Add New Section (Category)
+                                    </Button>
+
                                 </div>
                             </SortableContext>
                         </DndContext>
@@ -770,36 +1344,43 @@ export function FormEditor() {
                                 <Input value={selectedField.fieldName} onChange={(e) => updateField(selectedField.id, { fieldName: e.target.value })} className={cn(isKeyDuplicate && "border-red-500")} />
                             </div>
 
-                            {existingForm && existingForm.categories && existingForm.categories.length > 0 && (
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-600 uppercase">Category</label>
-                                    <Select
-                                        value={selectedField.categoryId?.toString() || "uncategorized"}
-                                        onValueChange={(val) => {
-                                            if (val === "uncategorized") {
-                                                updateField(selectedField.id, { categoryId: undefined, categoryName: undefined });
-                                            } else {
-                                                const cat = existingForm.categories.find((c: any) => c.category_id.toString() === val);
-                                                if (cat) {
-                                                    updateField(selectedField.id, { categoryId: cat.category_id, categoryName: cat.name });
-                                                }
-                                            }
-                                        }}
+                            {/* Section (Category) Selector */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-bold text-gray-600 uppercase">Section (Category)</label>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 text-[11px] text-blue-600 hover:text-blue-800 p-0 hover:bg-transparent flex items-center gap-1"
+                                        onClick={() => setIsAddCategoryOpen(true)}
                                     >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select Category" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="uncategorized">Uncategorized</SelectItem>
-                                            {existingForm.categories.map((cat: any) => (
-                                                <SelectItem key={cat.category_id} value={cat.category_id.toString()}>
-                                                    {cat.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                        <Plus className="h-3 w-3" /> New Section
+                                    </Button>
                                 </div>
-                            )}
+                                <Select
+                                    value={selectedField.categoryName || "uncategorized"}
+                                    onValueChange={(val) => {
+                                        if (val === "uncategorized") {
+                                            setFieldCategory(selectedField.id, undefined);
+                                        } else {
+                                            setFieldCategory(selectedField.id, val);
+                                        }
+                                    }}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Section" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="uncategorized">Uncategorized (No Section)</SelectItem>
+                                        {categories.map((cat) => (
+                                            <SelectItem key={cat.id} value={cat.name}>
+                                                {cat.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
                             <Separator className="my-4" />
 
@@ -833,7 +1414,6 @@ export function FormEditor() {
                                                         const newOptions = [...(selectedField.options || [])];
                                                         const oldName = newOptions[idx];
                                                         newOptions[idx] = e.target.value;
-                                                        // Rename key in descriptions if it existed
                                                         if (selectedField.descriptions && selectedField.descriptions[oldName] !== undefined) {
                                                             const newDescs = { ...selectedField.descriptions };
                                                             newDescs[e.target.value] = newDescs[oldName];
@@ -865,12 +1445,12 @@ export function FormEditor() {
                                         ))}
                                     </div>
 
-                                    {/* Hover Descriptions per option — only for dropdown */}
+                                    {/* Hover Descriptions per option */}
                                     {selectedField.type === 'dropdown' && (
                                         <div className="space-y-2 pt-2">
                                             <Label className="text-xs font-bold text-gray-600 uppercase flex items-center gap-1">
                                                 <span>Option Hover Descriptions</span>
-                                                <span className="text-[10px] font-normal text-gray-400 normal-case ml-1">(shown to applicants on hover)</span>
+                                                <span className="text-[10px] font-normal text-gray-400 normal-case ml-1">(shown on hover)</span>
                                             </Label>
                                             <div className="space-y-2">
                                                 {(selectedField.options || []).map((option, idx) => (
@@ -896,7 +1476,7 @@ export function FormEditor() {
                                         </div>
                                     )}
 
-                                    {/* Nested Dynamic Sub-Fields per Option — only for dropdown */}
+                                    {/* Nested Dynamic Sub-Fields */}
                                     {selectedField.type === 'dropdown' && (
                                         <div className="space-y-4 pt-3 border-t">
                                             <div>
@@ -931,62 +1511,60 @@ export function FormEditor() {
                                                                 <p className="text-[10px] text-gray-400 italic">No extra fields for this option</p>
                                                             ) : (
                                                                 <div className="space-y-2 pt-1">
-                                                                    {subFields.map((sub, sIdx) => (
-                                                                        <div key={sub.id || sIdx} className="p-2 bg-white border border-gray-200 rounded-md space-y-2 text-xs">
-                                                                            <div className="flex items-center justify-between gap-1">
+                                                                    {subFields.map((sub) => (
+                                                                        <div key={sub.id} className="p-2 bg-white rounded border border-slate-200 space-y-1.5 shadow-2xs">
+                                                                            <div className="flex items-center justify-between">
                                                                                 <Input
                                                                                     value={sub.label}
                                                                                     onChange={(e) => updateNestedField(selectedField.id, option, sub.id, { label: e.target.value })}
-                                                                                    placeholder="Sub-field Label"
-                                                                                    className="h-7 text-xs font-medium"
+                                                                                    className="h-6 text-xs font-medium w-36"
+                                                                                    placeholder="Field Label"
                                                                                 />
                                                                                 <Button
                                                                                     variant="ghost"
                                                                                     size="icon"
-                                                                                    className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                                                                                    className="h-6 w-6 text-red-500 hover:text-red-700"
                                                                                     onClick={() => removeNestedField(selectedField.id, option, sub.id)}
                                                                                 >
                                                                                     <X className="h-3.5 w-3.5" />
                                                                                 </Button>
                                                                             </div>
-
                                                                             <div className="grid grid-cols-2 gap-1.5">
-                                                                                <div>
-                                                                                    <Label className="text-[10px] text-gray-500">Field Type</Label>
-                                                                                    <Select
-                                                                                        value={sub.type}
-                                                                                        onValueChange={(val: any) => updateNestedField(selectedField.id, option, sub.id, { type: val })}
-                                                                                    >
-                                                                                        <SelectTrigger className="h-7 text-[11px]">
-                                                                                            <SelectValue />
-                                                                                        </SelectTrigger>
-                                                                                        <SelectContent>
-                                                                                            <SelectItem value="text">Text Input</SelectItem>
-                                                                                            <SelectItem value="textarea">Text Area</SelectItem>
-                                                                                            <SelectItem value="number">Number</SelectItem>
-                                                                                            <SelectItem value="date">Date</SelectItem>
-                                                                                            <SelectItem value="file">File Upload</SelectItem>
-                                                                                            <SelectItem value="email">Email</SelectItem>
-                                                                                        </SelectContent>
-                                                                                    </Select>
-                                                                                </div>
-                                                                                <div>
-                                                                                    <Label className="text-[10px] text-gray-500">Required</Label>
-                                                                                    <div className="pt-1 flex items-center">
-                                                                                        <Switch
-                                                                                            checked={sub.required}
-                                                                                            onCheckedChange={(chk) => updateNestedField(selectedField.id, option, sub.id, { required: chk })}
-                                                                                        />
-                                                                                    </div>
-                                                                                </div>
+                                                                                <Select
+                                                                                    value={sub.type}
+                                                                                    onValueChange={(val: any) => updateNestedField(selectedField.id, option, sub.id, { type: val })}
+                                                                                >
+                                                                                    <SelectTrigger className="h-6 text-[10px]">
+                                                                                        <SelectValue />
+                                                                                    </SelectTrigger>
+                                                                                    <SelectContent>
+                                                                                        <SelectItem value="text">Text</SelectItem>
+                                                                                        <SelectItem value="number">Number</SelectItem>
+                                                                                        <SelectItem value="date">Date</SelectItem>
+                                                                                        <SelectItem value="email">Email</SelectItem>
+                                                                                        <SelectItem value="textarea">Textarea</SelectItem>
+                                                                                        <SelectItem value="file">File</SelectItem>
+                                                                                    </SelectContent>
+                                                                                </Select>
+                                                                                <Input
+                                                                                    value={sub.placeholder || ''}
+                                                                                    onChange={(e) => updateNestedField(selectedField.id, option, sub.id, { placeholder: e.target.value })}
+                                                                                    className="h-6 text-[10px]"
+                                                                                    placeholder="Placeholder"
+                                                                                />
                                                                             </div>
-
-                                                                            <Input
-                                                                                value={sub.placeholder || ''}
-                                                                                onChange={(e) => updateNestedField(selectedField.id, option, sub.id, { placeholder: e.target.value })}
-                                                                                placeholder="Placeholder (optional)"
-                                                                                className="h-7 text-[11px]"
-                                                                            />
+                                                                            <div className="flex items-center gap-1.5 pt-0.5">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    id={`sub-req-${sub.id}`}
+                                                                                    checked={sub.required}
+                                                                                    onChange={(e) => updateNestedField(selectedField.id, option, sub.id, { required: e.target.checked })}
+                                                                                    className="h-3 w-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                                                />
+                                                                                <label htmlFor={`sub-req-${sub.id}`} className="text-[10px] text-gray-600 cursor-pointer select-none">
+                                                                                    Required
+                                                                                </label>
+                                                                            </div>
                                                                         </div>
                                                                     ))}
                                                                 </div>
@@ -997,37 +1575,23 @@ export function FormEditor() {
                                             </div>
                                         </div>
                                     )}
-
-                                    <Separator className="my-4" />
                                 </div>
                             )}
 
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-bold text-gray-600 uppercase">Required</Label>
+                                <Switch checked={selectedField.required} onCheckedChange={(val) => updateField(selectedField.id, { required: val })} />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-600 uppercase">Placeholder</label>
+                                <Input value={selectedField.placeholder || ''} onChange={(e) => updateField(selectedField.id, { placeholder: e.target.value })} />
+                            </div>
+
+                            <Separator className="my-4" />
+
                             <div className="space-y-4">
-                                <CardTitle className="text-xs font-bold uppercase text-gray-400">Validation</CardTitle>
-
-                                <div className="flex items-center justify-between">
-                                    <Label htmlFor="required" className="text-xs font-medium">Required Field</Label>
-                                    <Switch
-                                        id="required"
-                                        checked={selectedField.required}
-                                        onCheckedChange={(checked) => updateField(selectedField.id, { required: checked })}
-                                    />
-                                </div>
-
-                                {allowMultiMember && (
-                                    <div className="flex items-center justify-between p-2.5 rounded-lg border border-indigo-100 bg-indigo-50/50">
-                                        <div className="space-y-0.5">
-                                            <Label className="text-xs font-semibold text-indigo-950 flex items-center gap-1.5">
-                                                <Users className="h-3.5 w-3.5 text-indigo-600" /> Applies to Crew Members
-                                            </Label>
-                                            <p className="text-[10px] text-indigo-700/80">Require this field for each crew member roster profile</p>
-                                        </div>
-                                        <Switch
-                                            checked={selectedField.applies_to_crew || false}
-                                            onCheckedChange={(checked) => updateField(selectedField.id, { applies_to_crew: checked })}
-                                        />
-                                    </div>
-                                )}
+                                <Label className="text-xs font-bold text-gray-600 uppercase">Validation</Label>
 
                                 {['text', 'textarea', 'email'].includes(selectedField.type) && (
                                     <>
@@ -1113,6 +1677,162 @@ export function FormEditor() {
                 </Card>
             </div>
 
+            {/* ADD CATEGORY DIALOG */}
+            <Dialog open={isAddCategoryOpen} onOpenChange={setIsAddCategoryOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <FolderPlus className="h-5 w-5 text-blue-600" />
+                            <span>Create New Section (Category)</span>
+                        </DialogTitle>
+                        <DialogDescription>
+                            Sections group related form fields into organized steps for applicants (e.g., "Personal Details", "Media Credentials", "Passport Info").
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="new-cat-name" className="text-xs font-bold uppercase text-slate-600">
+                                Section Name <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                                id="new-cat-name"
+                                placeholder="e.g. Personal Information"
+                                value={newCategoryName}
+                                onChange={(e) => setNewCategoryName(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleAddCategory();
+                                    }
+                                }}
+                                autoFocus
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="new-cat-desc" className="text-xs font-bold uppercase text-slate-600">
+                                Description <span className="text-gray-400 font-normal">(Optional)</span>
+                            </Label>
+                            <Input
+                                id="new-cat-desc"
+                                placeholder="Brief description or instructions for applicants"
+                                value={newCategoryDescription}
+                                onChange={(e) => setNewCategoryDescription(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAddCategoryOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5" onClick={handleAddCategory}>
+                            <Plus className="h-4 w-4" /> Create Section
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* EDIT CATEGORY DIALOG */}
+            <Dialog open={!!editingCategory} onOpenChange={(open) => !open && setEditingCategory(null)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Pencil className="h-4 w-4 text-blue-600" />
+                            <span>Edit Section</span>
+                        </DialogTitle>
+                        <DialogDescription>
+                            Update section name or description. Fields currently in this section will stay attached to it.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-cat-name" className="text-xs font-bold uppercase text-slate-600">
+                                Section Name <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                                id="edit-cat-name"
+                                value={editCategoryName}
+                                onChange={(e) => setEditCategoryName(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleRenameCategory();
+                                    }
+                                }}
+                                autoFocus
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-cat-desc" className="text-xs font-bold uppercase text-slate-600">
+                                Description <span className="text-gray-400 font-normal">(Optional)</span>
+                            </Label>
+                            <Input
+                                id="edit-cat-desc"
+                                value={editCategoryDescription}
+                                onChange={(e) => setEditCategoryDescription(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingCategory(null)}>
+                            Cancel
+                        </Button>
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleRenameCategory}>
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* DELETE CATEGORY CONFIRMATION DIALOG */}
+            <Dialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <div className="flex items-center gap-2 text-amber-600">
+                            <AlertTriangle className="h-5 w-5" />
+                            <DialogTitle>Delete Section "{categoryToDelete?.name}"</DialogTitle>
+                        </div>
+                        <DialogDescription className="pt-2 text-slate-600">
+                            This section currently contains{' '}
+                            <strong className="text-slate-900">
+                                {categoryToDelete ? fields.filter(f => f.categoryName === categoryToDelete.name).length : 0} field(s)
+                            </strong>.
+                            How would you like to proceed?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3 py-3">
+                        <div className="p-3 rounded-lg border bg-slate-50 text-xs text-slate-600 space-y-1">
+                            <p className="font-semibold text-slate-800">Choose an option:</p>
+                            <p>• <strong>Keep Fields:</strong> Removes this section, but keeps all its fields safely in "Uncategorized".</p>
+                            <p>• <strong>Delete All:</strong> Permanently removes this section and all fields inside it.</p>
+                        </div>
+                    </div>
+                    <DialogFooter className="flex-col sm:flex-row gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setCategoryToDelete(null)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            className="text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200"
+                            onClick={() => handleConfirmDeleteCategory('keep_uncategorized')}
+                        >
+                            Keep Fields (Uncategorize)
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={() => handleConfirmDeleteCategory('delete_all')}
+                        >
+                            Delete Section & Fields
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* PREVIEW DIALOG */}
             <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -1122,46 +1842,33 @@ export function FormEditor() {
                             <h2 className="text-xl font-bold">{formName}</h2>
                             <p className="opacity-90">{formDescription}</p>
                         </div>
-                        <div className="space-y-4">
-                            {fields.map(f => {
-                                const isDropdown = f.type === 'dropdown';
-                                const selectedOpt = previewValues[f.id];
-                                const subFields = isDropdown && selectedOpt && f.nestedFields ? f.nestedFields[selectedOpt] || [] : [];
-
+                        <div className="space-y-6">
+                            {categories.map(cat => {
+                                const catFields = fields.filter(f => f.categoryName === cat.name);
+                                if (catFields.length === 0) return null;
                                 return (
-                                    <div key={f.id} className="space-y-2 p-3 bg-white border rounded-xl shadow-sm">
-                                        <label className="text-sm font-semibold text-slate-800">{f.label}{f.required && <span className="text-red-500">*</span>}</label>
-                                        {isDropdown ? (
-                                            <Select value={selectedOpt || ''} onValueChange={(val) => setPreviewValues(prev => ({ ...prev, [f.id]: val }))}>
-                                                <SelectTrigger><SelectValue placeholder={`Select ${f.label}`} /></SelectTrigger>
-                                                <SelectContent>
-                                                    {(f.options || []).map(opt => (
-                                                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        ) : (
-                                            <Input placeholder={f.placeholder} disabled />
-                                        )}
-
-                                        {subFields.length > 0 && (
-                                            <div className="pl-4 border-l-2 border-blue-500 space-y-3 mt-3 pt-3 bg-blue-50/50 p-3 rounded-r-xl animate-in fade-in slide-in-from-top-1">
-                                                <p className="text-[11px] font-bold text-blue-900 uppercase tracking-wider">
-                                                    Sub-Fields for selected option "{selectedOpt}":
-                                                </p>
-                                                <div className="space-y-2">
-                                                    {subFields.map((sub, idx) => (
-                                                        <div key={idx} className="space-y-1">
-                                                            <label className="text-xs font-medium text-slate-700">{sub.label}{sub.required && <span className="text-red-500">*</span>}</label>
-                                                            <Input placeholder={sub.placeholder || `Enter ${sub.label}`} className="h-8 text-xs bg-white" disabled />
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
+                                    <div key={cat.id} className="space-y-3">
+                                        <div className="border-b pb-1.5 flex items-center gap-2">
+                                            <Layers className="h-4 w-4 text-blue-600" />
+                                            <h3 className="font-bold text-slate-800 uppercase text-xs tracking-wider">{cat.name}</h3>
+                                        </div>
+                                        {cat.description && <p className="text-xs text-slate-500">{cat.description}</p>}
+                                        <div className="space-y-3">
+                                            {catFields.map(f => renderPreviewField(f))}
+                                        </div>
                                     </div>
                                 );
                             })}
+                            {uncategorizedFields.length > 0 && (
+                                <div className="space-y-3">
+                                    <div className="border-b pb-1.5 flex items-center gap-2">
+                                        <h3 className="font-bold text-slate-800 uppercase text-xs tracking-wider">Uncategorized Fields</h3>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {uncategorizedFields.map(f => renderPreviewField(f))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </DialogContent>
