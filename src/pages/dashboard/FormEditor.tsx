@@ -970,15 +970,15 @@ export function FormEditor() {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row min-h-[calc(100vh-140px)] gap-4 p-4 bg-gray-50/50">
-            {/* Toolbox */}
-            <div className="w-full lg:w-64 space-y-4">
-                <Button variant="ghost" className="mb-2 gap-2 text-gray-500 hover:text-gray-900 w-full justify-start" onClick={() => navigate('/dashboard/forms')}>
+        <div className="flex flex-col lg:flex-row h-full w-full gap-4 overflow-hidden">
+            {/* Toolbox (Left Sidebar) - Fixed in place, does not scroll with form content */}
+            <div className="w-full lg:w-72 shrink-0 h-full flex flex-col space-y-3 overflow-y-auto pr-1 custom-scrollbar">
+                <Button variant="ghost" className="gap-2 text-gray-500 hover:text-gray-900 w-full justify-start shrink-0" onClick={() => navigate('/dashboard/forms')}>
                     <ArrowLeft className="h-4 w-4" /> Back to Forms
                 </Button>
 
                 {/* Sections Overview Card */}
-                <Card className="border-none shadow-sm">
+                <Card className="border-none shadow-sm shrink-0">
                     <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
                             <Layers className="h-3.5 w-3.5 text-blue-600" /> Sections ({categories.length})
@@ -1008,7 +1008,7 @@ export function FormEditor() {
                                 </Button>
                             </div>
                         ) : (
-                            <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+                            <div className="space-y-1 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
                                 {categories.map((cat, idx) => {
                                     const count = fields.filter(f => f.categoryName === cat.name).length;
                                     return (
@@ -1018,7 +1018,7 @@ export function FormEditor() {
                                         >
                                             <div className="flex items-center gap-1.5 min-w-0">
                                                 <span className="font-mono text-[10px] text-gray-400 w-4">{idx + 1}.</span>
-                                                <span className="font-medium text-slate-700 truncate max-w-[100px]" title={cat.name}>
+                                                <span className="font-medium text-slate-700 truncate max-w-[110px]" title={cat.name}>
                                                     {cat.name}
                                                 </span>
                                             </div>
@@ -1056,14 +1056,16 @@ export function FormEditor() {
                 </Card>
 
                 {/* Field Types Card */}
-                <Card className="border-none shadow-sm">
-                    <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-wider text-gray-500">Field Types</CardTitle></CardHeader>
-                    <CardContent className="grid grid-cols-2 lg:grid-cols-1 gap-2">
+                <Card className="border-none shadow-sm shrink-0">
+                    <CardHeader className="pb-2.5">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-gray-500">Field Types</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-2 lg:grid-cols-1 gap-1.5">
                         {FIELD_TYPES.map((ft) => (
                             <Button
                                 key={ft.type}
                                 variant="outline"
-                                className="h-12 flex flex-row items-center justify-start gap-2.5 border-dashed px-3 text-left"
+                                className="h-10 flex flex-row items-center justify-start gap-2.5 border-dashed px-3 text-left hover:bg-blue-50/50 hover:border-blue-300 transition-colors"
                                 onClick={() => addField(ft.type as FormField['type'])}
                                 disabled={!canOperate}
                             >
@@ -1076,9 +1078,10 @@ export function FormEditor() {
             </div>
 
             {/* Canvas */}
-            <div className="flex-1">
-                <Card className="min-h-full border-none shadow-md bg-white">
-                    <CardHeader className="border-b p-6 pb-4 space-y-4">
+            <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
+                <Card className="h-full flex flex-col border-none shadow-md bg-white overflow-hidden">
+                    {/* Header stuck at the top without scrolling */}
+                    <CardHeader className="shrink-0 sticky top-0 z-20 border-b p-5 pb-3.5 space-y-3 bg-white/95 backdrop-blur-xs shadow-2xs">
                         {/* Top Bar: Form Name and Action Buttons */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div className="flex-1 max-w-xl">
@@ -1194,7 +1197,8 @@ export function FormEditor() {
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent className="p-6 bg-gray-50/30">
+                    {/* Form Content - ONLY this area scrolls */}
+                    <CardContent className="flex-1 min-h-0 overflow-y-auto p-6 bg-gray-50/30 custom-scrollbar">
                         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                             <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
                                 <div className="max-w-3xl mx-auto space-y-6">

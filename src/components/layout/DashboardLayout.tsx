@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, UserRole } from '@/auth/context';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +42,8 @@ import auLogo from '@/assests/au.png';
 export function DashboardLayout() {
   const { user, logout, checkPermission } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isFormBuilder = location.pathname.includes('/forms/builder');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
@@ -655,21 +657,32 @@ export function DashboardLayout() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-72 flex flex-col min-h-screen overflow-x-hidden">
+      <main className={cn(
+        "flex-1 md:ml-72 flex flex-col min-h-screen overflow-x-hidden",
+        isFormBuilder && "h-screen max-h-screen overflow-hidden"
+      )}>
         {/* Desktop Header */}
-        <header className="hidden md:flex sticky top-0 right-0 left-0 h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 z-40 items-center justify-end px-8 gap-4">
+        <header className="hidden md:flex sticky top-0 right-0 left-0 h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 z-40 items-center justify-end px-8 gap-4 shrink-0">
           <NotificationCenter />
         </header>
 
-        <div className="flex-1 pt-20 md:pt-4 p-4 md:p-8 flex flex-col">
-          <div className="max-w-[1600px] w-full mx-auto">
+        <div className={cn(
+          "flex-1 pt-20 md:pt-4 p-4 md:p-8 flex flex-col",
+          isFormBuilder && "pt-16 md:pt-3 px-3 md:px-5 pb-2 h-[calc(100vh-4rem)] overflow-hidden"
+        )}>
+          <div className={cn(
+            "max-w-[1600px] w-full mx-auto",
+            isFormBuilder && "h-full flex flex-col flex-1 min-h-0 overflow-hidden"
+          )}>
             <Outlet />
           </div>
         </div>
 
-        <footer className="mt-auto pt-10 pb-6 text-center text-xs text-gray-400 font-medium tracking-wide">
-          © 2025 African Union Accreditation Portal. All rights reserved.
-        </footer>
+        {!isFormBuilder && (
+          <footer className="mt-auto pt-10 pb-6 text-center text-xs text-gray-400 font-medium tracking-wide">
+            © 2025 African Union Accreditation Portal. All rights reserved.
+          </footer>
+        )}
       </main>
     </div>
   );
