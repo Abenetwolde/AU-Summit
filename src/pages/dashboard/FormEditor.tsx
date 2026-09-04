@@ -190,6 +190,7 @@ export function FormEditor() {
     const [categories, setCategories] = useState<FormCategory[]>([]);
     const [fields, setFields] = useState<FormField[]>([]);
     const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+    const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewValues, setPreviewValues] = useState<Record<string, any>>({});
 
@@ -516,6 +517,7 @@ export function FormEditor() {
             return updated.map((f, idx) => ({ ...f, displayOrder: idx + 1 }));
         });
         setSelectedFieldId(newField.id);
+        setIsFieldModalOpen(true);
     };
 
     const removeField = (id: string) => {
@@ -524,7 +526,10 @@ export function FormEditor() {
             return;
         }
         setFields(fields.filter(f => f.id !== id));
-        if (selectedFieldId === id) setSelectedFieldId(null);
+        if (selectedFieldId === id) {
+            setSelectedFieldId(null);
+            setIsFieldModalOpen(false);
+        }
     };
 
     const updateField = (id: string, updates: Partial<FormField>) => {
@@ -823,11 +828,14 @@ export function FormEditor() {
             {({ attributes, listeners, isDragging }) => (
                 <div
                     className={cn(
-                        "bg-white p-4 rounded-xl border group relative transition-all cursor-pointer hover:shadow-md",
-                        selectedFieldId === field.id ? "border-blue-500 ring-2 ring-blue-50 shadow-md" : "border-gray-200",
+                        "bg-white p-4 rounded-xl border group relative transition-all cursor-pointer hover:shadow-md hover:border-blue-400",
+                        selectedFieldId === field.id ? "border-blue-500 ring-2 ring-blue-100 shadow-md" : "border-slate-200",
                         isDragging && "shadow-xl ring-2 ring-blue-400 opacity-80"
                     )}
-                    onClick={() => setSelectedFieldId(field.id)}
+                    onClick={() => {
+                        setSelectedFieldId(field.id);
+                        setIsFieldModalOpen(true);
+                    }}
                 >
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
@@ -870,6 +878,21 @@ export function FormEditor() {
                                 </div>
                             )}
                             <span className="text-[10px] uppercase font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{field.type}</span>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-6 text-[11px] px-2 gap-1 text-blue-700 border-blue-200 bg-blue-50/50 hover:bg-blue-100 hover:text-blue-800 transition-all"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedFieldId(field.id);
+                                    setIsFieldModalOpen(true);
+                                }}
+                                title="Configure field properties"
+                            >
+                                <Settings2 className="h-3 w-3 text-blue-600" />
+                                <span>Configure</span>
+                            </Button>
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -1383,353 +1406,442 @@ export function FormEditor() {
                 </Card>
             </div>
 
-            {/* Properties */}
-            <div className="w-full lg:w-80">
-                <Card className="h-full border-none shadow-sm">
-                    <CardHeader className="border-b"><CardTitle className="text-xs font-bold uppercase text-gray-500 flex items-center gap-2"><Settings2 className="h-4 w-4" /> Properties</CardTitle></CardHeader>
-                    {selectedField ? (
-                        <CardContent className="p-6 space-y-4">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-600 uppercase">Label</label>
-                                <Input value={selectedField.label} onChange={(e) => updateField(selectedField.id, { label: e.target.value })} className={cn(isLabelDuplicate && "border-red-500")} />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-600 uppercase">Field Name</label>
-                                <Input value={selectedField.fieldName} onChange={(e) => updateField(selectedField.id, { fieldName: e.target.value })} className={cn(isKeyDuplicate && "border-red-500")} />
+
+
+            {/* FIELD CONFIGURATION MODAL */}
+            <Dialog open={isFieldModalOpen && !!selectedField} onOpenChange={(open) => !open && setIsFieldModalOpen(false)}>
+                <DialogContent className="sm:max-w-2xl max-h-[90vh] p-0 flex flex-col overflow-hidden">
+                    {selectedField && (
+                        <>
+                            <DialogHeader className="px-6 py-4 border-b bg-slate-50/80 flex flex-row items-center justify-between space-y-0">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-blue-100 text-blue-700 shrink-0">
+                                        <Settings2 className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <DialogTitle className="text-base font-bold text-slate-900">
+                                                Configure Field: {selectedField.label}
+                                            </DialogTitle>
+                                            <Badge variant="secondary" className="text-[10px] uppercase font-bold text-blue-700 bg-blue-50 border border-blue-200">
+                                                {selectedField.type}
+                                            </Badge>
+                                        </div>
+                                        <DialogDescription className="text-xs text-slate-500 mt-0.5">
+                                            Configure field properties, options, validations, and section placement.
+                                        </DialogDescription>
+                                    </div>
+                                </div>
+                            </DialogHeader>
+
+                            {/* Vertically Scrollable Content Body */}
+                            <div className="flex-1 overflow-y-auto p-6 space-y-5 max-h-[calc(90vh-130px)]">
+                                {/* General Information */}
+                                <div className="space-y-4 p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">General Information</h4>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-bold text-slate-700">
+                                                Field Label <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Input
+                                                value={selectedField.label}
+                                                onChange={(e) => updateField(selectedField.id, { label: e.target.value })}
+                                                className={cn("bg-white", isLabelDuplicate && "border-red-500")}
+                                            />
+                                            {isLabelDuplicate && (
+                                                <p className="text-[10px] text-red-500">A field with this label already exists.</p>
+                                            )}
+                                        </div>
+
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-bold text-slate-700">
+                                                Field Key (Name) <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Input
+                                                value={selectedField.fieldName}
+                                                onChange={(e) => updateField(selectedField.id, { fieldName: e.target.value })}
+                                                className={cn("bg-white font-mono text-xs", isKeyDuplicate && "border-red-500")}
+                                            />
+                                            {isKeyDuplicate && (
+                                                <p className="text-[10px] text-red-500">A field with this key already exists.</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Section (Category) Selector */}
+                                    <div className="space-y-1.5 pt-1">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-xs font-bold text-slate-700">Section (Category)</Label>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 text-[11px] text-blue-600 hover:text-blue-800 p-0 hover:bg-transparent flex items-center gap-1"
+                                                onClick={() => setIsAddCategoryOpen(true)}
+                                            >
+                                                <Plus className="h-3 w-3" /> New Section
+                                            </Button>
+                                        </div>
+                                        <Select
+                                            value={selectedField.categoryName || "uncategorized"}
+                                            onValueChange={(val) => {
+                                                if (val === "uncategorized") {
+                                                    setFieldCategory(selectedField.id, undefined);
+                                                } else {
+                                                    setFieldCategory(selectedField.id, val);
+                                                }
+                                            }}
+                                        >
+                                            <SelectTrigger className="bg-white">
+                                                <SelectValue placeholder="Select Section" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="uncategorized">Uncategorized (No Section)</SelectItem>
+                                                {categories.map((cat) => (
+                                                    <SelectItem key={cat.id} value={cat.name}>
+                                                        {cat.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                {/* Choice Options (for checkbox, radio, dropdown) */}
+                                {['checkbox', 'radio', 'dropdown'].includes(selectedField.type) && (
+                                    <div className="space-y-4 p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Choice Options</h4>
+                                                <p className="text-[11px] text-slate-400">Add or edit choices available to applicants</p>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-7 text-xs gap-1 bg-white border-blue-200 text-blue-700 hover:bg-blue-50"
+                                                onClick={() => {
+                                                    const currentOptions = selectedField.options || [];
+                                                    updateField(selectedField.id, {
+                                                        options: [...currentOptions, `Option ${currentOptions.length + 1}`]
+                                                    });
+                                                }}
+                                            >
+                                                <Plus className="h-3.5 w-3.5" /> Add Option
+                                            </Button>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            {(selectedField.options || []).map((option, idx) => (
+                                                <div key={idx} className="flex gap-2 items-center">
+                                                    <div className="grid place-items-center h-8 w-8 bg-white border rounded text-gray-500 text-xs font-mono shrink-0">
+                                                        {idx + 1}
+                                                    </div>
+                                                    <Input
+                                                        value={option}
+                                                        onChange={(e) => {
+                                                            const newOptions = [...(selectedField.options || [])];
+                                                            const oldName = newOptions[idx];
+                                                            newOptions[idx] = e.target.value;
+                                                            if (selectedField.descriptions && selectedField.descriptions[oldName] !== undefined) {
+                                                                const newDescs = { ...selectedField.descriptions };
+                                                                newDescs[e.target.value] = newDescs[oldName];
+                                                                delete newDescs[oldName];
+                                                                updateField(selectedField.id, { options: newOptions, descriptions: newDescs });
+                                                            } else {
+                                                                updateField(selectedField.id, { options: newOptions });
+                                                            }
+                                                        }}
+                                                        className="h-8 text-xs bg-white"
+                                                        placeholder={`Option ${idx + 1}`}
+                                                    />
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0"
+                                                        onClick={() => {
+                                                            const removedOpt = (selectedField.options || [])[idx];
+                                                            const newOptions = (selectedField.options || []).filter((_, i) => i !== idx);
+                                                            const newDescs = { ...(selectedField.descriptions || {}) };
+                                                            delete newDescs[removedOpt];
+                                                            updateField(selectedField.id, { options: newOptions, descriptions: newDescs });
+                                                        }}
+                                                        disabled={(selectedField.options?.length || 0) <= 1}
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Hover Descriptions (Dropdown only) */}
+                                        {selectedField.type === 'dropdown' && (
+                                            <div className="space-y-2 pt-2 border-t">
+                                                <Label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                                                    <span>Option Hover Descriptions</span>
+                                                    <span className="text-[10px] font-normal text-slate-400 normal-case">(info revealed on mouse hover)</span>
+                                                </Label>
+                                                <div className="space-y-2">
+                                                    {(selectedField.options || []).map((option, idx) => (
+                                                        <div key={idx} className="space-y-1">
+                                                            <p className="text-[10px] font-semibold text-emerald-700 pl-1">{option || `Option ${idx + 1}`}</p>
+                                                            <Input
+                                                                value={(selectedField.descriptions || {})[option] || ''}
+                                                                onChange={(e) => {
+                                                                    const newDescs = { ...(selectedField.descriptions || {}) };
+                                                                    if (e.target.value.trim()) {
+                                                                        newDescs[option] = e.target.value;
+                                                                    } else {
+                                                                        delete newDescs[option];
+                                                                    }
+                                                                    updateField(selectedField.id, { descriptions: newDescs });
+                                                                }}
+                                                                className="h-8 text-xs bg-white placeholder:text-gray-300"
+                                                                placeholder={`Describe "${option}" to applicants…`}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Sub-Fields (Dropdown only) */}
+                                        {selectedField.type === 'dropdown' && (
+                                            <div className="space-y-3 pt-2 border-t">
+                                                <div>
+                                                    <Label className="text-xs font-bold text-slate-700">
+                                                        Conditional Sub-Fields
+                                                    </Label>
+                                                    <p className="text-[10px] text-slate-400">
+                                                        Reveal dynamic follow-up fields when this option is chosen.
+                                                    </p>
+                                                </div>
+
+                                                <div className="space-y-3">
+                                                    {(selectedField.options || []).map((option, idx) => {
+                                                        const subFields = (selectedField.nestedFields || {})[option] || [];
+                                                        return (
+                                                            <div key={idx} className="p-3 bg-white border border-slate-200 rounded-lg space-y-2 shadow-2xs">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-xs font-bold text-blue-900 truncate max-w-[200px]">
+                                                                        {option || `Option ${idx + 1}`}
+                                                                    </span>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        className="h-6 text-[11px] px-2 text-blue-700 border-blue-200 bg-blue-50/50 hover:bg-blue-100"
+                                                                        onClick={() => addNestedField(selectedField.id, option)}
+                                                                    >
+                                                                        + Add Sub-Field
+                                                                    </Button>
+                                                                </div>
+
+                                                                {subFields.length === 0 ? (
+                                                                    <p className="text-[10px] text-gray-400 italic">No conditional fields for this option</p>
+                                                                ) : (
+                                                                    <div className="space-y-2 pt-1">
+                                                                        {subFields.map((sub) => (
+                                                                            <div key={sub.id} className="p-2.5 bg-slate-50 rounded border border-slate-200 space-y-2">
+                                                                                <div className="flex items-center justify-between">
+                                                                                    <Input
+                                                                                        value={sub.label}
+                                                                                        onChange={(e) => updateNestedField(selectedField.id, option, sub.id, { label: e.target.value })}
+                                                                                        className="h-7 text-xs font-medium w-48 bg-white"
+                                                                                        placeholder="Sub-field Label"
+                                                                                    />
+                                                                                    <Button
+                                                                                        variant="ghost"
+                                                                                        size="icon"
+                                                                                        className="h-6 w-6 text-red-500 hover:text-red-700"
+                                                                                        onClick={() => removeNestedField(selectedField.id, option, sub.id)}
+                                                                                    >
+                                                                                        <X className="h-3.5 w-3.5" />
+                                                                                    </Button>
+                                                                                </div>
+                                                                                <div className="grid grid-cols-2 gap-2">
+                                                                                    <Select
+                                                                                        value={sub.type}
+                                                                                        onValueChange={(val: any) => updateNestedField(selectedField.id, option, sub.id, { type: val })}
+                                                                                    >
+                                                                                        <SelectTrigger className="h-7 text-[11px] bg-white">
+                                                                                            <SelectValue />
+                                                                                        </SelectTrigger>
+                                                                                        <SelectContent>
+                                                                                            <SelectItem value="text">Text</SelectItem>
+                                                                                            <SelectItem value="number">Number</SelectItem>
+                                                                                            <SelectItem value="date">Date</SelectItem>
+                                                                                            <SelectItem value="email">Email</SelectItem>
+                                                                                            <SelectItem value="textarea">Textarea</SelectItem>
+                                                                                            <SelectItem value="file">File</SelectItem>
+                                                                                        </SelectContent>
+                                                                                    </Select>
+                                                                                    <Input
+                                                                                        value={sub.placeholder || ''}
+                                                                                        onChange={(e) => updateNestedField(selectedField.id, option, sub.id, { placeholder: e.target.value })}
+                                                                                        className="h-7 text-[11px] bg-white"
+                                                                                        placeholder="Placeholder text"
+                                                                                    />
+                                                                                </div>
+                                                                                <div className="flex items-center gap-1.5 pt-0.5">
+                                                                                    <input
+                                                                                        type="checkbox"
+                                                                                        id={`sub-req-${sub.id}`}
+                                                                                        checked={sub.required}
+                                                                                        onChange={(e) => updateNestedField(selectedField.id, option, sub.id, { required: e.target.checked })}
+                                                                                        className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                                                    />
+                                                                                    <label htmlFor={`sub-req-${sub.id}`} className="text-xs text-slate-700 cursor-pointer select-none">
+                                                                                        Required field
+                                                                                    </label>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Field Behavior */}
+                                <div className="space-y-4 p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Field Behavior</h4>
+
+                                    <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 shadow-2xs">
+                                        <div>
+                                            <Label className="text-xs font-bold text-slate-800">Required Field</Label>
+                                            <p className="text-[10px] text-slate-400">Applicant cannot submit form without filling this field</p>
+                                        </div>
+                                        <Switch checked={selectedField.required} onCheckedChange={(val) => updateField(selectedField.id, { required: val })} />
+                                    </div>
+
+                                    {allowMultiMember && (
+                                        <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 shadow-2xs">
+                                            <div>
+                                                <Label className="text-xs font-bold text-slate-800">Applies to Crew Members</Label>
+                                                <p className="text-[10px] text-slate-400">If enabled, every crew member added must also fill this field</p>
+                                            </div>
+                                            <Switch checked={selectedField.applies_to_crew} onCheckedChange={(val) => updateField(selectedField.id, { applies_to_crew: val })} />
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-bold text-slate-700">Placeholder Text</Label>
+                                        <Input
+                                            value={selectedField.placeholder || ''}
+                                            onChange={(e) => updateField(selectedField.id, { placeholder: e.target.value })}
+                                            placeholder="e.g. Enter value..."
+                                            className="bg-white text-xs"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Validation Rules */}
+                                <div className="space-y-4 p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Validation Rules</h4>
+
+                                    {['text', 'textarea', 'email'].includes(selectedField.type) && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs text-slate-600">Min Length</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={selectedField.validation?.minLength || ''}
+                                                    onChange={(e) => updateValidation(selectedField.id, 'minLength', parseInt(e.target.value) || undefined)}
+                                                    placeholder="e.g. 5"
+                                                    className="h-8 text-xs bg-white"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs text-slate-600">Max Length</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={selectedField.validation?.maxLength || ''}
+                                                    onChange={(e) => updateValidation(selectedField.id, 'maxLength', parseInt(e.target.value) || undefined)}
+                                                    placeholder="e.g. 100"
+                                                    className="h-8 text-xs bg-white"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs text-slate-600">Pattern (Regex)</Label>
+                                                <Input
+                                                    value={selectedField.validation?.pattern || ''}
+                                                    onChange={(e) => updateValidation(selectedField.id, 'pattern', e.target.value)}
+                                                    placeholder="^[A-Z0-9]+$"
+                                                    className="h-8 text-xs bg-white font-mono"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {selectedField.type === 'number' && (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs text-slate-600">Min Value</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={selectedField.validation?.minValue || ''}
+                                                    onChange={(e) => updateValidation(selectedField.id, 'minValue', parseInt(e.target.value) || undefined)}
+                                                    placeholder="0"
+                                                    className="h-8 text-xs bg-white"
+                                                />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label className="text-xs text-slate-600">Max Value</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={selectedField.validation?.maxValue || ''}
+                                                    onChange={(e) => updateValidation(selectedField.id, 'maxValue', parseInt(e.target.value) || undefined)}
+                                                    placeholder="100"
+                                                    className="h-8 text-xs bg-white"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs text-slate-600">Custom Error Message</Label>
+                                        <Input
+                                            value={selectedField.validation?.errorMessage || ''}
+                                            onChange={(e) => updateValidation(selectedField.id, 'errorMessage', e.target.value)}
+                                            placeholder="e.g. This field is required..."
+                                            className="h-8 text-xs bg-white"
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Section (Category) Selector */}
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <label className="text-xs font-bold text-gray-600 uppercase">Section (Category)</label>
+                            {/* Modal Footer */}
+                            <DialogFooter className="px-6 py-3 border-t bg-slate-50 flex flex-row items-center justify-between sm:justify-between">
+                                {canOperate ? (
                                     <Button
                                         type="button"
                                         variant="ghost"
                                         size="sm"
-                                        className="h-6 text-[11px] text-blue-600 hover:text-blue-800 p-0 hover:bg-transparent flex items-center gap-1"
-                                        onClick={() => setIsAddCategoryOpen(true)}
+                                        className="text-red-600 hover:bg-red-50 hover:text-red-700 gap-1.5 text-xs"
+                                        onClick={() => removeField(selectedField.id)}
                                     >
-                                        <Plus className="h-3 w-3" /> New Section
+                                        <Trash2 className="h-4 w-4" /> Delete Field
                                     </Button>
-                                </div>
-                                <Select
-                                    value={selectedField.categoryName || "uncategorized"}
-                                    onValueChange={(val) => {
-                                        if (val === "uncategorized") {
-                                            setFieldCategory(selectedField.id, undefined);
-                                        } else {
-                                            setFieldCategory(selectedField.id, val);
-                                        }
-                                    }}
+                                ) : <div />}
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-5 text-xs"
+                                    onClick={() => setIsFieldModalOpen(false)}
                                 >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select Section" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="uncategorized">Uncategorized (No Section)</SelectItem>
-                                        {categories.map((cat) => (
-                                            <SelectItem key={cat.id} value={cat.name}>
-                                                {cat.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <Separator className="my-4" />
-
-                            {['checkbox', 'radio', 'dropdown'].includes(selectedField.type) && (
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-xs font-bold text-gray-600 uppercase">Options</Label>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-6 text-xs"
-                                            onClick={() => {
-                                                const currentOptions = selectedField.options || [];
-                                                updateField(selectedField.id, {
-                                                    options: [...currentOptions, `Option ${currentOptions.length + 1}`]
-                                                });
-                                            }}
-                                        >
-                                            + Add Option
-                                        </Button>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {(selectedField.options || []).map((option, idx) => (
-                                            <div key={idx} className="flex gap-2 items-center">
-                                                <div className="grid place-items-center h-8 w-8 bg-gray-100 rounded text-gray-500 text-xs font-mono">
-                                                    {idx + 1}
-                                                </div>
-                                                <Input
-                                                    value={option}
-                                                    onChange={(e) => {
-                                                        const newOptions = [...(selectedField.options || [])];
-                                                        const oldName = newOptions[idx];
-                                                        newOptions[idx] = e.target.value;
-                                                        if (selectedField.descriptions && selectedField.descriptions[oldName] !== undefined) {
-                                                            const newDescs = { ...selectedField.descriptions };
-                                                            newDescs[e.target.value] = newDescs[oldName];
-                                                            delete newDescs[oldName];
-                                                            updateField(selectedField.id, { options: newOptions, descriptions: newDescs });
-                                                        } else {
-                                                            updateField(selectedField.id, { options: newOptions });
-                                                        }
-                                                    }}
-                                                    className="h-8 text-xs"
-                                                    placeholder={`Option ${idx + 1}`}
-                                                />
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                    onClick={() => {
-                                                        const removedOpt = (selectedField.options || [])[idx];
-                                                        const newOptions = (selectedField.options || []).filter((_, i) => i !== idx);
-                                                        const newDescs = { ...(selectedField.descriptions || {}) };
-                                                        delete newDescs[removedOpt];
-                                                        updateField(selectedField.id, { options: newOptions, descriptions: newDescs });
-                                                    }}
-                                                    disabled={(selectedField.options?.length || 0) <= 1}
-                                                >
-                                                    <X className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Hover Descriptions per option */}
-                                    {selectedField.type === 'dropdown' && (
-                                        <div className="space-y-2 pt-2">
-                                            <Label className="text-xs font-bold text-gray-600 uppercase flex items-center gap-1">
-                                                <span>Option Hover Descriptions</span>
-                                                <span className="text-[10px] font-normal text-gray-400 normal-case ml-1">(shown on hover)</span>
-                                            </Label>
-                                            <div className="space-y-2">
-                                                {(selectedField.options || []).map((option, idx) => (
-                                                    <div key={idx} className="space-y-1">
-                                                        <p className="text-[10px] font-semibold text-emerald-700 pl-1">{option || `Option ${idx + 1}`}</p>
-                                                        <Input
-                                                            value={(selectedField.descriptions || {})[option] || ''}
-                                                            onChange={(e) => {
-                                                                const newDescs = { ...(selectedField.descriptions || {}) };
-                                                                if (e.target.value.trim()) {
-                                                                    newDescs[option] = e.target.value;
-                                                                } else {
-                                                                    delete newDescs[option];
-                                                                }
-                                                                updateField(selectedField.id, { descriptions: newDescs });
-                                                            }}
-                                                            className="h-8 text-xs placeholder:text-gray-300"
-                                                            placeholder={`Describe "${option}" to applicants…`}
-                                                        />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Nested Dynamic Sub-Fields */}
-                                    {selectedField.type === 'dropdown' && (
-                                        <div className="space-y-4 pt-3 border-t">
-                                            <div>
-                                                <Label className="text-xs font-bold text-gray-600 uppercase">
-                                                    Option Sub-Fields (Dynamic)
-                                                </Label>
-                                                <p className="text-[10px] text-gray-400 mt-0.5">
-                                                    Add dynamic extra fields revealed when an applicant selects a specific option.
-                                                </p>
-                                            </div>
-
-                                            <div className="space-y-3">
-                                                {(selectedField.options || []).map((option, idx) => {
-                                                    const subFields = (selectedField.nestedFields || {})[option] || [];
-                                                    return (
-                                                        <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-xs font-bold text-blue-900 truncate max-w-[150px]">
-                                                                    {option || `Option ${idx + 1}`}
-                                                                </span>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    className="h-6 text-[11px] px-2 text-blue-700 border-blue-200 bg-white hover:bg-blue-50"
-                                                                    onClick={() => addNestedField(selectedField.id, option)}
-                                                                >
-                                                                    + Add Field
-                                                                </Button>
-                                                            </div>
-
-                                                            {subFields.length === 0 ? (
-                                                                <p className="text-[10px] text-gray-400 italic">No extra fields for this option</p>
-                                                            ) : (
-                                                                <div className="space-y-2 pt-1">
-                                                                    {subFields.map((sub) => (
-                                                                        <div key={sub.id} className="p-2 bg-white rounded border border-slate-200 space-y-1.5 shadow-2xs">
-                                                                            <div className="flex items-center justify-between">
-                                                                                <Input
-                                                                                    value={sub.label}
-                                                                                    onChange={(e) => updateNestedField(selectedField.id, option, sub.id, { label: e.target.value })}
-                                                                                    className="h-6 text-xs font-medium w-36"
-                                                                                    placeholder="Field Label"
-                                                                                />
-                                                                                <Button
-                                                                                    variant="ghost"
-                                                                                    size="icon"
-                                                                                    className="h-6 w-6 text-red-500 hover:text-red-700"
-                                                                                    onClick={() => removeNestedField(selectedField.id, option, sub.id)}
-                                                                                >
-                                                                                    <X className="h-3.5 w-3.5" />
-                                                                                </Button>
-                                                                            </div>
-                                                                            <div className="grid grid-cols-2 gap-1.5">
-                                                                                <Select
-                                                                                    value={sub.type}
-                                                                                    onValueChange={(val: any) => updateNestedField(selectedField.id, option, sub.id, { type: val })}
-                                                                                >
-                                                                                    <SelectTrigger className="h-6 text-[10px]">
-                                                                                        <SelectValue />
-                                                                                    </SelectTrigger>
-                                                                                    <SelectContent>
-                                                                                        <SelectItem value="text">Text</SelectItem>
-                                                                                        <SelectItem value="number">Number</SelectItem>
-                                                                                        <SelectItem value="date">Date</SelectItem>
-                                                                                        <SelectItem value="email">Email</SelectItem>
-                                                                                        <SelectItem value="textarea">Textarea</SelectItem>
-                                                                                        <SelectItem value="file">File</SelectItem>
-                                                                                    </SelectContent>
-                                                                                </Select>
-                                                                                <Input
-                                                                                    value={sub.placeholder || ''}
-                                                                                    onChange={(e) => updateNestedField(selectedField.id, option, sub.id, { placeholder: e.target.value })}
-                                                                                    className="h-6 text-[10px]"
-                                                                                    placeholder="Placeholder"
-                                                                                />
-                                                                            </div>
-                                                                            <div className="flex items-center gap-1.5 pt-0.5">
-                                                                                <input
-                                                                                    type="checkbox"
-                                                                                    id={`sub-req-${sub.id}`}
-                                                                                    checked={sub.required}
-                                                                                    onChange={(e) => updateNestedField(selectedField.id, option, sub.id, { required: e.target.checked })}
-                                                                                    className="h-3 w-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                                                                />
-                                                                                <label htmlFor={`sub-req-${sub.id}`} className="text-[10px] text-gray-600 cursor-pointer select-none">
-                                                                                    Required
-                                                                                </label>
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="flex items-center justify-between">
-                                <Label className="text-xs font-bold text-gray-600 uppercase">Required</Label>
-                                <Switch checked={selectedField.required} onCheckedChange={(val) => updateField(selectedField.id, { required: val })} />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-600 uppercase">Placeholder</label>
-                                <Input value={selectedField.placeholder || ''} onChange={(e) => updateField(selectedField.id, { placeholder: e.target.value })} />
-                            </div>
-
-                            <Separator className="my-4" />
-
-                            <div className="space-y-4">
-                                <Label className="text-xs font-bold text-gray-600 uppercase">Validation</Label>
-
-                                {['text', 'textarea', 'email'].includes(selectedField.type) && (
-                                    <>
-                                        <div className="space-y-2">
-                                            <Label className="text-xs text-gray-500">Min Length</Label>
-                                            <Input
-                                                type="number"
-                                                value={selectedField.validation?.minLength || ''}
-                                                onChange={(e) => updateValidation(selectedField.id, 'minLength', parseInt(e.target.value) || undefined)}
-                                                placeholder="e.g. 5"
-                                                className="h-8 text-xs"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-xs text-gray-500">Max Length</Label>
-                                            <Input
-                                                type="number"
-                                                value={selectedField.validation?.maxLength || ''}
-                                                onChange={(e) => updateValidation(selectedField.id, 'maxLength', parseInt(e.target.value) || undefined)}
-                                                placeholder="e.g. 100"
-                                                className="h-8 text-xs"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-xs text-gray-500">Pattern (Regex)</Label>
-                                            <Input
-                                                value={selectedField.validation?.pattern || ''}
-                                                onChange={(e) => updateValidation(selectedField.id, 'pattern', e.target.value)}
-                                                placeholder="^[A-Z]+$"
-                                                className="h-8 text-xs"
-                                            />
-                                        </div>
-                                    </>
-                                )}
-
-                                {selectedField.type === 'number' && (
-                                    <>
-                                        <div className="space-y-2">
-                                            <Label className="text-xs text-gray-500">Min Value</Label>
-                                            <Input
-                                                type="number"
-                                                value={selectedField.validation?.minValue || ''}
-                                                onChange={(e) => updateValidation(selectedField.id, 'minValue', parseInt(e.target.value) || undefined)}
-                                                placeholder="0"
-                                                className="h-8 text-xs"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-xs text-gray-500">Max Value</Label>
-                                            <Input
-                                                type="number"
-                                                value={selectedField.validation?.maxValue || ''}
-                                                onChange={(e) => updateValidation(selectedField.id, 'maxValue', parseInt(e.target.value) || undefined)}
-                                                placeholder="100"
-                                                className="h-8 text-xs"
-                                            />
-                                        </div>
-                                    </>
-                                )}
-
-                                <div className="space-y-2">
-                                    <Label className="text-xs text-gray-500">Custom Error Message</Label>
-                                    <Input
-                                        value={selectedField.validation?.errorMessage || ''}
-                                        onChange={(e) => updateValidation(selectedField.id, 'errorMessage', e.target.value)}
-                                        placeholder="This field is required..."
-                                        className="h-8 text-xs"
-                                    />
-                                </div>
-                            </div>
-
-                            <Separator className="my-4" />
-
-                            {canOperate && (
-                                <Button variant="ghost" className="w-full text-red-600 hover:bg-red-50 gap-2" onClick={() => removeField(selectedField.id)}>
-                                    <Trash2 className="h-4 w-4" /> Delete Field
+                                    Done
                                 </Button>
-                            )}
-                        </CardContent>
-                    ) : (
-                        <div className="h-64 flex items-center justify-center text-gray-400">Select a field to edit</div>
+                            </DialogFooter>
+                        </>
                     )}
-                </Card>
-            </div>
+                </DialogContent>
+            </Dialog>
 
             {/* ADD CATEGORY DIALOG */}
             <Dialog open={isAddCategoryOpen} onOpenChange={setIsAddCategoryOpen}>
