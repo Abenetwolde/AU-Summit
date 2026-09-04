@@ -1055,36 +1055,94 @@ export function FormEditor() {
             {/* Canvas */}
             <div className="flex-1">
                 <Card className="min-h-full border-none shadow-md bg-white">
-                    <CardHeader className="border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <Input value={formName} onChange={(e) => setFormName(e.target.value)} className="text-xl font-bold border-none p-0 focus-visible:ring-0 shadow-none w-auto" />
-                        <div className="flex flex-wrap items-center gap-3">
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-slate-50">
-                                <Calendar className="h-4 w-4 text-emerald-600" />
-                                <label htmlFor="form-deadline" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">
-                                    Deadline:
-                                </label>
+                    <CardHeader className="border-b p-6 pb-4 space-y-4">
+                        {/* Top Bar: Form Name and Action Buttons */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex-1 max-w-xl">
+                                <Input
+                                    value={formName}
+                                    onChange={(e) => setFormName(e.target.value)}
+                                    placeholder="Enter form name..."
+                                    className="text-xl font-black text-slate-900 border-none p-0 focus-visible:ring-0 shadow-none h-auto bg-transparent hover:bg-slate-100/60 rounded px-1.5 -ml-1.5 transition-colors"
+                                />
+                                <p className="text-xs text-slate-400 mt-0.5">
+                                    Configure sections, field validations, and applicant settings
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2.5 self-end sm:self-center shrink-0">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 px-3 gap-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border-slate-200 shadow-2xs"
+                                    onClick={() => setPreviewOpen(true)}
+                                >
+                                    <Eye className="h-4 w-4 text-slate-500" /> Preview
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    className="h-9 px-4 gap-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-xs"
+                                    onClick={handleSave}
+                                    disabled={isSaving || !canOperate}
+                                >
+                                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                    Save Form
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Settings Sub-Bar: Relaxed, spacious configuration controls */}
+                        <div className="bg-slate-50/90 p-3 rounded-xl border border-slate-200/80 flex flex-wrap items-center gap-3">
+                            {/* Form Type */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Type:</span>
+                                <Select value={formType} onValueChange={(val: any) => setFormType(val)}>
+                                    <SelectTrigger className="h-8 w-[160px] bg-white border-slate-200 text-xs font-semibold shadow-2xs">
+                                        <SelectValue placeholder="Select type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ACCREDITATION">Accreditation</SelectItem>
+                                        <SelectItem value="EQUIPMENT_CLEARANCE">Equipment Clearance</SelectItem>
+                                        <SelectItem value="VISA_SUPPORT">Visa Support</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+
+                            {/* Deadline Picker */}
+                            <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                                <Calendar className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                <span className="text-xs font-semibold text-slate-700">Deadline:</span>
                                 <input
                                     id="form-deadline"
                                     type="datetime-local"
                                     value={deadline}
                                     onChange={(e) => setDeadline(e.target.value)}
                                     disabled={!canOperate}
-                                    className="text-xs bg-white border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                    className="text-xs bg-transparent border-none text-slate-800 focus:outline-none focus:ring-0 cursor-pointer p-0 font-medium"
                                 />
                                 {deadline && (
                                     <button
                                         type="button"
                                         onClick={() => setDeadline("")}
-                                        className="text-xs text-slate-400 hover:text-red-500 ml-0.5"
+                                        className="text-xs text-slate-400 hover:text-red-500 ml-1 p-0.5 rounded hover:bg-slate-100 transition-colors"
                                         title="Clear deadline"
                                     >
                                         ✕
                                     </button>
                                 )}
                             </div>
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-slate-50">
-                                <Users className="h-4 w-4 text-indigo-600" />
-                                <label htmlFor="multi-member-toggle" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">
+
+                            <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+
+                            {/* Allow Crew Toggle */}
+                            <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                                <Users className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                                <label
+                                    htmlFor="multi-member-toggle"
+                                    className="text-xs font-semibold text-slate-700 cursor-pointer select-none"
+                                >
                                     Allow Crew (Multi-Member)
                                 </label>
                                 <Switch
@@ -1094,27 +1152,23 @@ export function FormEditor() {
                                     disabled={!canOperate}
                                 />
                             </div>
-                            <Select value={formType} onValueChange={(val: any) => setFormType(val)}>
-                                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Type" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="ACCREDITATION">Accreditation</SelectItem>
-                                    <SelectItem value="EQUIPMENT_CLEARANCE">Equipment</SelectItem>
-                                    <SelectItem value="VISA_SUPPORT">Visa Support</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="gap-1.5"
-                                onClick={() => setPreviewOpen(true)}
-                            >
-                                <Eye className="h-4 w-4" /> Preview
-                            </Button>
-                            <Button size="sm" className="bg-black text-white gap-2" onClick={handleSave} disabled={isSaving || !canOperate}>
-                                {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-                                <Save className="h-4 w-4" /> Save Form
-                            </Button>
+
+                            <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+
+                            {/* Form Status */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status:</span>
+                                <Select value={formStatus} onValueChange={(val: any) => setFormStatus(val)}>
+                                    <SelectTrigger className="h-8 w-[120px] bg-white border-slate-200 text-xs font-semibold shadow-2xs">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="DRAFT">Draft</SelectItem>
+                                        <SelectItem value="PUBLISHED">Published</SelectItem>
+                                        <SelectItem value="ARCHIVED">Archived</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </CardHeader>
                     <CardContent className="p-6 bg-gray-50/30">
@@ -1785,51 +1839,109 @@ export function FormEditor() {
 
             {/* DELETE CATEGORY CONFIRMATION DIALOG */}
             <Dialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <div className="flex items-center gap-2 text-amber-600">
-                            <AlertTriangle className="h-5 w-5" />
-                            <DialogTitle>Delete Section "{categoryToDelete?.name}"</DialogTitle>
+                <DialogContent className="sm:max-w-lg p-0 overflow-hidden">
+                    <div className="p-6 pb-4">
+                        <div className="flex items-start gap-3">
+                            <div className="p-2.5 rounded-full bg-amber-100 text-amber-600 shrink-0 mt-0.5">
+                                <AlertTriangle className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-base font-bold text-slate-900">
+                                    Delete Section "{categoryToDelete?.name}"
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-slate-500 mt-1">
+                                    This section currently contains{' '}
+                                    <strong className="text-slate-800 font-semibold">
+                                        {categoryToDelete ? fields.filter(f => f.categoryName === categoryToDelete.name).length : 0} field(s)
+                                    </strong>.
+                                    Choose what you want to do with the fields:
+                                </DialogDescription>
+                            </div>
                         </div>
-                        <DialogDescription className="pt-2 text-slate-600">
-                            This section currently contains{' '}
-                            <strong className="text-slate-900">
-                                {categoryToDelete ? fields.filter(f => f.categoryName === categoryToDelete.name).length : 0} field(s)
-                            </strong>.
-                            How would you like to proceed?
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-3 py-3">
-                        <div className="p-3 rounded-lg border bg-slate-50 text-xs text-slate-600 space-y-1">
-                            <p className="font-semibold text-slate-800">Choose an option:</p>
-                            <p>• <strong>Keep Fields:</strong> Removes this section, but keeps all its fields safely in "Uncategorized".</p>
-                            <p>• <strong>Delete All:</strong> Permanently removes this section and all fields inside it.</p>
+
+                        <div className="mt-5 space-y-3">
+                            {/* Option 1: Keep Fields (Safe / Recommended) */}
+                            <div
+                                onClick={() => handleConfirmDeleteCategory('keep_uncategorized')}
+                                className="group p-3.5 rounded-xl border border-slate-200 hover:border-blue-300 bg-slate-50/60 hover:bg-blue-50/40 transition-all cursor-pointer flex items-start justify-between gap-3"
+                            >
+                                <div className="flex items-start gap-3">
+                                    <div className="p-2 rounded-lg bg-blue-100 text-blue-700 shrink-0 mt-0.5 group-hover:bg-blue-200 transition-colors">
+                                        <Layers className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-1.5">
+                                            <h4 className="text-xs font-bold text-slate-900 group-hover:text-blue-900">
+                                                Keep Fields as Uncategorized
+                                            </h4>
+                                            <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-blue-100 text-blue-700 border-none font-medium">
+                                                Recommended
+                                            </Badge>
+                                        </div>
+                                        <p className="text-[11px] text-slate-500 mt-1">
+                                            Removes this section container, but safely preserves all its fields in "Uncategorized Fields".
+                                        </p>
+                                    </div>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="shrink-0 h-8 text-xs border-blue-200 text-blue-700 group-hover:bg-blue-600 group-hover:text-white transition-colors"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleConfirmDeleteCategory('keep_uncategorized');
+                                    }}
+                                >
+                                    Keep Fields
+                                </Button>
+                            </div>
+
+                            {/* Option 2: Delete All (Destructive) */}
+                            <div
+                                onClick={() => handleConfirmDeleteCategory('delete_all')}
+                                className="group p-3.5 rounded-xl border border-red-100 hover:border-red-300 bg-red-50/30 hover:bg-red-50/70 transition-all cursor-pointer flex items-start justify-between gap-3"
+                            >
+                                <div className="flex items-start gap-3">
+                                    <div className="p-2 rounded-lg bg-red-100 text-red-600 shrink-0 mt-0.5 group-hover:bg-red-200 transition-colors">
+                                        <Trash2 className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-bold text-red-900 group-hover:text-red-950">
+                                            Delete Section and All Fields
+                                        </h4>
+                                        <p className="text-[11px] text-red-600/80 mt-1">
+                                            Permanently deletes the section and all fields inside it. This action cannot be undone.
+                                        </p>
+                                    </div>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    className="shrink-0 h-8 text-xs bg-red-600 hover:bg-red-700 text-white"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleConfirmDeleteCategory('delete_all');
+                                    }}
+                                >
+                                    Delete All
+                                </Button>
+                            </div>
                         </div>
                     </div>
-                    <DialogFooter className="flex-col sm:flex-row gap-2">
+
+                    <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end">
                         <Button
                             type="button"
-                            variant="outline"
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-slate-500 hover:text-slate-800"
                             onClick={() => setCategoryToDelete(null)}
                         >
                             Cancel
                         </Button>
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            className="text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200"
-                            onClick={() => handleConfirmDeleteCategory('keep_uncategorized')}
-                        >
-                            Keep Fields (Uncategorize)
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={() => handleConfirmDeleteCategory('delete_all')}
-                        >
-                            Delete Section & Fields
-                        </Button>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
 
