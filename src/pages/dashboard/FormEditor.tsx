@@ -1082,20 +1082,33 @@ export function FormEditor() {
                 <Card className="h-full flex flex-col border-none shadow-md bg-white overflow-hidden">
                     {/* Header stuck at the top without scrolling */}
                     <CardHeader className="shrink-0 sticky top-0 z-20 border-b p-5 pb-3.5 space-y-3 bg-white/95 backdrop-blur-xs shadow-2xs">
-                        {/* Top Bar: Form Name and Action Buttons */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div className="flex-1 max-w-xl">
+                        {/* Top Bar: Form Name, Description and Action Buttons */}
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                            <div className="flex-1 max-w-2xl space-y-1.5">
                                 <Input
                                     value={formName}
                                     onChange={(e) => setFormName(e.target.value)}
                                     placeholder="Enter form name..."
                                     className="text-xl font-black text-slate-900 border-none p-0 focus-visible:ring-0 shadow-none h-auto bg-transparent hover:bg-slate-100/60 rounded px-1.5 -ml-1.5 transition-colors"
                                 />
-                                <p className="text-xs text-slate-400 mt-0.5">
-                                    Configure sections, field validations, and applicant settings
-                                </p>
+                                <div className="relative group/desc-wrap">
+                                    <div className="flex items-start gap-2 bg-slate-50/80 hover:bg-slate-100/80 focus-within:bg-white focus-within:border-blue-400 border border-slate-200/80 rounded-lg p-2 transition-all shadow-2xs">
+                                        <AlignLeft className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
+                                        <textarea
+                                            value={formDescription}
+                                            onChange={(e) => setFormDescription(e.target.value)}
+                                            placeholder="Enter public program description (displayed to journalists and media applicants on registration cards)..."
+                                            rows={2}
+                                            className="w-full text-xs text-slate-700 bg-transparent border-none p-0 focus:outline-none focus:ring-0 placeholder:text-slate-400 placeholder:italic resize-y leading-relaxed"
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 mt-0.5">
+                                        <span>Publicly visible on accreditation program cards</span>
+                                        <span>{formDescription.length} characters</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2.5 self-end sm:self-center shrink-0">
+                            <div className="flex items-center gap-2.5 self-end sm:self-center shrink-0 pt-1">
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -2068,7 +2081,7 @@ export function FormEditor() {
                     <div className="space-y-6 p-4">
                         <div className="p-6 bg-blue-600 text-white rounded-lg">
                             <h2 className="text-xl font-bold">{formName}</h2>
-                            <p className="opacity-90">{formDescription}</p>
+                            <p className="opacity-90 whitespace-pre-line text-sm mt-1">{formDescription}</p>
                         </div>
                         <div className="space-y-6">
                             {categories.map(cat => {

@@ -625,6 +625,8 @@ export interface BadgeTemplatesResponse {
 export interface Form {
     form_id: number;
     name: string;
+    description?: string;
+    icon?: string;
     type: string;
     status: string;
     deadline?: string | null;

@@ -41,7 +41,9 @@ import {
     Archive,
     Users,
     UserX,
-    Clock
+    Clock,
+    AlignLeft,
+    Save
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGetFormsQuery, useDeleteFormMutation, useUpdateFormMutation, Form } from '@/store/services/api';
@@ -69,6 +71,12 @@ export default function FormList() {
     const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
     const [isConfirmingStatus, setIsConfirmingStatus] = useState(false);
     const [isConfirmingMultiMember, setIsConfirmingMultiMember] = useState(false);
+
+    // Description Editing State
+    const [isEditingDescription, setIsEditingDescription] = useState(false);
+    const [isSavingDescription, setIsSavingDescription] = useState(false);
+    const [editDescriptionTarget, setEditDescriptionTarget] = useState<{ id: number; name: string; description: string } | null>(null);
+    const [formDescriptionInput, setFormDescriptionInput] = useState('');
 
     const { checkPermission } = useAuth();
     const canCreateForm = checkPermission('form:create');
@@ -167,8 +175,42 @@ export default function FormList() {
         }
     };
 
+    const handleOpenEditDescription = (form: Form) => {
+        if (!canUpdateForm) {
+            toast.error("You don't have permission to update forms");
+            return;
+        }
+        setEditDescriptionTarget({
+            id: form.form_id,
+            name: form.name,
+            description: form.description || ''
+        });
+        setFormDescriptionInput(form.description || '');
+        setIsEditingDescription(true);
+    };
+
+    const handleSaveDescription = async () => {
+        if (!editDescriptionTarget) return;
+
+        setIsSavingDescription(true);
+        try {
+            const formData = new FormData();
+            formData.append('description', formDescriptionInput);
+            await updateForm({ id: editDescriptionTarget.id, data: formData }).unwrap();
+            toast.success(`Description updated for "${editDescriptionTarget.name}"`);
+            refetch();
+            setIsEditingDescription(false);
+            setEditDescriptionTarget(null);
+        } catch (error: any) {
+            toast.error(error?.data?.error || "Failed to update form description");
+        } finally {
+            setIsSavingDescription(false);
+        }
+    };
+
     const filteredForms = forms?.filter(form =>
-        form.name.toLowerCase().includes(searchTerm.toLowerCase())
+        form.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (form.description && form.description.toLowerCase().includes(searchTerm.toLowerCase()))
     ) || [];
 
     const getStatusBadge = (status: string) => {
@@ -226,7 +268,7 @@ export default function FormList() {
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-gray-50">
-                                    <TableHead className="w-[300px]">Form Name</TableHead>
+                                    <TableHead className="w-[360px]">Form Details</TableHead>
                                     <TableHead>Type</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Last Updated</TableHead>
@@ -243,14 +285,48 @@ export default function FormList() {
                                 ) : (
                                     filteredForms.map((form) => (
                                         <TableRow key={form.form_id}>
-                                            <TableCell className="font-medium">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-8 w-8 rounded bg-blue-50 flex items-center justify-center text-blue-600">
+                                            <TableCell className="font-medium align-top py-3.5">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 mt-0.5 border border-blue-100/80">
                                                         <FileText className="h-4 w-4" />
                                                     </div>
-                                                    <div className="flex flex-col">
-                                                        <span>{form.name}</span>
-                                                        <span className="text-xs text-gray-400">ID: {form.form_id}</span>
+                                                    <div className="flex flex-col min-w-0 max-w-sm sm:max-w-md">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="font-bold text-gray-900 text-sm">{form.name}</span>
+                                                            <span className="text-[10px] font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">
+                                                                ID: {form.form_id}
+                                                            </span>
+                                                        </div>
+                                                        {form.description ? (
+                                                            <div className="group/desc mt-1 flex items-start gap-1.5">
+                                                                <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed" title={form.description}>
+                                                                    {form.description}
+                                                                </p>
+                                                                {canUpdateForm && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleOpenEditDescription(form)}
+                                                                        className="opacity-0 group-hover/desc:opacity-100 transition-opacity text-gray-400 hover:text-blue-600 shrink-0 p-0.5 rounded"
+                                                                        title="Quick edit description"
+                                                                    >
+                                                                        <Pencil className="h-3 w-3" />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-400 italic">
+                                                                <span>No description provided</span>
+                                                                {canUpdateForm && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleOpenEditDescription(form)}
+                                                                        className="not-italic text-blue-600 hover:text-blue-700 hover:underline font-medium text-[11px]"
+                                                                    >
+                                                                        + Add Description
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </TableCell>
@@ -296,9 +372,14 @@ export default function FormList() {
                                                         <DropdownMenuContent align="end">
                                                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                             {canUpdateForm && (
-                                                                <DropdownMenuItem onClick={() => navigate(`/dashboard/forms/builder/${form.form_id}`)}>
-                                                                    <Pencil className="mr-2 h-4 w-4" /> Edit
-                                                                </DropdownMenuItem>
+                                                                <>
+                                                                    <DropdownMenuItem onClick={() => navigate(`/dashboard/forms/builder/${form.form_id}`)}>
+                                                                        <Pencil className="mr-2 h-4 w-4" /> Edit Form
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => handleOpenEditDescription(form)}>
+                                                                        <AlignLeft className="mr-2 h-4 w-4 text-slate-600" /> Edit Description
+                                                                    </DropdownMenuItem>
+                                                                </>
                                                             )}
                                                             
                                                             {canUpdateForm && (
@@ -436,6 +517,60 @@ export default function FormList() {
                         >
                             {isTogglingMultiMember ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Users className="h-4 w-4 mr-2" />}
                             {multiMemberTarget?.allowMultiMember ? "Enable Crew" : "Disable Crew"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Quick Edit Description Modal */}
+            <Dialog open={isEditingDescription} onOpenChange={setIsEditingDescription}>
+                <DialogContent className="sm:max-w-[540px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <AlignLeft className="h-5 w-5 text-blue-600" />
+                            Edit Form Description
+                        </DialogTitle>
+                        <DialogDescription>
+                            Provide a clear description for <strong>{editDescriptionTarget?.name}</strong>.
+                            This will be displayed on the accreditation program card for media applicants.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                            <label htmlFor="form-description-input" className="text-xs font-semibold text-gray-700">
+                                Public Program Description
+                            </label>
+                            <span className="text-[11px] font-normal text-gray-400">
+                                {formDescriptionInput.length} characters
+                            </span>
+                        </div>
+                        <textarea
+                            id="form-description-input"
+                            value={formDescriptionInput}
+                            onChange={(e) => setFormDescriptionInput(e.target.value)}
+                            placeholder="Describe accreditation scope, eligible media representatives, required press credentials, and key instructions..."
+                            rows={5}
+                            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y leading-relaxed"
+                        />
+                        <p className="text-[11px] text-gray-500">
+                            Tip: Explain who should apply and what credentials (press badge, assignment letter, passport) they will need.
+                        </p>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsEditingDescription(false)}
+                            disabled={isSavingDescription}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleSaveDescription}
+                            disabled={isSavingDescription}
+                            className="bg-black hover:bg-gray-800 text-white gap-2"
+                        >
+                            {isSavingDescription ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            Save Description
                         </Button>
                     </DialogFooter>
                 </DialogContent>
