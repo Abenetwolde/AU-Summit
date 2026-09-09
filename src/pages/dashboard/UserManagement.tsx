@@ -13,9 +13,11 @@ import {
     ChevronRight,
     ChevronsLeft,
     ChevronsRight,
-    Plus
+    Plus,
+    KeyRound
 } from 'lucide-react';
 import { CreateUserModal } from '@/components/modals/CreateUserModal';
+import { ResetPasswordModal } from '@/components/modals/ResetPasswordModal';
 import { exportToCSV, exportToPDF } from '@/lib/export-utils';
 import { useAuth, UserRole } from '@/auth/context';
 import { toast } from 'sonner';
@@ -44,6 +46,8 @@ export function UserManagement() {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [createModalOpen, setCreateModalOpen] = useState(false);
+    const [resetPasswordModalOpen, setResetPasswordModalOpen] = useState(false);
+    const [selectedUserForReset, setSelectedUserForReset] = useState<User | null>(null);
 
     // Debounce search input
     useEffect(() => {
@@ -181,6 +185,16 @@ export function UserManagement() {
                     </Button>
                     <Button variant="outline" onClick={handleExportPDF} className="gap-2 h-10 border-gray-200 hover:bg-gray-50">
                         <Download className="h-4 w-4" /> Export PDF
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            setSelectedUserForReset(null);
+                            setResetPasswordModalOpen(true);
+                        }}
+                        className="gap-2 h-10 border-amber-200 text-amber-800 hover:bg-amber-50 shadow-sm"
+                    >
+                        <KeyRound className="h-4 w-4 text-amber-600" /> Reset Password
                     </Button>
                     {canCreateUser && (
                         <Button onClick={() => setCreateModalOpen(true)} className="bg-[#009b4d] hover:bg-[#007a3d] gap-2 h-10 shadow-sm transition-all active:scale-95">
@@ -320,15 +334,29 @@ export function UserManagement() {
                                         </td>
                                         {canDeleteUser && (
                                             <td className="py-4 px-6 text-right">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleDeleteUser(u.id)}
-                                                    className="h-9 w-9 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-50 group-hover:shadow-sm"
-                                                    title="Deactivate User"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setSelectedUserForReset(u);
+                                                            setResetPasswordModalOpen(true);
+                                                        }}
+                                                        className="h-9 w-9 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-50 group-hover:shadow-sm"
+                                                        title="Reset Password"
+                                                    >
+                                                        <KeyRound className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleDeleteUser(u.id)}
+                                                        className="h-9 w-9 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-50 group-hover:shadow-sm"
+                                                        title="Deactivate User"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
                                             </td>
                                         )}
                                     </tr>
@@ -400,6 +428,13 @@ export function UserManagement() {
                 onOpenChange={setCreateModalOpen}
                 onConfirm={handleCreateUser}
                 isLoading={isCreating}
+            />
+
+            <ResetPasswordModal
+                open={resetPasswordModalOpen}
+                onOpenChange={setResetPasswordModalOpen}
+                user={selectedUserForReset}
+                onSuccess={() => refetchUsers()}
             />
         </div>
     );
