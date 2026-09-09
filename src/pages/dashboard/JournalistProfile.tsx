@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw, History, ChevronRight, Filter, Building2, UserCheck, MessageSquare, CheckCircle2, XCircle, Clock, Building, ChevronDown, ChevronUp, Paperclip, Image as ImageIcon, Users } from 'lucide-react';
+import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw, History, ChevronRight, Filter, Building2, UserCheck, MessageSquare, CheckCircle2, XCircle, Clock, Building, ChevronDown, ChevronUp, Paperclip, Image as ImageIcon, Users, Search } from 'lucide-react';
 import { CrewMemberReviewTable } from '@/components/CrewMemberReviewTable';
 import { getFlagEmoji } from '@/lib/utils';
 import en from 'react-phone-number-input/locale/en';
@@ -137,6 +137,8 @@ export function JournalistProfile() {
     const [fieldNotes, setFieldNotes] = useState<Record<string, string>>({});
     const [selectedCrewMembers, setSelectedCrewMembers] = useState<number[]>([]);
     const [crewMemberNotes, setCrewMemberNotes] = useState<Record<number, string>>({});
+    const [fieldSearchQuery, setFieldSearchQuery] = useState('');
+    const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
 
     // Fetch application data solely by ID
     const { data: application, isLoading: applicationLoading } = useGetApplicationByIdQuery(Number(id), {
@@ -258,6 +260,8 @@ export function JournalistProfile() {
             setFieldNotes({});
             setSelectedCrewMembers([]);
             setCrewMemberNotes({});
+            setFieldSearchQuery('');
+            setSelectedCategoryFilter('ALL');
         } catch (err: any) {
             toast.error(err?.data?.message || `Failed to ${status.toLowerCase()} application`);
         }
@@ -453,6 +457,98 @@ export function JournalistProfile() {
             };
             return (order[a.name] || 99) - (order[b.name] || 99);
         });
+
+    // Form-specific fields for the Rejection Dialog: strictly scoped to THIS application's form
+    const applicationFormFields = (() => {
+        const fieldsList: {
+            field_name: string;
+            label: string;
+            field_type?: string;
+            categoryName?: string;
+            display_order?: number;
+        }[] = [];
+        const seenNames = new Set<string>();
+
+        // 1. Extract from displayCategories (already scoped strictly to application.form)
+        if (displayCategories && displayCategories.length > 0) {
+            displayCategories.forEach((cat: any) => {
+                (cat.fields || []).forEach((f: any) => {
+                    if (f.field_name && !seenNames.has(f.field_name)) {
+                        // In multi-member forms, individual crew fields are flagged in the dedicated Crew section
+                        if (application?.form?.allowMultiMember && f.applies_to_crew) {
+                            return;
+                        }
+                        seenNames.add(f.field_name);
+                        fieldsList.push({
+                            field_name: f.field_name,
+                            label: f.label || f.field_name,
+                            field_type: f.field_type,
+                            categoryName: cat.name,
+                            display_order: f.display_order
+                        });
+                    }
+                });
+            });
+        }
+
+        // 2. If no categories found, check direct application.form FormFields
+        if (fieldsList.length === 0 && (application?.form as any)?.FormFields) {
+            ((application?.form as any)?.FormFields || []).forEach((f: any) => {
+                if (f.field_name && !seenNames.has(f.field_name)) {
+                    if (application?.form?.allowMultiMember && f.applies_to_crew) {
+                        return;
+                    }
+                    seenNames.add(f.field_name);
+                    fieldsList.push({
+                        field_name: f.field_name,
+                        label: f.label || f.field_name,
+                        field_type: f.field_type,
+                        categoryName: 'General Information',
+                        display_order: f.display_order
+                    });
+                }
+            });
+        }
+
+        // 3. Fallback: if application.form is missing, infer solely from formData keys belonging to this application
+        if (fieldsList.length === 0 && application?.formData) {
+            Object.keys(application.formData).forEach((key) => {
+                if (['manually_added', 'status', 'members', 'equipment', 'crewMembers'].includes(key)) return;
+                if (!seenNames.has(key)) {
+                    seenNames.add(key);
+                    const matchingTpl = templates?.find((t: any) => t.field_name === key);
+                    fieldsList.push({
+                        field_name: key,
+                        label: matchingTpl?.label || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+                        field_type: matchingTpl?.field_type || 'text',
+                        categoryName: 'Application Fields'
+                    });
+                }
+            });
+        }
+
+        return fieldsList;
+    })();
+
+    const availableCategories = (() => {
+        const set = new Set<string>();
+        applicationFormFields.forEach(f => {
+            if (f.categoryName) set.add(f.categoryName);
+        });
+        return Array.from(set);
+    })();
+
+    const filteredFormFields = applicationFormFields.filter(f => {
+        const matchesCat = selectedCategoryFilter === 'ALL' || f.categoryName === selectedCategoryFilter;
+        if (!matchesCat) return false;
+        if (!fieldSearchQuery.trim()) return true;
+        const q = fieldSearchQuery.toLowerCase();
+        return (
+            f.label.toLowerCase().includes(q) ||
+            f.field_name.toLowerCase().includes(q) ||
+            (f.categoryName && f.categoryName.toLowerCase().includes(q))
+        );
+    });
 
     const userActionableApproval = (application?.approvals || []).find((a: any) => {
         const step = (a as any).workflowStep || (a as any).approvalWorkflowStep;
@@ -1331,66 +1427,157 @@ export function JournalistProfile() {
             </div>
 
             {/* Structured Rejection Dialog */}
-            <Dialog open={showRejectionDialog} onOpenChange={setShowRejectionDialog}>
+            <Dialog open={showRejectionDialog} onOpenChange={(open) => {
+                setShowRejectionDialog(open);
+                if (!open) {
+                    setSelectedCrewMembers([]);
+                    setCrewMemberNotes({});
+                    setSelectedFields([]);
+                    setFieldNotes({});
+                    setFieldSearchQuery('');
+                    setSelectedCategoryFilter('ALL');
+                }
+            }}>
                 <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-red-600">
                             <X className="h-5 w-5" /> Detailed Rejection Feedback
                         </DialogTitle>
                         <DialogDescription>
-                            Select the specific fields that are incorrect and provide feedback for each. The applicant will see these notes on their dashboard and in their notification email.
+                            Select the specific fields of this <strong>{application.form?.name || 'Application'}</strong> that require correction and provide feedback for each. The applicant will see these notes on their dashboard and in their notification email.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-6 pt-4">
-                        <div className="space-y-4">
-                            <Label className="text-sm font-bold uppercase text-gray-400 tracking-wider">Select Fields to Flag</Label>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {templates?.filter(t => t.field_type !== 'file').map((template) => (
-                                    <div
-                                        key={template.field_name}
-                                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${selectedFields.includes(template.field_name)
-                                            ? 'border-red-200 bg-red-50 text-red-700'
-                                            : 'border-gray-200 hover:bg-gray-50'
-                                            }`}
-                                        onClick={() => {
-                                            if (selectedFields.includes(template.field_name)) {
-                                                setSelectedFields((prev: string[]) => prev.filter((f: string) => f !== template.field_name));
-                                            } else {
-                                                setSelectedFields((prev: string[]) => [...prev, template.field_name]);
-                                            }
-                                        }}
+                        <div className="space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <Label className="text-sm font-bold uppercase text-gray-500 tracking-wider flex items-center gap-2">
+                                    <span>Select Fields to Flag</span>
+                                    <span className="bg-red-50 text-red-700 text-xs px-2 py-0.5 rounded-full border border-red-200">
+                                        {selectedFields.length} of {applicationFormFields.length} selected
+                                    </span>
+                                </Label>
+                                {selectedFields.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedFields([])}
+                                        className="text-xs text-red-600 hover:text-red-800 font-semibold"
                                     >
-                                        <div className={`mt-0.5 h-4 w-4 rounded border flex items-center justify-center transition-colors ${selectedFields.includes(template.field_name) ? 'bg-red-500 border-red-500 text-white' : 'border-gray-300'
-                                            }`}>
-                                            {selectedFields.includes(template.field_name) && <Check className="h-3 w-3" />}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold">{template.label}</p>
-                                            <p className="text-xs opacity-70 truncate">{formData[template.field_name] || 'N/A'}</p>
-                                        </div>
+                                        Clear Selection ({selectedFields.length})
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Search & Category Filter */}
+                            <div className="flex flex-col sm:flex-row gap-2">
+                                <div className="relative flex-1">
+                                    <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <Input
+                                        placeholder={`Search ${applicationFormFields.length} fields in this form...`}
+                                        value={fieldSearchQuery}
+                                        onChange={(e) => setFieldSearchQuery(e.target.value)}
+                                        className="h-8 pl-8 text-xs bg-white"
+                                    />
+                                </div>
+                                {availableCategories.length > 1 && (
+                                    <select
+                                        value={selectedCategoryFilter}
+                                        onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                                        className="h-8 text-xs border border-gray-200 rounded-md px-2.5 bg-white text-gray-700 font-medium shrink-0 focus:outline-none focus:ring-1 focus:ring-red-400"
+                                    >
+                                        <option value="ALL">All Categories ({availableCategories.length})</option>
+                                        {availableCategories.map(cat => (
+                                            <option key={cat} value={cat}>{cat}</option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 max-h-[300px] overflow-y-auto pr-1">
+                                {filteredFormFields.length === 0 ? (
+                                    <div className="col-span-2 py-6 text-center text-xs text-gray-400 italic bg-gray-50 rounded-lg border border-dashed">
+                                        No form fields match your search.
                                     </div>
-                                ))}
+                                ) : (
+                                    filteredFormFields.map((field) => {
+                                        const isSelected = selectedFields.includes(field.field_name);
+                                        const rawVal = formData[field.field_name];
+                                        const valDisplay = rawVal !== undefined && rawVal !== null && rawVal !== ''
+                                            ? (typeof rawVal === 'object' ? 'Document / Attachment' : String(rawVal))
+                                            : 'No entry / Empty';
+
+                                        return (
+                                            <div
+                                                key={field.field_name}
+                                                className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                                                    isSelected
+                                                        ? 'border-red-300 bg-red-50 text-red-900 shadow-2xs'
+                                                        : 'border-gray-200 hover:bg-gray-50'
+                                                }`}
+                                                onClick={() => {
+                                                    if (isSelected) {
+                                                        setSelectedFields((prev: string[]) => prev.filter((f: string) => f !== field.field_name));
+                                                    } else {
+                                                        setSelectedFields((prev: string[]) => [...prev, field.field_name]);
+                                                    }
+                                                }}
+                                            >
+                                                <div className={`mt-0.5 h-4 w-4 rounded border flex items-center justify-center transition-colors shrink-0 ${
+                                                    isSelected ? 'bg-red-500 border-red-500 text-white' : 'border-gray-300 bg-white'
+                                                }`}>
+                                                    {isSelected && <Check className="h-3 w-3" />}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <p className="text-xs font-bold truncate">{field.label}</p>
+                                                        {field.field_type === 'file' && (
+                                                            <span className="text-[9px] px-1.5 py-0.2 bg-blue-50 text-blue-700 border border-blue-200 rounded font-semibold shrink-0">
+                                                                File
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {field.categoryName && (
+                                                        <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                                                            {field.categoryName}
+                                                        </p>
+                                                    )}
+                                                    <p className="text-[11px] opacity-70 truncate mt-0.5 font-mono">
+                                                        {valDisplay}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
                             </div>
                         </div>
 
                         {selectedFields.length > 0 && (
-                            <div className="space-y-4 pt-4 border-t">
-                                <Label className="text-sm font-bold uppercase text-gray-400 tracking-wider">Provide Feedback for Selected Fields</Label>
-                                {selectedFields.map((fieldName) => {
-                                    const template = templates?.find(t => t.field_name === fieldName);
-                                    return (
-                                        <div key={fieldName} className="space-y-2 p-4 rounded-lg bg-gray-50 border">
-                                            <Label className="text-sm font-bold">{template?.label || fieldName}</Label>
-                                            <Textarea
-                                                placeholder={`Explain why ${template?.label || fieldName} is being rejected...`}
-                                                className="bg-white"
-                                                value={fieldNotes[fieldName] || ''}
-                                                onChange={(e) => setFieldNotes((prev: Record<string, string>) => ({ ...prev, [fieldName]: e.target.value }))}
-                                            />
-                                        </div>
-                                    );
-                                })}
+                            <div className="space-y-3 pt-4 border-t">
+                                <Label className="text-xs font-bold uppercase text-gray-700 tracking-wider">
+                                    Provide Specific Feedback for Selected Fields ({selectedFields.length})
+                                </Label>
+                                <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
+                                    {selectedFields.map((fieldName) => {
+                                        const field = applicationFormFields.find(f => f.field_name === fieldName);
+                                        return (
+                                            <div key={fieldName} className="space-y-1.5 p-3 rounded-xl bg-gray-50 border border-gray-200">
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-xs font-bold text-gray-900">{field?.label || fieldName}</Label>
+                                                    {field?.categoryName && (
+                                                        <span className="text-[10px] text-gray-500">{field.categoryName}</span>
+                                                    )}
+                                                </div>
+                                                <Textarea
+                                                    placeholder={`Explain why "${field?.label || fieldName}" is being rejected or what needs correction...`}
+                                                    className="bg-white text-xs min-h-[60px]"
+                                                    value={fieldNotes[fieldName] || ''}
+                                                    onChange={(e) => setFieldNotes((prev: Record<string, string>) => ({ ...prev, [fieldName]: e.target.value }))}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         )}
 
@@ -1494,6 +1681,10 @@ export function JournalistProfile() {
                                 setShowRejectionDialog(false);
                                 setSelectedCrewMembers([]);
                                 setCrewMemberNotes({});
+                                setSelectedFields([]);
+                                setFieldNotes({});
+                                setFieldSearchQuery('');
+                                setSelectedCategoryFilter('ALL');
                             }}
                         >
                             Cancel
@@ -1504,8 +1695,8 @@ export function JournalistProfile() {
                             onClick={() => {
                                 const rejectionDetails: Record<string, any> = {};
                                 selectedFields.forEach((fieldName: string) => {
-                                    const template = templates?.find(t => t.field_name === fieldName);
-                                    rejectionDetails[template?.label || fieldName] = fieldNotes[fieldName] || 'Incorrect information provided.';
+                                    const field = applicationFormFields.find(f => f.field_name === fieldName);
+                                    rejectionDetails[field?.label || fieldName] = fieldNotes[fieldName] || 'Incorrect information provided.';
                                 });
 
                                 // Add targeted crew member feedback
@@ -1732,11 +1923,14 @@ export function JournalistProfile() {
                                                                 <XCircle className="h-3.5 w-3.5 text-red-600" /> Field Modifications Requested
                                                             </h5>
                                                             <div className="space-y-2">
-                                                                {Object.entries(appr.rejectionDetails).map(([fieldName, detailNote]) => (
-                                                                    <div key={fieldName} className="bg-red-50 border border-red-200 text-red-900 p-2.5 rounded-lg text-xs">
-                                                                        <span className="font-bold text-red-700">{fieldName}:</span> {String(detailNote)}
-                                                                    </div>
-                                                                ))}
+                                                                {Object.entries(appr.rejectionDetails).map(([fieldName, detailNote]) => {
+                                                                    if (fieldName === 'crewMembers' || (typeof detailNote === 'object' && detailNote !== null)) return null;
+                                                                    return (
+                                                                        <div key={fieldName} className="bg-red-50 border border-red-200 text-red-900 p-2.5 rounded-lg text-xs">
+                                                                            <span className="font-bold text-red-700">{fieldName}:</span> {String(detailNote)}
+                                                                        </div>
+                                                                    );
+                                                                })}
                                                             </div>
                                                         </div>
                                                     )}
