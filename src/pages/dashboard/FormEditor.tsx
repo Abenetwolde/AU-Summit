@@ -744,8 +744,27 @@ export function FormEditor() {
             toast.error("You don't have permission to create forms");
             return;
         }
-        if (hasDuplicates) {
-            toast.error("Form contains duplicate fields. Please fix errors before saving.");
+        // Check for duplicate field keys
+        const duplicateKeyFields = fields.filter((f, idx) =>
+            f.fieldName && fields.some((other, otherIdx) =>
+                idx !== otherIdx && f.fieldName.trim().toLowerCase() === other.fieldName.trim().toLowerCase()
+            )
+        );
+        if (duplicateKeyFields.length > 0) {
+            const keys = [...new Set(duplicateKeyFields.map(f => f.fieldName))].join(', ');
+            toast.error(`Form contains duplicate field keys: "${keys}". Each field must have a unique key before saving.`);
+            return;
+        }
+
+        // Check for duplicate field labels
+        const duplicateLabelFields = fields.filter((f, idx) =>
+            f.label && fields.some((other, otherIdx) =>
+                idx !== otherIdx && f.label.trim().toLowerCase() === other.label.trim().toLowerCase()
+            )
+        );
+        if (duplicateLabelFields.length > 0) {
+            const labels = [...new Set(duplicateLabelFields.map(f => f.label))].join('", "');
+            toast.error(`Form contains duplicate field labels: "${labels}". Please make field labels unique before saving.`);
             return;
         }
 
