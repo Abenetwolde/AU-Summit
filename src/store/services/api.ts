@@ -2442,6 +2442,7 @@ export const {
     // Forms
     useGetFormsQuery,
     useGetFormByIdQuery,
+    useLazyGetFormByIdQuery,
     useUpdateFormMutation,
     useDeleteFormMutation,
     useCreateFormMutation,

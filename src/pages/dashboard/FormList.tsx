@@ -43,10 +43,18 @@ import {
     UserX,
     Clock,
     AlignLeft,
-    Save
+    Save,
+    Copy
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useGetFormsQuery, useDeleteFormMutation, useUpdateFormMutation, Form } from '@/store/services/api';
+import {
+    useGetFormsQuery,
+    useDeleteFormMutation,
+    useUpdateFormMutation,
+    useCreateFormMutation,
+    useLazyGetFormByIdQuery,
+    Form
+} from '@/store/services/api';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useAuth } from '@/auth/context';
@@ -56,7 +64,17 @@ export default function FormList() {
     const { data: forms, isLoading, isError, refetch } = useGetFormsQuery();
     const [deleteForm] = useDeleteFormMutation();
     const [updateForm] = useUpdateFormMutation();
-    const [searchTerm, setSearchTerm] = useState('');
+    const [createForm] = useCreateFormMutation();
+    const [fetchFormById] = useLazyGetFormByIdQuery();
+    const [searchTerm] = useState('');
+
+    // Duplicate Form State
+    const [isDuplicateOpen, setIsDuplicateOpen] = useState(false);
+    const [isDuplicating, setIsDuplicating] = useState(false);
+    const [duplicateTarget, setDuplicateTarget] = useState<Form | null>(null);
+    const [duplicateName, setDuplicateName] = useState('');
+    const [duplicateDescription, setDuplicateDescription] = useState('');
+    const [duplicateDeadline, setDuplicateDeadline] = useState('');
 
     // Confirmation Modals State
     const [isDeleting, setIsDeleting] = useState(false);
@@ -205,6 +223,134 @@ export default function FormList() {
             toast.error(error?.data?.error || "Failed to update form description");
         } finally {
             setIsSavingDescription(false);
+        }
+    };
+
+    const handleOpenDuplicate = (form: Form) => {
+        if (!canCreateForm) {
+            toast.error("You don't have permission to create forms");
+            return;
+        }
+        setDuplicateTarget(form);
+        setDuplicateName(`${form.name} (Copy)`);
+        setDuplicateDescription(form.description || '');
+        setDuplicateDeadline(form.deadline ? new Date(form.deadline).toISOString().slice(0, 16) : '');
+        setIsDuplicateOpen(true);
+    };
+
+    const confirmDuplicate = async () => {
+        if (!duplicateTarget) return;
+        if (!duplicateName.trim()) {
+            toast.error('Please enter a name for the duplicated form');
+            return;
+        }
+
+        setIsDuplicating(true);
+        try {
+            // Fetch complete source form details (including all categories and fields)
+            const sourceDetail = await fetchFormById(String(duplicateTarget.form_id)).unwrap();
+            if (!sourceDetail) {
+                toast.error('Failed to retrieve original form details');
+                return;
+            }
+
+            const formatNestedFields = (nestedFieldsMap: Record<string, any[]> | undefined) => {
+                if (!nestedFieldsMap) return undefined;
+                const result: Record<string, any[]> = {};
+                for (const [opt, subArr] of Object.entries(nestedFieldsMap)) {
+                    if (Array.isArray(subArr) && subArr.length > 0) {
+                        result[opt] = subArr.map(sub => ({
+                            id: sub.id,
+                            label: sub.label,
+                            field_name: sub.fieldName || sub.field_name || (sub.label ? sub.label.toLowerCase().replace(/[^a-z0-9]+/g, '_') : 'field'),
+                            fieldName: sub.fieldName || sub.field_name || (sub.label ? sub.label.toLowerCase().replace(/[^a-z0-9]+/g, '_') : 'field'),
+                            field_type: sub.type || sub.field_type || 'text',
+                            type: sub.type || sub.field_type || 'text',
+                            is_required: !!(sub.required || sub.is_required),
+                            required: !!(sub.required || sub.is_required),
+                            placeholder: sub.placeholder || '',
+                            validation_criteria: sub.validation || sub.validation_criteria || {},
+                            validation: sub.validation || sub.validation_criteria || {}
+                        }));
+                    }
+                }
+                return Object.keys(result).length > 0 ? result : undefined;
+            };
+
+            const formatFieldForCreate = (f: any, index: number) => {
+                let parsedOptions: any = f.field_options;
+                if (typeof parsedOptions === 'string') {
+                    try {
+                        parsedOptions = JSON.parse(parsedOptions);
+                    } catch {
+                        parsedOptions = null;
+                    }
+                }
+
+                let parsedValidation: any = f.validation_criteria;
+                if (typeof parsedValidation === 'string') {
+                    try {
+                        parsedValidation = JSON.parse(parsedValidation);
+                    } catch {
+                        parsedValidation = {};
+                    }
+                }
+
+                let fieldOptionsPayload = null;
+                if (parsedOptions) {
+                    fieldOptionsPayload = {
+                        ...parsedOptions,
+                        ...(parsedOptions.nestedFields ? { nestedFields: formatNestedFields(parsedOptions.nestedFields) } : {}),
+                        ...(parsedOptions.nested_fields ? { nestedFields: formatNestedFields(parsedOptions.nested_fields) } : {})
+                    };
+                }
+
+                return {
+                    field_name: f.field_name || (f.label ? f.label.toLowerCase().replace(/[^a-z0-9]+/g, '_') : `field_${index + 1}`),
+                    field_type: f.field_type === 'radio' && f.options?.includes('True') ? 'boolean' : f.field_type === 'dropdown' ? 'select' : (f.field_type || 'text'),
+                    label: f.label || '',
+                    is_required: Boolean(f.is_required),
+                    display_order: f.display_order !== undefined ? f.display_order : index + 1,
+                    validation_criteria: parsedValidation || {},
+                    visibility_condition: f.visibility_condition || null,
+                    applies_to_crew: Boolean(f.applies_to_crew),
+                    field_options: fieldOptionsPayload
+                };
+            };
+
+            const categoriesPayload = (sourceDetail.categories || []).map((cat: any, index: number) => ({
+                name: cat.name,
+                description: cat.description || null,
+                display_order: cat.display_order !== undefined ? cat.display_order : index + 1,
+                fields: (cat.fields || []).map((f: any, fIndex: number) => formatFieldForCreate(f, fIndex))
+            }));
+
+            const uncategorizedFieldsPayload = (sourceDetail.uncategorizedFields || []).map((f: any, index: number) =>
+                formatFieldForCreate(f, index)
+            );
+
+            const payload = {
+                name: duplicateName.trim(),
+                description: duplicateDescription.trim() || undefined,
+                status: 'DRAFT',
+                type: sourceDetail.type || 'ACCREDITATION',
+                deadline: duplicateDeadline ? new Date(duplicateDeadline).toISOString() : null,
+                allowMultiMember: Boolean(sourceDetail.allowMultiMember),
+                icon: sourceDetail.icon || null,
+                categories: categoriesPayload,
+                fields: uncategorizedFieldsPayload
+            };
+
+            await createForm(payload).unwrap();
+            toast.success(`Form duplicated successfully as "${duplicateName.trim()}"`);
+            refetch();
+            setIsDuplicateOpen(false);
+            setDuplicateTarget(null);
+        } catch (error: any) {
+            console.error('Failed to duplicate form:', error);
+            toast.error(error?.data?.error || error?.message || 'Failed to duplicate form');
+        } finally {
+            setIsDuplicating(false);
         }
     };
 
@@ -361,7 +507,7 @@ export default function FormList() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                {(canUpdateForm || canDeleteForm) && (
+                                                {(canUpdateForm || canDeleteForm || canCreateForm) && (
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="ghost" className="h-8 w-8 p-0">
@@ -380,6 +526,11 @@ export default function FormList() {
                                                                         <AlignLeft className="mr-2 h-4 w-4 text-slate-600" /> Edit Description
                                                                     </DropdownMenuItem>
                                                                 </>
+                                                            )}
+                                                            {canCreateForm && (
+                                                                <DropdownMenuItem onClick={() => handleOpenDuplicate(form)}>
+                                                                    <Copy className="mr-2 h-4 w-4 text-blue-600" /> Duplicate Form
+                                                                </DropdownMenuItem>
                                                             )}
                                                             
                                                             {canUpdateForm && (
@@ -571,6 +722,130 @@ export default function FormList() {
                         >
                             {isSavingDescription ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                             Save Description
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Duplicate Form Modal */}
+            <Dialog open={isDuplicateOpen} onOpenChange={setIsDuplicateOpen}>
+                <DialogContent className="sm:max-w-[560px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-gray-900">
+                            <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
+                                <Copy className="h-4 w-4" />
+                            </div>
+                            Duplicate Form
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-600 pt-1">
+                            Create a new form with its own unique ID based on{' '}
+                            <strong className="text-gray-900 font-semibold">{duplicateTarget?.name}</strong> (ID: #{duplicateTarget?.form_id}).
+                            All categories, fields, and options will be duplicated into a new Draft form.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-2 space-y-4">
+                        {/* Form Name */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <label htmlFor="duplicate-form-name" className="text-xs font-semibold text-gray-700 flex items-center gap-1">
+                                    New Form Name <span className="text-red-500">*</span>
+                                </label>
+                                <span className="text-[11px] text-gray-400">
+                                    {duplicateName.length} characters
+                                </span>
+                            </div>
+                            <Input
+                                id="duplicate-form-name"
+                                value={duplicateName}
+                                onChange={(e) => setDuplicateName(e.target.value)}
+                                placeholder="e.g. Press Accreditation 2027"
+                                className="w-full text-sm"
+                                autoFocus
+                            />
+                        </div>
+
+                        {/* Form Description */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <label htmlFor="duplicate-form-description" className="text-xs font-semibold text-gray-700">
+                                    Form Description
+                                </label>
+                                <span className="text-[11px] text-gray-400">
+                                    {duplicateDescription.length} characters
+                                </span>
+                            </div>
+                            <textarea
+                                id="duplicate-form-description"
+                                value={duplicateDescription}
+                                onChange={(e) => setDuplicateDescription(e.target.value)}
+                                placeholder="Describe the accreditation scope, eligible media representatives, and key instructions..."
+                                rows={3}
+                                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y leading-relaxed"
+                            />
+                        </div>
+
+                        {/* Expiration Date / Deadline */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <label htmlFor="duplicate-form-deadline" className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                                    <Clock className="h-3.5 w-3.5 text-gray-500" />
+                                    Expiration Date & Time (Deadline)
+                                </label>
+                                {duplicateDeadline && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setDuplicateDeadline('')}
+                                        className="text-[11px] text-gray-400 hover:text-red-600 underline"
+                                    >
+                                        Clear deadline
+                                    </button>
+                                )}
+                            </div>
+                            <Input
+                                id="duplicate-form-deadline"
+                                type="datetime-local"
+                                value={duplicateDeadline}
+                                onChange={(e) => setDuplicateDeadline(e.target.value)}
+                                className="w-full text-sm font-sans"
+                            />
+                            <p className="text-[11px] text-gray-500">
+                                Optional deadline after which applicants will no longer be able to submit this form.
+                            </p>
+                        </div>
+
+                        <div className="rounded-lg bg-blue-50/70 border border-blue-100 p-3 text-xs text-blue-900 space-y-1">
+                            <div className="font-semibold flex items-center gap-1.5 text-blue-800">
+                                <FileText className="h-3.5 w-3.5" /> What gets duplicated?
+                            </div>
+                            <p className="text-blue-700 leading-relaxed">
+                                The new form will be created as a <strong>Draft</strong> with its own unique form ID. All {duplicateTarget?.allowMultiMember ? 'categories, fields, and multi-member crew configuration' : 'categories and fields'} from the original form will be cloned.
+                            </p>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsDuplicateOpen(false)}
+                            disabled={isDuplicating}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={confirmDuplicate}
+                            disabled={isDuplicating || !duplicateName.trim()}
+                            className="bg-black hover:bg-gray-800 text-white gap-2"
+                        >
+                            {isDuplicating ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" /> Duplicating Form...
+                                </>
+                            ) : (
+                                <>
+                                    <Copy className="h-4 w-4" /> Duplicate Form
+                                </>
+                            )}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
