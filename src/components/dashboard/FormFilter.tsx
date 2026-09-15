@@ -28,18 +28,25 @@ export const FormFilter: React.FC<FormFilterProps> = ({ value, onChange, classNa
     return <div className="h-10 w-48 animate-pulse bg-muted rounded-md" />;
   }
 
+  const activeCount = forms?.filter((f) => f.status === 'PUBLISHED').length || 0;
+
   return (
     <div className={className}>
       <Select value={value || 'default'} onValueChange={handleValueChange}>
         <SelectTrigger className="w-[280px] bg-background">
-          <SelectValue placeholder="Select Form Context" />
+          <SelectValue placeholder="All Active Forms (Default)" />
         </SelectTrigger>
         <SelectContent>
           {!hideDefault && (
             <SelectItem value="default" className="cursor-pointer">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
-                <span className="font-medium">Active (Published)</span>
+              <div className="flex items-center justify-between w-full gap-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <span className="font-medium">All Active Forms</span>
+                </div>
+                <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-emerald-200 text-emerald-700 bg-emerald-50 font-semibold">
+                  {activeCount} Active
+                </Badge>
               </div>
             </SelectItem>
           )}

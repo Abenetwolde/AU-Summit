@@ -937,12 +937,27 @@ export interface SuperAdminStakeholder {
     value: number;
 }
 
+export interface FormWorkflowStepStats {
+    APPROVED: number;
+    REJECTED: number;
+    PENDING: number;
+    TOTAL?: number;
+    role?: string;
+    key?: string;
+    color?: string;
+}
+
+export interface FormWorkflowStatus {
+    formId: number;
+    formName: string;
+    formDescription?: string;
+    totalApplications: number;
+    steps: Record<string, FormWorkflowStepStats>;
+}
+
 export interface SuperAdminStakeholderStatus {
-    [stakeholderName: string]: {
-        APPROVED: number;
-        REJECTED: number;
-        PENDING: number;
-    };
+    forms?: FormWorkflowStatus[];
+    [stakeholderName: string]: any;
 }
 
 export interface OfficerKPI {
@@ -1085,6 +1100,14 @@ export interface AdminAnalyticsData {
             rejected: number;
         }[];
     };
+    formBreakdown?: {
+        formId: number;
+        formName: string;
+        total: number;
+        approved: number;
+        pending: number;
+        rejected: number;
+    }[];
 }
 
 export interface AdminAnalyticsResponse {
@@ -2276,15 +2299,18 @@ export const api = createApi({
             }),
             transformResponse: (response: SuperAdminPerformanceResponse) => response.data,
         }),
-        getAdminAnalytics: builder.query<AdminAnalyticsData, void>({
-            query: () => '/admin/analytics',
+        getAdminAnalytics: builder.query<AdminAnalyticsData, { formId?: number } | void>({
+            query: (params) => ({
+                url: '/admin/analytics',
+                params: params || {}
+            }),
             transformResponse: (response: AdminAnalyticsResponse) => response.data,
         }),
-        getAdminEntryExitStats: builder.query<EntryExitStats, { timeframe?: string }>({
+        getAdminEntryExitStats: builder.query<EntryExitStats, { timeframe?: string; formId?: number } | void>({
             query: (params) => ({
                 url: '/admin/entry-exit-stats',
                 method: 'GET',
-                params
+                params: params || {}
             }),
             transformResponse: (response: EntryExitStatsResponse) => response.data,
         }),

@@ -13,7 +13,7 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import en from 'react-phone-number-input/locale/en';
 import {
-  useGetDashboardFormsQuery,
+  useGetFormsQuery,
   useGetDashboardDataQuery,
   useGetUsersQuery,
   useGetOrganizationsQuery,
@@ -113,6 +113,11 @@ export default function SuperAdminDashboard() {
     // For now, let's stick to the SuperAdmin metrics using formId
   });
 
+  // Active Forms List for Event Scope Indicator
+  const { data: forms = [] } = useGetFormsQuery();
+  const activeForms = forms?.filter(f => f?.status === 'PUBLISHED') || [];
+  const selectedForm = forms?.find(f => f?.form_id?.toString() === selectedFormId);
+
   // New Super Admin Data
   const { data: overview, isLoading: isOverviewLoading } = useGetSuperAdminOverviewQuery({ 
     formId: selectedFormId ? Number(selectedFormId) : undefined 
@@ -145,6 +150,168 @@ export default function SuperAdminDashboard() {
   const [selectedStakeholder, setSelectedStakeholder] = useState<string>("");
   const [appTrendRange, setAppTrendRange] = useState<'thisMonth' | 'lastMonth'>('thisMonth');
   const [isExportingPDF, setIsExportingPDF] = useState(false);
+
+  // Stakeholder aggregation states (Grouping review steps by common key across all forms)
+  const [stakeholderWorkflowType, setStakeholderWorkflowType] = useState<'ENTRY' | 'EXIT'>('ENTRY');
+  const [stakeholderMetricType, setStakeholderMetricType] = useState<'pending' | 'total' | 'approved'>('pending');
+  const [selectedStakeholderDetail, setSelectedStakeholderDetail] = useState<string | null>(null);
+
+  // Helper to normalize stakeholder keys across multiple forms
+  const normalizeStakeholderStep = (key?: string, role?: string, name?: string) => {
+    const k = (key || '').toLowerCase().trim();
+    const r = (role || '').toLowerCase().trim();
+    const n = (name || '').toLowerCase().trim();
+
+    if (k.includes('niss') || r.includes('niss') || n.includes('niss')) {
+      return { id: 'niss', label: 'NISS (Intelligence & Security)', color: '#6366f1' };
+    }
+    if (k.includes('immigrat') || r.includes('immigrat') || n.includes('immigrat')) {
+      return { id: 'immigration', label: 'Immigration Services', color: '#3b82f6' };
+    }
+    if (k.includes('custom') || r.includes('custom') || n.includes('custom')) {
+      return { id: 'customs', label: 'Customs Commission', color: '#f97316' };
+    }
+    if (k.includes('secur') || r.includes('secur') || n.includes('secur') || k.includes('police') || n.includes('police')) {
+      return { id: 'security', label: 'Federal Police & Security', color: '#10b981' };
+    }
+    if (k.includes('media') || r.includes('media') || n.includes('media') || k.includes('press') || n.includes('press')) {
+      return { id: 'media', label: 'Media Authority', color: '#8b5cf6' };
+    }
+    if (k.includes('drone') || r.includes('drone') || n.includes('drone') || k.includes('aviation') || n.includes('aviation')) {
+      return { id: 'drone', label: 'Civil Aviation (Drone Clearance)', color: '#06b6d4' };
+    }
+    if (k.includes('equip') || r.includes('equip') || n.includes('equip')) {
+      return { id: 'equipment', label: 'Equipment Verification', color: '#ec4899' };
+    }
+    if (k.includes('mofa') || r.includes('mofa') || n.includes('mofa') || k.includes('embassy') || n.includes('embassy')) {
+      return { id: 'mofa', label: 'Ministry of Foreign Affairs (MOFA)', color: '#14b8a6' };
+    }
+    if (k.includes('protocol') || r.includes('protocol') || n.includes('protocol')) {
+      return { id: 'protocol', label: 'State Protocol', color: '#eab308' };
+    }
+
+    const rawId = (k || r || n || 'other').replace(/[^a-z0-9]/gi, '_');
+    const rawLabel = role || name || key || 'Review Step';
+    return { id: rawId, label: rawLabel, color: '#64748b' };
+  };
+
+  // Aggregated stakeholder workload across all active forms
+  const aggregatedStakeholderStats = React.useMemo(() => {
+    const targetStatus = stakeholderWorkflowType === 'ENTRY' ? entryStakeholderStatus : exitStakeholderStatus;
+    if (!targetStatus) return [];
+
+    const map: Record<string, {
+      id: string;
+      label: string;
+      color: string;
+      pending: number;
+      approved: number;
+      rejected: number;
+      total: number;
+      formsCount: number;
+      formContributions: {
+        formId: number;
+        formName: string;
+        pending: number;
+        approved: number;
+        rejected: number;
+        total: number;
+      }[];
+    }> = {};
+
+    if (targetStatus.forms && Array.isArray(targetStatus.forms) && targetStatus.forms.length > 0) {
+      targetStatus.forms.forEach((formItem: any) => {
+        Object.entries(formItem.steps || {}).forEach(([stepName, stepData]: [string, any]) => {
+          const { id, label, color } = normalizeStakeholderStep(stepData.key, stepData.role, stepName);
+          if (!map[id]) {
+            map[id] = {
+              id,
+              label,
+              color: stepData.color || color,
+              pending: 0,
+              approved: 0,
+              rejected: 0,
+              total: 0,
+              formsCount: 0,
+              formContributions: []
+            };
+          }
+
+          const pending = Number(stepData.PENDING || 0);
+          const approved = Number(stepData.APPROVED || 0);
+          const rejected = Number(stepData.REJECTED || 0);
+          const total = Number(stepData.TOTAL || (pending + approved + rejected) || 0);
+
+          map[id].pending += pending;
+          map[id].approved += approved;
+          map[id].rejected += rejected;
+          map[id].total += total;
+
+          map[id].formContributions.push({
+            formId: formItem.formId,
+            formName: formItem.formName,
+            pending,
+            approved,
+            rejected,
+            total
+          });
+        });
+      });
+
+      Object.values(map).forEach(item => {
+        item.formsCount = new Set(item.formContributions.map(c => c.formId)).size;
+      });
+    } else {
+      // Legacy flat fallback
+      Object.entries(targetStatus).forEach(([stepName, stats]: [string, any]) => {
+        if (stepName === 'forms' || typeof stats !== 'object' || stats === null) return;
+        const { id, label, color } = normalizeStakeholderStep(stats.key, stats.role, stepName);
+        if (!map[id]) {
+          map[id] = {
+            id,
+            label,
+            color: stats.color || color,
+            pending: 0,
+            approved: 0,
+            rejected: 0,
+            total: 0,
+            formsCount: 1,
+            formContributions: []
+          };
+        }
+        const pending = Number(stats.PENDING || 0);
+        const approved = Number(stats.APPROVED || 0);
+        const rejected = Number(stats.REJECTED || 0);
+        const total = Number(stats.TOTAL || (pending + approved + rejected) || 0);
+
+        map[id].pending += pending;
+        map[id].approved += approved;
+        map[id].rejected += rejected;
+        map[id].total += total;
+      });
+    }
+
+    return Object.values(map).sort((a, b) => b[stakeholderMetricType] - a[stakeholderMetricType]);
+  }, [entryStakeholderStatus, exitStakeholderStatus, stakeholderWorkflowType, stakeholderMetricType]);
+
+  const stakeholderPieData = React.useMemo(() => {
+    return aggregatedStakeholderStats.map(item => ({
+      name: item.label,
+      value: item[stakeholderMetricType],
+      color: item.color,
+      id: item.id,
+      pending: item.pending,
+      approved: item.approved,
+      rejected: item.rejected,
+      total: item.total,
+      formsCount: item.formsCount,
+      formContributions: item.formContributions
+    })).filter(i => i.value > 0);
+  }, [aggregatedStakeholderStats, stakeholderMetricType]);
+
+  const totalStakeholderMetricSum = React.useMemo(() => {
+    return stakeholderPieData.reduce((acc, curr) => acc + curr.value, 0);
+  }, [stakeholderPieData]);
 
   useEffect(() => {
     if (performanceData.length > 0 && !selectedStakeholder) {
@@ -370,33 +537,59 @@ export default function SuperAdminDashboard() {
       <main className="flex-1 min-w-0 overflow-x-hidden">
         <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5 max-w-[1600px] mx-auto animate-fade-in">
 
-          {/* Export + Form Selector */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 mb-4">
-            <FormFilter 
-              value={selectedFormId} 
-              onChange={setSelectedFormId} 
-            />
-            <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-2 flex-1 sm:flex-initial justify-center">
-              <DownloadIcon className="h-4 w-4" /> <span className="hidden sm:inline">Export</span> CSV
-            </Button>
-            <Button
-              variant="gradient"
-              size="sm"
-              onClick={handleExportPDF}
-              disabled={isExportingPDF}
-              className="gap-2 text-white flex-1 sm:flex-initial sm:min-w-[120px] justify-center"
-            >
-              {isExportingPDF ? (
-                <>
-                  <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <FileTextIcon className="h-4 w-4" /> Export PDF
-                </>
-              )}
-            </Button>
+          {/* Scope Indicator + Filter + Export Controls */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4 bg-white/70 backdrop-blur-md p-3.5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Analytics Scope:</span>
+                {selectedForm ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-sm">
+                    <FileTextIcon className="h-3.5 w-3.5 text-blue-600" />
+                    <span>{selectedForm.name}</span>
+                    <span className="text-[11px] text-blue-500 font-normal">({activeForms.length} active forms available)</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-sm">
+                    <span>All Active Forms Combined</span>
+                    <span className="px-2 py-0.5 text-[10px] bg-emerald-200/70 text-emerald-800 rounded-full font-extrabold">
+                      {activeForms.length} Active Events
+                    </span>
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
+              <FormFilter 
+                value={selectedFormId} 
+                onChange={setSelectedFormId} 
+              />
+              <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-2 justify-center">
+                <DownloadIcon className="h-4 w-4" /> <span className="hidden sm:inline">Export</span> CSV
+              </Button>
+              <Button
+                variant="gradient"
+                size="sm"
+                onClick={handleExportPDF}
+                disabled={isExportingPDF}
+                className="gap-2 text-white min-w-[120px] justify-center"
+              >
+                {isExportingPDF ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <FileTextIcon className="h-4 w-4" /> Export PDF
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
 
           {/* 1. Key Metrics Cards */}
@@ -656,85 +849,222 @@ export default function SuperAdminDashboard() {
           {/* New Country Distribution Widget */}
           <CountryDistributionWidget />
 
-          {/* Stakeholder Status Breakdown (Entry) */}
-          <Card id="chart-stakeholder-breakdown" className="border-0 shadow-sm animate-slide-up" style={{ animationDelay: '0.2s' }}>
-            <CardHeader className="pb-3 border-b border-slate-50">
-              <CardTitle>Stakeholder Status Breakdown (Entry Workflow)</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-6">
-              <div className="h-[500px] sm:h-[600px] md:h-[700px] lg:h-[800px] overflow-x-auto">
-                <ResponsiveContainer width="100%" height="100%" minWidth={400}>
-                  <BarChart
-                    layout="vertical"
-                    data={Object.entries(entryStakeholderStatus || {}).map(([name, stats]: any) => ({ name, ...stats }))}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }} />
-                    <YAxis
-                      dataKey="name"
-                      type="category"
-                      axisLine={false}
-                      tickLine={false}
-                      width={150}
-                      tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }}
-                      interval={0}
-                    />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: '12px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}
-                      cursor={{ fill: '#f8fafc' }}
-                    />
-                    <Legend iconType="circle" />
-                    <Bar dataKey="APPROVED" name="Approved" stackId="a" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20} />
-                    <Bar dataKey="PENDING" name="Pending" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={20} />
-                    <Bar dataKey="REJECTED" name="Rejected" stackId="a" fill="#ef4444" radius={[4, 0, 0, 4]} barSize={20} />
-                  </BarChart>
-                </ResponsiveContainer>
+          {/* Stakeholder Workload Aggregation (Pie Chart by Review Step Key) */}
+          <Card id="chart-stakeholder-breakdown" className="border-0 shadow-sm animate-slide-up bg-white rounded-2xl overflow-hidden" style={{ animationDelay: '0.2s' }}>
+            <CardHeader className="pb-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <CardTitle className="text-lg font-bold text-slate-800">
+                    Stakeholder Status Breakdown (Summation by Review Step)
+                  </CardTitle>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    Consolidated Across Active Events
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Aggregates workflow review steps with similar keys (e.g. NISS, Immigration, Customs) across all active forms
+                </p>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Stakeholder Status Breakdown (Exit) */}
-          <Card id="chart-stakeholder-breakdown-exit" className="border-0 shadow-sm animate-slide-up mt-6" style={{ animationDelay: '0.25s' }}>
-            <CardHeader className="pb-3 border-b border-slate-50">
-              <CardTitle>Stakeholder Status Breakdown (Exit Workflow)</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-6">
-              <div className="h-[500px] sm:h-[600px] md:h-[700px] lg:h-[800px] overflow-x-auto">
-                <ResponsiveContainer width="100%" height="100%" minWidth={400}>
-                  <BarChart
-                    layout="vertical"
-                    data={Object.entries(exitStakeholderStatus || {}).map(([name, stats]: any) => ({ name, ...stats }))}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              {/* Controls: Workflow Phase Switcher + Metric Switcher */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Workflow Phase Toggle: Entry vs Exit */}
+                <div className="inline-flex rounded-xl p-1 bg-slate-100 border border-slate-200/60 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setStakeholderWorkflowType('ENTRY')}
+                    className={cn(
+                      "px-3 py-1 rounded-lg transition-all",
+                      stakeholderWorkflowType === 'ENTRY' 
+                        ? "bg-white text-blue-700 shadow-sm font-bold" 
+                        : "text-slate-600 hover:text-slate-900"
+                    )}
                   >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }} />
-                    <YAxis
-                      dataKey="name"
-                      type="category"
-                      axisLine={false}
-                      tickLine={false}
-                      width={150}
-                      tick={{ fontSize: 11, fontWeight: 600, fill: '#64748b' }}
-                      interval={0}
-                    />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: '12px', border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}
-                      cursor={{ fill: '#f8fafc' }}
-                    />
-                    <Legend iconType="circle" />
-                    <Bar dataKey="APPROVED" name="Approved" stackId="a" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20}>
-                      <LabelList dataKey="APPROVED" position="right" style={{ fill: '#334155', fontSize: '12px', fontWeight: 'bold' }} />
-                    </Bar>
-                    <Bar dataKey="PENDING" name="Pending" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={20}>
-                      <LabelList dataKey="PENDING" position="right" style={{ fill: '#334155', fontSize: '12px', fontWeight: 'bold' }} />
-                    </Bar>
-                    <Bar dataKey="REJECTED" name="Rejected" stackId="a" fill="#ef4444" radius={[4, 0, 0, 4]} barSize={20}>
-                      <LabelList dataKey="REJECTED" position="right" style={{ fill: '#334155', fontSize: '12px', fontWeight: 'bold' }} />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                    Entry Workflow
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStakeholderWorkflowType('EXIT')}
+                    className={cn(
+                      "px-3 py-1 rounded-lg transition-all",
+                      stakeholderWorkflowType === 'EXIT' 
+                        ? "bg-white text-orange-700 shadow-sm font-bold" 
+                        : "text-slate-600 hover:text-slate-900"
+                    )}
+                  >
+                    Exit Workflow
+                  </button>
+                </div>
+
+                {/* Metric Toggle: Pending vs Total vs Approved */}
+                <div className="inline-flex rounded-xl p-1 bg-slate-100 border border-slate-200/60 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setStakeholderMetricType('pending')}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg transition-all",
+                      stakeholderMetricType === 'pending'
+                        ? "bg-amber-500 text-white shadow-sm font-bold"
+                        : "text-slate-600 hover:text-slate-900"
+                    )}
+                  >
+                    Pending
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStakeholderMetricType('total')}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg transition-all",
+                      stakeholderMetricType === 'total'
+                        ? "bg-slate-900 text-white shadow-sm font-bold"
+                        : "text-slate-600 hover:text-slate-900"
+                    )}
+                  >
+                    Total
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStakeholderMetricType('approved')}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg transition-all",
+                      stakeholderMetricType === 'approved'
+                        ? "bg-emerald-600 text-white shadow-sm font-bold"
+                        : "text-slate-600 hover:text-slate-900"
+                    )}
+                  >
+                    Approved
+                  </button>
+                </div>
               </div>
+            </CardHeader>
+
+            <CardContent className="p-6">
+              {stakeholderPieData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                  <CheckCircle className="h-10 w-10 text-emerald-500 mb-2 opacity-80" />
+                  <p className="font-semibold text-slate-700">No {stakeholderMetricType} applications</p>
+                  <p className="text-xs text-slate-400 mt-1">There are currently no {stakeholderMetricType} applications for this workflow phase.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                  {/* Left: Donut Pie Chart */}
+                  <div className="lg:col-span-6 flex flex-col items-center justify-center">
+                    <div className="h-[300px] sm:h-[340px] w-full relative">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={stakeholderPieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={75}
+                            outerRadius={120}
+                            paddingAngle={3}
+                            dataKey="value"
+                            stroke="none"
+                          >
+                            {stakeholderPieData.map((entry, idx) => (
+                              <Cell key={`cell-${idx}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                              borderRadius: '12px',
+                              border: '1px solid rgba(226, 232, 240, 0.8)',
+                              boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                              fontSize: '12px'
+                            }}
+                            formatter={(val: any, name: any, item: any) => {
+                              const numVal = Number(val || 0);
+                              const percent = totalStakeholderMetricSum > 0 ? Math.round((numVal / totalStakeholderMetricSum) * 100) : 0;
+                              return [`${numVal} applications (${percent}%)`, item.payload.name];
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      {/* Center Summary Counter */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span className="text-3xl font-black text-slate-900">{totalStakeholderMetricSum}</span>
+                        <span className="text-[11px] uppercase font-bold text-slate-400 tracking-wider">
+                          {stakeholderMetricType === 'pending' ? 'Pending Total' : stakeholderMetricType === 'approved' ? 'Approved Total' : 'Total Workload'}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-400 font-medium mt-2 text-center">
+                      {stakeholderPieData.length} unique reviewer stakeholder {stakeholderPieData.length === 1 ? 'group' : 'groups'} across active forms
+                    </p>
+                  </div>
+
+                  {/* Right: Stakeholder Breakdown List with Accordion */}
+                  <div className="lg:col-span-6 space-y-3">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider pb-1 border-b border-slate-100">
+                      <span>Stakeholder / Step Key</span>
+                      <span>{stakeholderMetricType === 'pending' ? 'Pending Count' : stakeholderMetricType === 'approved' ? 'Approved Count' : 'Workload'}</span>
+                    </div>
+
+                    <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                      {stakeholderPieData.map((item) => {
+                        const percentage = totalStakeholderMetricSum > 0 ? Math.round((item.value / totalStakeholderMetricSum) * 100) : 0;
+                        const isExpanded = selectedStakeholderDetail === item.id;
+
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => setSelectedStakeholderDetail(isExpanded ? null : item.id)}
+                            className={cn(
+                              "p-3 rounded-xl border transition-all cursor-pointer",
+                              isExpanded 
+                                ? "bg-slate-50 border-slate-300 shadow-sm" 
+                                : "bg-white hover:bg-slate-50/70 border-slate-100"
+                            )}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                                <div className="min-w-0">
+                                  <p className="text-sm font-bold text-slate-800 truncate">{item.name}</p>
+                                  <p className="text-[11px] text-slate-400 font-medium">
+                                    Active in {item.formsCount} {item.formsCount === 1 ? 'form' : 'forms'} • {percentage}% of {stakeholderMetricType}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-3 shrink-0">
+                                <div className="text-right">
+                                  <span className="text-base font-black text-slate-900">{item.value}</span>
+                                  <span className="text-xs text-slate-400 ml-1">apps</span>
+                                </div>
+                                <ChevronDown className={cn("h-4 w-4 text-slate-400 transition-transform", isExpanded && "rotate-180")} />
+                              </div>
+                            </div>
+
+                            {/* Expanded: Per-form breakdown contribution */}
+                            {isExpanded && item.formContributions && item.formContributions.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-slate-200/80 space-y-2 text-xs">
+                                <p className="font-semibold text-slate-500 text-[11px] uppercase tracking-wider">
+                                  Applications breakdown across forms:
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {item.formContributions.map((contrib, cIdx) => (
+                                    <div key={cIdx} className="bg-white p-2 rounded-lg border border-slate-200/70 flex items-center justify-between">
+                                      <span className="font-medium text-slate-700 truncate mr-2" title={contrib.formName}>
+                                        {contrib.formName}
+                                      </span>
+                                      <span className="font-bold text-slate-900 shrink-0">
+                                        {contrib[stakeholderMetricType]} {stakeholderMetricType}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -1016,106 +1346,352 @@ export default function SuperAdminDashboard() {
 
           </div>
 
-          {/* Stakeholder Status Breakdown (Entry) */}
-          <div className="animate-slide-up" style={{ animationDelay: '0.55s' }}>
-            <h2 className="text-2xl font-bold text-slate-800 mb-6">Stakeholder Status Breakdown (Entry Workflow)</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {entryStakeholderStatus && Object.entries(entryStakeholderStatus).map(([name, status], i) => {
-                const data = [
-                  { name: 'Approved', value: status.APPROVED, color: '#10b981' },
-                  { name: 'Rejected', value: status.REJECTED, color: '#ef4444' },
-                  { name: 'Pending', value: status.PENDING, color: '#f59e0b' },
-                ];
-                const total = status.APPROVED + status.REJECTED + status.PENDING;
+          {/* Workflow Step Status by Active Event / Form Section */}
+          <div className="animate-slide-up space-y-8" style={{ animationDelay: '0.55s' }}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-4">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Workflow Step Status by Active Form</h2>
+                  {entryStakeholderStatus?.forms && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
+                      {entryStakeholderStatus.forms.length} {entryStakeholderStatus.forms.length === 1 ? 'Active Form' : 'Active Forms'}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-slate-500 mt-1">
+                  Per-event workflow review pipeline status and approval metrics across active accreditation forms
+                </p>
+              </div>
+            </div>
+
+            {/* If structured per-form status exists, render dedicated cards per active form */}
+            {entryStakeholderStatus?.forms && entryStakeholderStatus.forms.length > 0 ? (
+              entryStakeholderStatus.forms.map((formItem) => {
+                const exitFormItem = exitStakeholderStatus?.forms?.find(f => f.formId === formItem.formId);
+                const entrySteps = Object.entries(formItem.steps || {});
+                const exitSteps = Object.entries(exitFormItem?.steps || {});
 
                 return (
-                  <Card key={i} className="border-0 shadow-sm bg-white overflow-hidden group hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-2 border-b border-slate-50 flex flex-row items-center justify-between">
-                      <CardTitle className="text-base border-l-4 pl-3" style={{ borderColor: '#3b82f6' }}>{name}</CardTitle>
-                      <span className="text-xs font-bold text-slate-400">Total: {total}</span>
-                    </CardHeader>
-                    <CardContent className="p-5 flex items-center gap-5">
-                      <div className="flex-1 h-[160px] relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie data={data} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={3} dataKey="value" stroke="none">
-                              {data.map((entry, idx) => <Cell key={`cell-${idx}`} fill={entry.color} />)}
-                            </Pie>
-                            <Tooltip contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 3px 10px rgba(0,0,0,0.1)' }} />
-                          </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <span className="text-xl font-bold text-slate-800">
-                            {total > 0 ? Math.round((status.APPROVED / total) * 100) : 0}%
-                          </span>
+                  <Card key={formItem.formId} className="border border-slate-200/80 shadow-md bg-white rounded-2xl overflow-hidden hover:shadow-lg transition-all">
+                    {/* Form Header Banner */}
+                    <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 p-5 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex items-start gap-3.5">
+                        <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-sm mt-0.5">
+                          <FileTextIcon className="h-6 w-6 text-blue-300" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <h3 className="text-lg font-bold text-white tracking-wide">{formItem.formName}</h3>
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              Active Event
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md text-[11px] font-mono bg-white/10 text-slate-300">
+                              ID: #{formItem.formId}
+                            </span>
+                          </div>
+                          {formItem.formDescription && (
+                            <p className="text-xs text-slate-300 mt-1 line-clamp-1 max-w-2xl">{formItem.formDescription}</p>
+                          )}
                         </div>
                       </div>
-                      <div className="space-y-2.5 min-w-[110px]">
-                        {data.map((item, idx) => (
-                          <div key={idx} className="flex items-center gap-2.5 text-xs">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                            <span className="text-slate-600 font-medium">{item.name}</span>
-                            <span className="font-bold text-slate-900 ml-auto">{item.value}</span>
+
+                      <div className="flex items-center gap-3">
+                        <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 flex items-center gap-3">
+                          <Users className="h-5 w-5 text-indigo-300" />
+                          <div>
+                            <p className="text-[10px] uppercase font-bold text-slate-300 tracking-wider">Total Form Applications</p>
+                            <p className="text-xl font-black text-white">{formItem.totalApplications}</p>
                           </div>
-                        ))}
+                        </div>
                       </div>
+                    </div>
+
+                    <CardContent className="p-6 space-y-6">
+                      {/* Entry Workflow Steps */}
+                      <div>
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                            <Shield className="h-4 w-4" />
+                          </div>
+                          <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                            Entry Workflow Steps ({entrySteps.length})
+                          </h4>
+                        </div>
+
+                        {entrySteps.length === 0 ? (
+                          <p className="text-xs text-slate-400 italic py-3">No entry workflow steps configured for this form.</p>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {entrySteps.map(([stepName, stepData], i) => {
+                              const data = [
+                                { name: 'Approved', value: stepData.APPROVED, color: '#10b981' },
+                                { name: 'Rejected', value: stepData.REJECTED, color: '#ef4444' },
+                                { name: 'Pending', value: stepData.PENDING, color: '#f59e0b' },
+                              ];
+                              const total = stepData.TOTAL || (stepData.APPROVED + stepData.REJECTED + stepData.PENDING);
+                              const stepColor = stepData.color || '#3b82f6';
+
+                              return (
+                                <div key={i} className="border border-slate-100 rounded-xl bg-slate-50/50 p-4 hover:bg-slate-50 transition-colors">
+                                  <div className="flex items-center justify-between pb-3 border-b border-slate-200/60 mb-3">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stepColor }} />
+                                      <span className="text-sm font-bold text-slate-800 line-clamp-1">{stepName}</span>
+                                    </div>
+                                    {stepData.role && (
+                                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-700">
+                                        {stepData.role}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-[120px] h-[120px] relative shrink-0">
+                                      <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                          <Pie data={data} cx="50%" cy="50%" innerRadius={35} outerRadius={52} paddingAngle={3} dataKey="value" stroke="none">
+                                            {data.map((entry, idx) => <Cell key={`cell-${idx}`} fill={entry.color} />)}
+                                          </Pie>
+                                          <Tooltip contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 3px 10px rgba(0,0,0,0.1)', fontSize: '12px' }} />
+                                        </PieChart>
+                                      </ResponsiveContainer>
+                                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                        <span className="text-base font-bold text-slate-800">
+                                          {total > 0 ? Math.round((stepData.APPROVED / total) * 100) : 0}%
+                                        </span>
+                                        <span className="text-[9px] uppercase font-bold text-slate-400">Approved</span>
+                                      </div>
+                                    </div>
+
+                                    <div className="space-y-1.5 flex-1 min-w-0">
+                                      <div className="flex items-center justify-between text-xs py-0.5 border-b border-slate-100">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                          <span className="text-slate-600 font-medium">Approved</span>
+                                        </div>
+                                        <span className="font-bold text-emerald-700">{stepData.APPROVED}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between text-xs py-0.5 border-b border-slate-100">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                          <span className="text-slate-600 font-medium">Pending</span>
+                                        </div>
+                                        <span className="font-bold text-amber-700">{stepData.PENDING}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between text-xs py-0.5 border-b border-slate-100">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="w-2 h-2 rounded-full bg-rose-500" />
+                                          <span className="text-slate-600 font-medium">Rejected</span>
+                                        </div>
+                                        <span className="font-bold text-rose-700">{stepData.REJECTED}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between text-xs pt-1">
+                                        <span className="text-slate-400 font-semibold">Total</span>
+                                        <span className="font-extrabold text-slate-800">{total}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Exit Workflow Steps (if any exist for this form) */}
+                      {exitSteps.length > 0 && (
+                        <div className="pt-4 border-t border-slate-100">
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="p-1.5 rounded-lg bg-orange-50 text-orange-600">
+                              <LogOut className="h-4 w-4" />
+                            </div>
+                            <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                              Exit Workflow Steps ({exitSteps.length})
+                            </h4>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {exitSteps.map(([stepName, stepData], i) => {
+                              const data = [
+                                { name: 'Approved', value: stepData.APPROVED, color: '#10b981' },
+                                { name: 'Rejected', value: stepData.REJECTED, color: '#ef4444' },
+                                { name: 'Pending', value: stepData.PENDING, color: '#f59e0b' },
+                              ];
+                              const total = stepData.TOTAL || (stepData.APPROVED + stepData.REJECTED + stepData.PENDING);
+                              const stepColor = stepData.color || '#f97316';
+
+                              return (
+                                <div key={i} className="border border-slate-100 rounded-xl bg-orange-50/20 p-4 hover:bg-orange-50/40 transition-colors">
+                                  <div className="flex items-center justify-between pb-3 border-b border-slate-200/60 mb-3">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stepColor }} />
+                                      <span className="text-sm font-bold text-slate-800 line-clamp-1">{stepName}</span>
+                                    </div>
+                                    {stepData.role && (
+                                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-700">
+                                        {stepData.role}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-[120px] h-[120px] relative shrink-0">
+                                      <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                          <Pie data={data} cx="50%" cy="50%" innerRadius={35} outerRadius={52} paddingAngle={3} dataKey="value" stroke="none">
+                                            {data.map((entry, idx) => <Cell key={`cell-${idx}`} fill={entry.color} />)}
+                                          </Pie>
+                                          <Tooltip contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 3px 10px rgba(0,0,0,0.1)', fontSize: '12px' }} />
+                                        </PieChart>
+                                      </ResponsiveContainer>
+                                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                        <span className="text-base font-bold text-slate-800">
+                                          {total > 0 ? Math.round((stepData.APPROVED / total) * 100) : 0}%
+                                        </span>
+                                        <span className="text-[9px] uppercase font-bold text-slate-400">Approved</span>
+                                      </div>
+                                    </div>
+
+                                    <div className="space-y-1.5 flex-1 min-w-0">
+                                      <div className="flex items-center justify-between text-xs py-0.5 border-b border-slate-100">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                          <span className="text-slate-600 font-medium">Approved</span>
+                                        </div>
+                                        <span className="font-bold text-emerald-700">{stepData.APPROVED}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between text-xs py-0.5 border-b border-slate-100">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                          <span className="text-slate-600 font-medium">Pending</span>
+                                        </div>
+                                        <span className="font-bold text-amber-700">{stepData.PENDING}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between text-xs py-0.5 border-b border-slate-100">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="w-2 h-2 rounded-full bg-rose-500" />
+                                          <span className="text-slate-600 font-medium">Rejected</span>
+                                        </div>
+                                        <span className="font-bold text-rose-700">{stepData.REJECTED}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between text-xs pt-1">
+                                        <span className="text-slate-400 font-semibold">Total</span>
+                                        <span className="font-extrabold text-slate-800">{total}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 );
-              })}
-            </div>
-          </div>
+              })
+            ) : (
+              /* Graceful fallback to legacy flat cards if per-form data is loading or empty */
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-base font-bold text-slate-700 mb-3">Entry Workflow Steps</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    {entryStakeholderStatus && Object.entries(entryStakeholderStatus).filter(([k]) => k !== 'forms').map(([name, status], i) => {
+                      const data = [
+                        { name: 'Approved', value: status.APPROVED, color: '#10b981' },
+                        { name: 'Rejected', value: status.REJECTED, color: '#ef4444' },
+                        { name: 'Pending', value: status.PENDING, color: '#f59e0b' },
+                      ];
+                      const total = status.APPROVED + status.REJECTED + status.PENDING;
 
-          <div className="my-8 border-t border-slate-200" />
+                      return (
+                        <Card key={i} className="border-0 shadow-sm bg-white overflow-hidden group hover:shadow-md transition-shadow">
+                          <CardHeader className="pb-2 border-b border-slate-50 flex flex-row items-center justify-between">
+                            <CardTitle className="text-base border-l-4 pl-3" style={{ borderColor: '#3b82f6' }}>{name}</CardTitle>
+                            <span className="text-xs font-bold text-slate-400">Total: {total}</span>
+                          </CardHeader>
+                          <CardContent className="p-5 flex items-center gap-5">
+                            <div className="flex-1 h-[160px] relative">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie data={data} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={3} dataKey="value" stroke="none">
+                                    {data.map((entry, idx) => <Cell key={`cell-${idx}`} fill={entry.color} />)}
+                                  </Pie>
+                                  <Tooltip contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 3px 10px rgba(0,0,0,0.1)' }} />
+                                </PieChart>
+                              </ResponsiveContainer>
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <span className="text-xl font-bold text-slate-800">
+                                  {total > 0 ? Math.round((status.APPROVED / total) * 100) : 0}%
+                                </span>
+                              </div>
+                            </div>
+                            <div className="space-y-2.5 min-w-[110px]">
+                              {data.map((item, idx) => (
+                                <div key={idx} className="flex items-center gap-2.5 text-xs">
+                                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                                  <span className="text-slate-600 font-medium">{item.name}</span>
+                                  <span className="font-bold text-slate-900 ml-auto">{item.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
 
-          {/* Stakeholder Status Breakdown (Exit) */}
-          <div className="animate-slide-up" style={{ animationDelay: '0.60s' }}>
-            <h2 className="text-2xl font-bold text-slate-800 mb-6">Stakeholder Status Breakdown (Exit Workflow)</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {exitStakeholderStatus && Object.entries(exitStakeholderStatus).map(([name, status], i) => {
-                const data = [
-                  { name: 'Approved', value: status.APPROVED, color: '#10b981' },
-                  { name: 'Rejected', value: status.REJECTED, color: '#ef4444' },
-                  { name: 'Pending', value: status.PENDING, color: '#f59e0b' },
-                ];
-                const total = status.APPROVED + status.REJECTED + status.PENDING;
+                <div>
+                  <h3 className="text-base font-bold text-slate-700 mb-3">Exit Workflow Steps</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    {exitStakeholderStatus && Object.entries(exitStakeholderStatus).filter(([k]) => k !== 'forms').map(([name, status], i) => {
+                      const data = [
+                        { name: 'Approved', value: status.APPROVED, color: '#10b981' },
+                        { name: 'Rejected', value: status.REJECTED, color: '#ef4444' },
+                        { name: 'Pending', value: status.PENDING, color: '#f59e0b' },
+                      ];
+                      const total = status.APPROVED + status.REJECTED + status.PENDING;
 
-                return (
-                  <Card key={i} className="border-0 shadow-sm bg-white overflow-hidden group hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-2 border-b border-slate-50 flex flex-row items-center justify-between">
-                      <CardTitle className="text-base border-l-4 pl-3" style={{ borderColor: '#f97316' }}>{name}</CardTitle>
-                      <span className="text-xs font-bold text-slate-400">Total: {total}</span>
-                    </CardHeader>
-                    <CardContent className="p-5 flex items-center gap-5">
-                      <div className="flex-1 h-[160px] relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie data={data} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={3} dataKey="value" stroke="none">
-                              {data.map((entry, idx) => <Cell key={`cell-${idx}`} fill={entry.color} />)}
-                            </Pie>
-                            <Tooltip contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 3px 10px rgba(0,0,0,0.1)' }} />
-                          </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <span className="text-xl font-bold text-slate-800">
-                            {total > 0 ? Math.round((status.APPROVED / total) * 100) : 0}%
-                          </span>
-                        </div>
-                      </div>
-                      <div className="space-y-2.5 min-w-[110px]">
-                        {data.map((item, idx) => (
-                          <div key={idx} className="flex items-center gap-2.5 text-xs">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                            <span className="text-slate-600 font-medium">{item.name}</span>
-                            <span className="font-bold text-slate-900 ml-auto">{item.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+                      return (
+                        <Card key={i} className="border-0 shadow-sm bg-white overflow-hidden group hover:shadow-md transition-shadow">
+                          <CardHeader className="pb-2 border-b border-slate-50 flex flex-row items-center justify-between">
+                            <CardTitle className="text-base border-l-4 pl-3" style={{ borderColor: '#f97316' }}>{name}</CardTitle>
+                            <span className="text-xs font-bold text-slate-400">Total: {total}</span>
+                          </CardHeader>
+                          <CardContent className="p-5 flex items-center gap-5">
+                            <div className="flex-1 h-[160px] relative">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie data={data} cx="50%" cy="50%" innerRadius={45} outerRadius={65} paddingAngle={3} dataKey="value" stroke="none">
+                                    {data.map((entry, idx) => <Cell key={`cell-${idx}`} fill={entry.color} />)}
+                                  </Pie>
+                                  <Tooltip contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 3px 10px rgba(0,0,0,0.1)' }} />
+                                </PieChart>
+                              </ResponsiveContainer>
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <span className="text-xl font-bold text-slate-800">
+                                  {total > 0 ? Math.round((status.APPROVED / total) * 100) : 0}%
+                                </span>
+                              </div>
+                            </div>
+                            <div className="space-y-2.5 min-w-[110px]">
+                              {data.map((item, idx) => (
+                                <div key={idx} className="flex items-center gap-2.5 text-xs">
+                                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                                  <span className="text-slate-600 font-medium">{item.name}</span>
+                                  <span className="font-bold text-slate-900 ml-auto">{item.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Recent Applications */}

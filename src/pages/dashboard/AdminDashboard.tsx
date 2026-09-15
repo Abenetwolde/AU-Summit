@@ -8,11 +8,12 @@ import {
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, CartesianGrid, Legend } from 'recharts';
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { useGetAdminAnalyticsQuery, useGetAdminEntryExitStatsQuery, useGetAdminOfficerKPIsQuery } from '@/store/services/api';
+import { useGetAdminAnalyticsQuery, useGetAdminEntryExitStatsQuery, useGetAdminOfficerKPIsQuery, useGetFormsQuery } from '@/store/services/api';
 import { exportDashboardAnalyticsToCSV, exportElementToPDF } from '@/lib/export-utils';
-import { Download, FileText, User as UserIcon } from 'lucide-react';
+import { Download, FileText, User as UserIcon, Globe, Building2 } from 'lucide-react';
 import { OfficerPerformance } from '@/components/dashboard/OfficerPerformance';
 import { useAuth, UserRole } from '@/auth/context';
+import { FormFilter } from '@/components/dashboard/FormFilter';
 
 // --- UTILITY ---
 function cn(...inputs: ClassValue[]) {
@@ -87,9 +88,16 @@ Progress.displayName = "Progress";
 
 export default function AdminDashboard() {
     const { user } = useAuth();
-    const { data: analytics, isLoading: isAnalyticsLoading, isError: isAnalyticsError } = useGetAdminAnalyticsQuery();
-    const { data: entryExitStats, isLoading: isEntryExitLoading, isError: isEntryExitError } = useGetAdminEntryExitStatsQuery({ timeframe: 'month' });
+    const [selectedFormId, setSelectedFormId] = useState<string | undefined>(undefined);
+    const { data: analytics, isLoading: isAnalyticsLoading, isError: isAnalyticsError } = useGetAdminAnalyticsQuery({
+        formId: selectedFormId ? Number(selectedFormId) : undefined
+    });
+    const { data: entryExitStats, isLoading: isEntryExitLoading, isError: isEntryExitError } = useGetAdminEntryExitStatsQuery({
+        timeframe: 'month',
+        formId: selectedFormId ? Number(selectedFormId) : undefined
+    });
     const { data: officerKPIs, isLoading: isOfficerLoading } = useGetAdminOfficerKPIsQuery({ timeframe: 'month' });
+    const { data: forms } = useGetFormsQuery();
     const isLoading = isAnalyticsLoading || isEntryExitLoading;
     const isError = isAnalyticsError || isEntryExitError;
     const [mounted, setMounted] = useState(false);
@@ -128,14 +136,31 @@ export default function AdminDashboard() {
 
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Executive Overview</h1>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Executive Overview</h1>
+                        {!selectedFormId ? (
+                            <Badge variant="neutral" className="bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 font-semibold text-xs py-0.5 px-2.5">
+                                <Globe className="h-3 w-3 text-emerald-600" />
+                                All Active Forms Combined
+                            </Badge>
+                        ) : (
+                            <Badge variant="neutral" className="bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1 font-semibold text-xs py-0.5 px-2.5">
+                                <Building2 className="h-3 w-3 text-blue-600" />
+                                Scoped: {forms?.find(f => f.form_id === Number(selectedFormId))?.name || `Form #${selectedFormId}`}
+                            </Badge>
+                        )}
+                    </div>
                     <p className="text-slate-500 font-medium mt-1">
                         {[UserRole.SUPER_ADMIN, UserRole.PMO, UserRole.ORG_ADMIN].includes(user?.role as any)
-                            ? "Review your assignment status and performance metrics."
-                            : "Review your current assignment status."}
+                            ? "Review your assignment status, active form workloads, and performance metrics."
+                            : "Review your current assignment status across active event forms."}
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
+                    <FormFilter
+                        value={selectedFormId}
+                        onChange={setSelectedFormId}
+                    />
                     <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" className="gap-2" onClick={() => exportDashboardAnalyticsToCSV('Admin Dashboard', { kpis: analytics.kpis, charts: analytics.chartData })}>
                             <Download className="h-4 w-4" />
@@ -228,6 +253,69 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Active Forms Workload Breakdown Section */}
+            {analytics.formBreakdown && analytics.formBreakdown.length > 0 && (
+                <div className="space-y-4 animate-slide-up">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                <Building2 className="h-5 w-5 text-indigo-600" />
+                                Active Forms / Events Workload Breakdown
+                            </h2>
+                            <p className="text-xs text-slate-500 font-medium mt-0.5">
+                                Distribution of your assigned reviews across published event forms
+                            </p>
+                        </div>
+                        <Badge variant="neutral" className="bg-indigo-50 text-indigo-700 font-semibold">
+                            {analytics.formBreakdown.length} Active Form{analytics.formBreakdown.length === 1 ? '' : 's'}
+                        </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {analytics.formBreakdown.map((item) => (
+                            <Card key={item.formId} className="border border-slate-100 shadow-sm bg-white overflow-hidden hover:shadow-md transition-all">
+                                <CardHeader className="pb-3 border-b border-slate-50 flex flex-row items-center justify-between">
+                                    <div className="truncate pr-2">
+                                        <CardTitle className="text-base font-bold text-slate-800 truncate" title={item.formName}>
+                                            {item.formName}
+                                        </CardTitle>
+                                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">Form #{item.formId}</p>
+                                    </div>
+                                    <Badge variant="outline" className="text-[10px] px-2 py-0.5 border-blue-200 text-blue-700 bg-blue-50/50 shrink-0">
+                                        Total: {item.total}
+                                    </Badge>
+                                </CardHeader>
+                                <CardContent className="p-4">
+                                    <div className="grid grid-cols-3 gap-2 text-center">
+                                        <div className="bg-emerald-50/70 border border-emerald-100/50 p-2.5 rounded-xl">
+                                            <p className="text-emerald-700 text-[10px] font-bold uppercase tracking-wider mb-0.5">Approved</p>
+                                            <p className="text-xl font-bold text-slate-800">{item.approved}</p>
+                                            <p className="text-[10px] font-medium text-emerald-600 mt-0.5">
+                                                {item.total > 0 ? Math.round((item.approved / item.total) * 100) : 0}%
+                                            </p>
+                                        </div>
+                                        <div className="bg-amber-50/70 border border-amber-100/50 p-2.5 rounded-xl">
+                                            <p className="text-amber-700 text-[10px] font-bold uppercase tracking-wider mb-0.5">Pending</p>
+                                            <p className="text-xl font-bold text-slate-800">{item.pending}</p>
+                                            <p className="text-[10px] font-medium text-amber-600 mt-0.5">
+                                                {item.total > 0 ? Math.round((item.pending / item.total) * 100) : 0}%
+                                            </p>
+                                        </div>
+                                        <div className="bg-rose-50/70 border border-rose-100/50 p-2.5 rounded-xl">
+                                            <p className="text-rose-700 text-[10px] font-bold uppercase tracking-wider mb-0.5">Rejected</p>
+                                            <p className="text-xl font-bold text-slate-800">{item.rejected}</p>
+                                            <p className="text-[10px] font-medium text-rose-600 mt-0.5">
+                                                {item.total > 0 ? Math.round((item.rejected / item.total) * 100) : 0}%
+                                            </p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* MOFA Specific Sections */}
             {analytics.mofaData && (
