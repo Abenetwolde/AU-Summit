@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, UserPlus, Edit2, Trash2, Shield, Mail } from 'lucide-react';
+import { Plus, Search, UserPlus, Edit2, Trash2, Shield, Mail, KeyRound } from 'lucide-react';
+import { ResetPasswordModal } from '../../components/modals/ResetPasswordModal';
 import {
   useGetOrganizationUsersQuery,
   useCreateOrganizationUserMutation,
@@ -94,6 +95,8 @@ export function OrganizationUsers() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [userForReset, setUserForReset] = useState<User | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   const [selectedOrgId, setSelectedOrgId] = useState<number | undefined>();
@@ -296,6 +299,18 @@ export function OrganizationUsers() {
               </Select>
             </div>
           )}
+          <Button
+            variant="outline"
+            onClick={() => {
+              setUserForReset(null);
+              setShowResetPasswordModal(true);
+            }}
+            className="gap-2 border-amber-200 text-amber-800 hover:bg-amber-50"
+            disabled={isSuperAdmin && !selectedOrgId}
+          >
+            <KeyRound className="w-4 h-4 text-amber-600" />
+            Reset Password
+          </Button>
           <Button
             onClick={() => setShowCreateModal(true)}
             className="gap-2"
@@ -634,6 +649,14 @@ export function OrganizationUsers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Reset Password Modal */}
+      <ResetPasswordModal
+        open={showResetPasswordModal}
+        onOpenChange={setShowResetPasswordModal}
+        user={userForReset}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 }

@@ -87,7 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                             permissions: userData.permissions,
                             organization: userData.organization,
                             workflowStepKey: userData.workflowStepKey,
-                            authorizedWorkflowSteps: userData.authorizedWorkflowSteps
+                            authorizedWorkflowSteps: userData.authorizedWorkflowSteps,
+                            requirePasswordChange: userData.isFirstLogin
                         });
                     }
                 }
