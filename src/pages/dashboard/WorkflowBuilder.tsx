@@ -41,7 +41,8 @@ import {
     GripVertical,
     X,
     GitBranch,
-    Search
+    Search,
+    Copy
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -370,6 +371,209 @@ function WorkflowBuilderContent() {
     const [selectedFormId, setSelectedFormId] = useState<number | null>(null);
     const [selectedAudience, setSelectedAudience] = useState<'LOCAL' | 'INTERNATIONAL'>('INTERNATIONAL');
     const [selectedPhase, setSelectedPhase] = useState<'ENTRY' | 'EXIT'>('ENTRY');
+
+    // Duplicate Workflow Modal State
+    const [isDuplicateWorkflowOpen, setIsDuplicateWorkflowOpen] = useState(false);
+    const [isDuplicatingWorkflow, setIsDuplicatingWorkflow] = useState(false);
+    const [sourceFormIdToCopy, setSourceFormIdToCopy] = useState<string>('');
+    const [duplicateScope, setDuplicateScope] = useState<'CURRENT_VIEW' | 'ALL_STEPS'>('ALL_STEPS');
+    const [selectedStepIdsToCopy, setSelectedStepIdsToCopy] = useState<number[]>([]);
+
+    // Duplicate Single Step Modal State
+    const [isDuplicateSingleStepOpen, setIsDuplicateSingleStepOpen] = useState(false);
+    const [isDuplicatingSingleStep, setIsDuplicatingSingleStep] = useState(false);
+    const [singleStepToDuplicate, setSingleStepToDuplicate] = useState<WorkflowStep | null>(null);
+    const [singleStepNewName, setSingleStepNewName] = useState('');
+    const [singleStepNewKey, setSingleStepNewKey] = useState('');
+    const [singleStepTargetFormId, setSingleStepTargetFormId] = useState<string>('null');
+
+    // Available source steps based on chosen source form & scope
+    const availableStepsToCopy = useMemo(() => {
+        if (!workflowSteps || !sourceFormIdToCopy) return [];
+        const srcId = sourceFormIdToCopy === 'global' ? null : Number(sourceFormIdToCopy);
+        return workflowSteps.filter(s => {
+            if (s.formId !== srcId) return false;
+            if (duplicateScope === 'CURRENT_VIEW') {
+                if (s.targetAudience !== selectedAudience) return false;
+                if (selectedPhase === 'EXIT' ? !s.isExitStep : s.isExitStep) return false;
+            }
+            return true;
+        });
+    }, [workflowSteps, sourceFormIdToCopy, duplicateScope, selectedAudience, selectedPhase]);
+
+    // Keep selectedStepIdsToCopy updated when available steps or modal opens
+    useEffect(() => {
+        if (isDuplicateWorkflowOpen) {
+            setSelectedStepIdsToCopy(availableStepsToCopy.map(s => s.id));
+        }
+    }, [availableStepsToCopy, isDuplicateWorkflowOpen]);
+
+    const handleOpenDuplicateWorkflow = () => {
+        if (!selectedFormId) {
+            toast.error("Please select a target form first using 'Filter by Form'.");
+            return;
+        }
+
+        // Find candidate source forms that have steps and are not the selected form
+        const formsWithSteps = (forms || []).filter(f =>
+            f.form_id !== selectedFormId &&
+            workflowSteps?.some(s => s.formId === f.form_id)
+        );
+        const hasGlobalSteps = workflowSteps?.some(s => s.formId === null);
+
+        if (formsWithSteps.length > 0) {
+            setSourceFormIdToCopy(formsWithSteps[0].form_id.toString());
+        } else if (hasGlobalSteps) {
+            setSourceFormIdToCopy('global');
+        } else {
+            const otherForm = forms?.find(f => f.form_id !== selectedFormId);
+            setSourceFormIdToCopy(otherForm ? otherForm.form_id.toString() : 'global');
+        }
+        setDuplicateScope('ALL_STEPS');
+        setIsDuplicateWorkflowOpen(true);
+    };
+
+    const confirmDuplicateWorkflow = async () => {
+        if (!selectedFormId) {
+            toast.error("No target form selected.");
+            return;
+        }
+        const stepsToClone = availableStepsToCopy.filter(s => selectedStepIdsToCopy.includes(s.id));
+        if (stepsToClone.length === 0) {
+            toast.error("Please select at least one step to copy.");
+            return;
+        }
+
+        setIsDuplicatingWorkflow(true);
+        try {
+            const oldToNewMap: Record<number, number> = {};
+            const createdStepsList: { newId: number; oldDependsOn: number[] }[] = [];
+
+            // Find existing keys in target form to avoid duplicate key collision within same audience & phase
+            const existingTargetSteps = (workflowSteps || []).filter(s => s.formId === selectedFormId);
+
+            for (const srcStep of stepsToClone) {
+                let uniqueKey = srcStep.key;
+                let counter = 1;
+                while (
+                    existingTargetSteps.some(s =>
+                        s.targetAudience === srcStep.targetAudience &&
+                        s.isExitStep === srcStep.isExitStep &&
+                        s.key.toLowerCase() === uniqueKey.toLowerCase()
+                    )
+                ) {
+                    uniqueKey = `${srcStep.key}_copy${counter > 1 ? counter : ''}`;
+                    counter++;
+                }
+
+                const createPayload = {
+                    name: srcStep.name,
+                    key: uniqueKey,
+                    description: srcStep.description || '',
+                    displayOrder: srcStep.displayOrder ?? 0,
+                    requiredRole: srcStep.requiredRole || '',
+                    formId: selectedFormId,
+                    icon: srcStep.icon || '',
+                    color: srcStep.color || '#3b82f6',
+                    dependencyType: srcStep.dependencyType || 'NONE',
+                    dependsOn: [], // re-link in next pass
+                    emailStep: Boolean(srcStep.emailStep),
+                    targetAudience: srcStep.targetAudience || 'INTERNATIONAL',
+                    isExitStep: Boolean(srcStep.isExitStep),
+                    triggersExitStatus: Boolean(srcStep.triggersExitStatus),
+                    emailTemplateId: srcStep.emailTemplateId,
+                    branchCondition: srcStep.branchCondition || null,
+                    isCommenterOnly: Boolean(srcStep.isCommenterOnly)
+                };
+
+                const res: any = await createStep(createPayload).unwrap();
+                const newStepId = res?.data?.id || res?.id;
+                if (newStepId) {
+                    oldToNewMap[srcStep.id] = newStepId;
+                    createdStepsList.push({
+                        newId: newStepId,
+                        oldDependsOn: Array.isArray(srcStep.dependsOn) ? srcStep.dependsOn : []
+                    });
+                }
+            }
+
+            // Re-link dependencies
+            const stepsWithDeps = createdStepsList
+                .filter(cs => cs.oldDependsOn.length > 0)
+                .map(cs => ({
+                    id: cs.newId,
+                    dependsOn: cs.oldDependsOn
+                        .map(oldId => oldToNewMap[oldId])
+                        .filter((id): id is number => typeof id === 'number')
+                }))
+                .filter(s => s.dependsOn.length > 0);
+
+            if (stepsWithDeps.length > 0) {
+                await bulkUpdate({ steps: stepsWithDeps }).unwrap();
+            }
+
+            const targetFormName = forms?.find(f => f.form_id === selectedFormId)?.name || `Form #${selectedFormId}`;
+            toast.success(`Successfully duplicated ${createdStepsList.length} workflow step(s) into "${targetFormName}"!`);
+            refetch();
+            setIsDuplicateWorkflowOpen(false);
+        } catch (err: any) {
+            console.error('Error duplicating workflow steps:', err);
+            toast.error(err?.data?.error || err?.message || "Failed to duplicate workflow steps.");
+        } finally {
+            setIsDuplicatingWorkflow(false);
+        }
+    };
+
+    const handleOpenDuplicateSingleStep = (step: WorkflowStep) => {
+        setSingleStepToDuplicate(step);
+        setSingleStepNewName(`${step.name} (Copy)`);
+        setSingleStepNewKey(`${step.key}_copy`);
+        setSingleStepTargetFormId(selectedFormId ? selectedFormId.toString() : (step.formId ? step.formId.toString() : 'null'));
+        setIsDuplicateSingleStepOpen(true);
+    };
+
+    const confirmDuplicateSingleStep = async () => {
+        if (!singleStepToDuplicate) return;
+        if (!singleStepNewName.trim() || !singleStepNewKey.trim()) {
+            toast.error("Please enter a valid step name and key.");
+            return;
+        }
+
+        setIsDuplicatingSingleStep(true);
+        try {
+            const targetFId = singleStepTargetFormId === 'null' ? null : Number(singleStepTargetFormId);
+            const createPayload = {
+                name: singleStepNewName.trim(),
+                key: singleStepNewKey.trim(),
+                description: singleStepToDuplicate.description || '',
+                displayOrder: (singleStepToDuplicate.displayOrder ?? 0) + 5,
+                requiredRole: singleStepToDuplicate.requiredRole || '',
+                formId: targetFId,
+                icon: singleStepToDuplicate.icon || '',
+                color: singleStepToDuplicate.color || '#3b82f6',
+                dependencyType: singleStepToDuplicate.dependencyType || 'NONE',
+                dependsOn: [],
+                emailStep: Boolean(singleStepToDuplicate.emailStep),
+                targetAudience: singleStepToDuplicate.targetAudience,
+                isExitStep: Boolean(singleStepToDuplicate.isExitStep),
+                triggersExitStatus: Boolean(singleStepToDuplicate.triggersExitStatus),
+                emailTemplateId: singleStepToDuplicate.emailTemplateId,
+                branchCondition: singleStepToDuplicate.branchCondition || null,
+                isCommenterOnly: Boolean(singleStepToDuplicate.isCommenterOnly)
+            };
+
+            await createStep(createPayload).unwrap();
+            toast.success(`Workflow step "${singleStepNewName.trim()}" duplicated successfully!`);
+            refetch();
+            setIsDuplicateSingleStepOpen(false);
+            setSingleStepToDuplicate(null);
+        } catch (err: any) {
+            console.error('Error duplicating single step:', err);
+            toast.error(err?.data?.error || err?.message || "Failed to duplicate workflow step.");
+        } finally {
+            setIsDuplicatingSingleStep(false);
+        }
+    };
 
     const filteredSteps = useMemo(() => {
         if (!workflowSteps || selectedFormId === null) return [];
@@ -735,6 +939,15 @@ function WorkflowBuilderContent() {
                     </div>
 
                     <div className="flex gap-2 self-end">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleOpenDuplicateWorkflow}
+                            className="h-9 border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                            title="Duplicate workflow steps from another form"
+                        >
+                            <Copy className="mr-2 h-4 w-4 text-blue-600" /> Duplicate From Form
+                        </Button>
                         <Button variant="outline" size="sm" onClick={() => refetch()} className="h-9 border-slate-200">
                             <RefreshCw className="mr-2 h-4 w-4" /> Reset
                         </Button>
@@ -787,9 +1000,32 @@ function WorkflowBuilderContent() {
                                         </div>
                                         <div className="flex items-center justify-between mt-1">
                                             <Badge variant="outline" className="text-[9px] px-1 h-4 bg-slate-50">{step.requiredRole}</Badge>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); handleEditClick(step); }}>
-                                                <Edit className="h-3 w-3 text-slate-400 hover:text-blue-500" />
-                                            </Button>
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-6 w-6"
+                                                    title="Duplicate step"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleOpenDuplicateSingleStep(step);
+                                                    }}
+                                                >
+                                                    <Copy className="h-3 w-3 text-slate-400 hover:text-blue-500" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-6 w-6"
+                                                    title="Edit step"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEditClick(step);
+                                                    }}
+                                                >
+                                                    <Edit className="h-3 w-3 text-slate-400 hover:text-blue-500" />
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 )
@@ -799,7 +1035,50 @@ function WorkflowBuilderContent() {
                 </div>
 
                 {/* Canvas */}
-                <div className="flex-1 h-full bg-slate-100/50">
+                <div className="flex-1 h-full bg-slate-100/50 relative">
+                    {selectedFormId && nodes.length === 0 && (filteredSteps?.length ?? 0) === 0 && (
+                        <div className="absolute inset-0 z-10 flex items-center justify-center p-6 pointer-events-none">
+                            <div className="bg-white/95 backdrop-blur-sm border shadow-lg rounded-2xl p-8 max-w-md text-center pointer-events-auto space-y-4">
+                                <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+                                    <WorkflowIcon className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-slate-900 text-base">No Workflow Steps for this Form</h3>
+                                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                                        This form currently has no workflow steps configured for this view. You can quickly duplicate the workflow from an existing form or create new steps.
+                                    </p>
+                                </div>
+                                <div className="flex gap-2 justify-center pt-2">
+                                    <Button
+                                        size="sm"
+                                        onClick={handleOpenDuplicateWorkflow}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                                    >
+                                        <Copy className="mr-2 h-3.5 w-3.5" />
+                                        Duplicate From Form
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                            setCurrentStep({
+                                                color: '#3b82f6',
+                                                isActive: true,
+                                                targetAudience: selectedAudience,
+                                                formId: selectedFormId,
+                                                isExitStep: selectedPhase === 'EXIT'
+                                            });
+                                            setRoleSearchCreate('');
+                                            setIsCreateOpen(true);
+                                        }}
+                                    >
+                                        <Plus className="mr-1.5 h-3.5 w-3.5" />
+                                        Create Step
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     <ReactFlow
                         nodes={nodes}
                         edges={edges}
@@ -1046,9 +1325,26 @@ function WorkflowBuilderContent() {
                                             {isPlaced ? <Badge className="bg-emerald-500 h-5 text-[9px]">Active</Badge> : <Badge variant="secondary" className="text-slate-500 h-5 text-[9px]">Unused</Badge>}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" onClick={() => handleEditClick(step)} className="h-8 w-8 p-0">
-                                                <Edit className="h-3.5 w-3.5" />
-                                            </Button>
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    title="Duplicate step"
+                                                    onClick={() => handleOpenDuplicateSingleStep(step)}
+                                                    className="h-8 w-8 p-0 text-slate-500 hover:text-blue-600"
+                                                >
+                                                    <Copy className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    title="Edit step"
+                                                    onClick={() => handleEditClick(step)}
+                                                    className="h-8 w-8 p-0 text-slate-500 hover:text-slate-900"
+                                                >
+                                                    <Edit className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 )
@@ -1606,6 +1902,265 @@ function WorkflowBuilderContent() {
                             <Trash2 className="w-4 h-4 mr-2" /> Delete
                         </Button>
                         <Button onClick={handleUpdate}>Save Changes</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Duplicate Workflow from Another Form Modal */}
+            <Dialog open={isDuplicateWorkflowOpen} onOpenChange={setIsDuplicateWorkflowOpen}>
+                <DialogContent className="max-w-xl flex flex-col p-0 max-h-[90vh]">
+                    <DialogHeader className="p-6 pb-3 border-b">
+                        <DialogTitle className="flex items-center gap-2">
+                            <Copy className="w-5 h-5 text-blue-600" />
+                            Duplicate Workflow from Another Form
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                        {/* Target Form info */}
+                        <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg text-xs space-y-1">
+                            <span className="font-semibold text-blue-900">Target Form:</span>{' '}
+                            <span className="text-blue-800 font-medium">
+                                {forms?.find(f => f.form_id === selectedFormId)?.name || `Form #${selectedFormId}`}
+                            </span>
+                            <p className="text-[11px] text-blue-600">
+                                Steps duplicated will be assigned to this target form, preserving your dependencies and flow layout.
+                            </p>
+                        </div>
+
+                        {/* Source Form Selector */}
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold">Source Form to Copy From *</Label>
+                            <Select value={sourceFormIdToCopy} onValueChange={setSourceFormIdToCopy}>
+                                <SelectTrigger className="bg-slate-50">
+                                    <SelectValue placeholder="Select form to copy from..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="global">Global (Form-agnostic Steps)</SelectItem>
+                                    {forms
+                                        ?.filter(f => f.form_id !== selectedFormId)
+                                        .map(f => {
+                                            const stepCount = workflowSteps?.filter(s => s.formId === f.form_id).length || 0;
+                                            return (
+                                                <SelectItem key={f.form_id} value={f.form_id.toString()}>
+                                                    {f.name} ({stepCount} step{stepCount === 1 ? '' : 's'})
+                                                </SelectItem>
+                                            );
+                                        })}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Scope Selector */}
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold">Copy Scope</Label>
+                            <Select
+                                value={duplicateScope}
+                                onValueChange={(val: 'CURRENT_VIEW' | 'ALL_STEPS') => setDuplicateScope(val)}
+                            >
+                                <SelectTrigger className="bg-slate-50">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ALL_STEPS">
+                                        All Workflow Steps (All Audiences & Phases)
+                                    </SelectItem>
+                                    <SelectItem value="CURRENT_VIEW">
+                                        Current View Only ({selectedAudience} • {selectedPhase === 'EXIT' ? 'Exit' : 'Accreditation'})
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Steps Selection List */}
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-semibold">
+                                    Steps to Copy ({selectedStepIdsToCopy.length} of {availableStepsToCopy.length} selected)
+                                </Label>
+                                {availableStepsToCopy.length > 0 && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 text-[11px] px-2 text-blue-600 hover:text-blue-700"
+                                        onClick={() => {
+                                            if (selectedStepIdsToCopy.length === availableStepsToCopy.length) {
+                                                setSelectedStepIdsToCopy([]);
+                                            } else {
+                                                setSelectedStepIdsToCopy(availableStepsToCopy.map(s => s.id));
+                                            }
+                                        }}
+                                    >
+                                        {selectedStepIdsToCopy.length === availableStepsToCopy.length ? 'Deselect All' : 'Select All'}
+                                    </Button>
+                                )}
+                            </div>
+
+                            {availableStepsToCopy.length === 0 ? (
+                                <div className="p-6 border border-dashed rounded-lg text-center text-xs text-slate-400">
+                                    No steps found in the chosen source form and scope.
+                                </div>
+                            ) : (
+                                <div className="border rounded-lg max-h-48 overflow-y-auto divide-y divide-slate-100">
+                                    {availableStepsToCopy.map(s => {
+                                        const isChecked = selectedStepIdsToCopy.includes(s.id);
+                                        return (
+                                            <div
+                                                key={s.id}
+                                                className="flex items-center justify-between p-2.5 hover:bg-slate-50 transition-colors text-xs cursor-pointer"
+                                                onClick={() => {
+                                                    setSelectedStepIdsToCopy(prev =>
+                                                        isChecked ? prev.filter(id => id !== s.id) : [...prev, s.id]
+                                                    );
+                                                }}
+                                            >
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <Checkbox
+                                                        checked={isChecked}
+                                                        onCheckedChange={() => {
+                                                            setSelectedStepIdsToCopy(prev =>
+                                                                isChecked ? prev.filter(id => id !== s.id) : [...prev, s.id]
+                                                            );
+                                                        }}
+                                                        onClick={e => e.stopPropagation()}
+                                                    />
+                                                    <div
+                                                        className="w-2 h-2 rounded-full shrink-0"
+                                                        style={{ backgroundColor: s.color || '#3b82f6' }}
+                                                    />
+                                                    <div className="truncate">
+                                                        <span className="font-medium text-slate-800">{s.name}</span>
+                                                        <span className="text-[10px] text-slate-400 font-mono ml-2">({s.key})</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
+                                                        {s.targetAudience}
+                                                    </Badge>
+                                                    <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
+                                                        {s.isExitStep ? 'Exit' : 'Entry'}
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <DialogFooter className="p-4 border-t bg-slate-50 flex items-center justify-end gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsDuplicateWorkflowOpen(false)}
+                            disabled={isDuplicatingWorkflow}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            size="sm"
+                            onClick={confirmDuplicateWorkflow}
+                            disabled={isDuplicatingWorkflow || selectedStepIdsToCopy.length === 0}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                            {isDuplicatingWorkflow ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Duplicating Steps...
+                                </>
+                            ) : (
+                                <>
+                                    <Copy className="mr-2 h-4 w-4" />
+                                    Duplicate {selectedStepIdsToCopy.length} Step{selectedStepIdsToCopy.length === 1 ? '' : 's'}
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Duplicate Single Step Modal */}
+            <Dialog open={isDuplicateSingleStepOpen} onOpenChange={setIsDuplicateSingleStepOpen}>
+                <DialogContent className="max-w-md flex flex-col p-0">
+                    <DialogHeader className="p-6 pb-3 border-b">
+                        <DialogTitle className="flex items-center gap-2">
+                            <Copy className="w-5 h-5 text-blue-600" />
+                            Duplicate Step
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="p-6 space-y-4">
+                        {singleStepToDuplicate && (
+                            <div className="p-3 bg-slate-50 border rounded-lg text-xs space-y-1">
+                                <div className="font-medium text-slate-700">Source Step: {singleStepToDuplicate.name}</div>
+                                <div className="text-slate-500 font-mono text-[10px]">Key: {singleStepToDuplicate.key} • Role: {singleStepToDuplicate.requiredRole}</div>
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold">New Step Name *</Label>
+                            <Input
+                                value={singleStepNewName}
+                                onChange={e => setSingleStepNewName(e.target.value)}
+                                placeholder="e.g. Security Review (Copy)"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold">New Step Key *</Label>
+                            <Input
+                                value={singleStepNewKey}
+                                onChange={e => setSingleStepNewKey(e.target.value)}
+                                placeholder="e.g. security_review_copy"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold">Assign to Form</Label>
+                            <Select value={singleStepTargetFormId} onValueChange={setSingleStepTargetFormId}>
+                                <SelectTrigger className="bg-slate-50">
+                                    <SelectValue placeholder="Select target form" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="null">Global (All Forms)</SelectItem>
+                                    {forms?.map(f => (
+                                        <SelectItem key={f.form_id} value={f.form_id.toString()}>
+                                            {f.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="p-4 border-t bg-slate-50 flex items-center justify-end gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsDuplicateSingleStepOpen(false)}
+                            disabled={isDuplicatingSingleStep}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            size="sm"
+                            onClick={confirmDuplicateSingleStep}
+                            disabled={isDuplicatingSingleStep || !singleStepNewName.trim() || !singleStepNewKey.trim()}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                            {isDuplicatingSingleStep ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Duplicating...
+                                </>
+                            ) : (
+                                <>
+                                    <Copy className="mr-2 h-4 w-4" />
+                                    Duplicate Step
+                                </>
+                            )}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
