@@ -1,9 +1,25 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw, History, ChevronRight, Filter, Building2, UserCheck, MessageSquare, CheckCircle2, XCircle, Clock, Building, ChevronDown, ChevronUp, Paperclip, Image as ImageIcon, Users, Search } from 'lucide-react';
+import {
+    FileText, Briefcase, Check, X, ShieldCheck, Download, ChevronLeft, Loader2, RotateCcw,
+    History, ChevronRight, Filter, Building2, UserCheck, MessageSquare, CheckCircle2,
+    XCircle, Clock, Building, ChevronDown, ChevronUp, Paperclip, Image as ImageIcon,
+    Users, Search, User, Globe, Phone, Mail, Camera, FileCheck, Shield, Compass,
+    Layers, ExternalLink, Copy, CheckCheck, Eye, Calendar, Tag, ArrowLeft, ArrowRight,
+    Sparkles, CheckSquare, HelpCircle, FileSpreadsheet
+} from 'lucide-react';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 import { CrewMemberReviewTable } from '@/components/CrewMemberReviewTable';
 import { getFlagEmoji } from '@/lib/utils';
 import en from 'react-phone-number-input/locale/en';
@@ -36,6 +52,42 @@ enum EquipmentStatus {
     APPROVED = 'APPROVED',
     REJECTED = 'REJECTED'
 }
+
+// Category Icon resolution helper
+const getCategoryIcon = (categoryName: string) => {
+    const name = (categoryName || '').toLowerCase();
+    if (name.includes('personal') || name.includes('applicant') || name.includes('profile') || name.includes('bio') || name.includes('identity')) {
+        return User;
+    }
+    if (name.includes('travel') || name.includes('passport') || name.includes('visa') || name.includes('flight') || name.includes('itinerary')) {
+        return Globe;
+    }
+    if (name.includes('contact') || name.includes('address') || name.includes('phone') || name.includes('location') || name.includes('emergency')) {
+        return Phone;
+    }
+    if (name.includes('media') || name.includes('press') || name.includes('journalist') || name.includes('broadcast') || name.includes('organization') || name.includes('news')) {
+        return Camera;
+    }
+    if (name.includes('vehicle') || name.includes('car') || name.includes('driver') || name.includes('transport')) {
+        return Compass;
+    }
+    if (name.includes('legal') || name.includes('agreement') || name.includes('consent') || name.includes('declaration') || name.includes('terms')) {
+        return ShieldCheck;
+    }
+    if (name.includes('security') || name.includes('clearance') || name.includes('police') || name.includes('background')) {
+        return Shield;
+    }
+    if (name.includes('document') || name.includes('file') || name.includes('attachment') || name.includes('upload')) {
+        return FileCheck;
+    }
+    if (name.includes('equipment') || name.includes('gear') || name.includes('device')) {
+        return Briefcase;
+    }
+    if (name.includes('crew') || name.includes('member') || name.includes('team') || name.includes('staff')) {
+        return Users;
+    }
+    return FileText;
+};
 
 export function JournalistProfile() {
     const { id } = useParams<{ id: string }>();
@@ -140,6 +192,22 @@ export function JournalistProfile() {
     const [fieldSearchQuery, setFieldSearchQuery] = useState('');
     const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
 
+    // Tab navigation and UX states
+    const [selectedTab, setSelectedTab] = useState<string>('');
+    const tabsRailRef = useRef<HTMLDivElement>(null);
+    const [canScrollTabsLeft, setCanScrollTabsLeft] = useState(false);
+    const [canScrollTabsRight, setCanScrollTabsRight] = useState(false);
+    const [tabSearchQuery, setTabSearchQuery] = useState('');
+    const [copiedFieldId, setCopiedFieldId] = useState<string | null>(null);
+
+    const handleCopyValue = (val: string, fieldId: string) => {
+        if (!val) return;
+        navigator.clipboard.writeText(val);
+        setCopiedFieldId(fieldId);
+        toast.success('Copied to clipboard');
+        setTimeout(() => setCopiedFieldId(null), 2000);
+    };
+
     // Fetch application data solely by ID
     const { data: application, isLoading: applicationLoading } = useGetApplicationByIdQuery(Number(id), {
         skip: !id,
@@ -158,28 +226,6 @@ export function JournalistProfile() {
         skip: !id,
         refetchOnMountOrArgChange: true
     });
-
-    if (applicationLoading) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <p className="text-muted-foreground font-medium animate-pulse">Loading Application Details...</p>
-            </div>
-        );
-    }
-
-    if (!application) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-                <ShieldCheck className="h-16 w-16 text-gray-300" />
-                <h3 className="text-xl font-bold text-gray-900">Application Not Found</h3>
-                <p className="text-muted-foreground">The requested application could not be loaded.</p>
-                <Button variant="outline" onClick={() => navigate(-1)}>
-                    <ChevronLeft className="mr-2 h-4 w-4" /> Go Back
-                </Button>
-            </div>
-        );
-    }
 
     // Removed manual useEffect for setting 'application' state -- direct usage of query data is preferred.
     // Removed MOCK_JOURNALISTS fallback.
@@ -211,7 +257,7 @@ export function JournalistProfile() {
 
         if (!effectiveStepId && isSuperAdmin) {
             // Fallback for Super Admin: Find the first PENDING approval to act on in the CURRENT phase
-            const approvalsList = (application.approvals || []).filter((a: any) => {
+            const approvalsList = (application?.approvals || []).filter((a: any) => {
                 const step = (a as any).workflowStep || (a as any).approvalWorkflowStep;
                 if (!step) return false;
                 if (currentPhase === 'exit') return step.isExitStep;
@@ -325,22 +371,18 @@ export function JournalistProfile() {
         setShowEquipmentDialog(true);
     };
 
-    if (!application || templatesLoading) {
-        return <div className="p-8 text-center text-gray-500">Loading profile data...</div>;
-    }
-
     // Data Mapping - Extensive
-    const formData = application.formData || {};
+    const formData = application?.formData || {};
     // Equipment now fetched via dedicated paginated query (eqData)
-    const totalDeclaredEquipment = application.equipment?.length ?? eqData?.total ?? 0;
+    const totalDeclaredEquipment = application?.equipment?.length ?? eqData?.total ?? 0;
 
     const fullname = formData.first_name
         ? `${formData.first_name} ${formData.last_name || ''}`
-        : (application.user?.fullName || 'Unknown');
+        : (application?.user?.fullName || 'Unknown');
 
     const roleTitle = formData.occupation || 'Journalist';
-    const country = application.applyingFromCountry?.code || formData.country || 'ET';
-    const fullCountryName = application.applyingFromCountry?.name || countryName(country);
+    const country = application?.applyingFromCountry?.code || formData.country || 'ET';
+    const fullCountryName = application?.applyingFromCountry?.name || countryName(country);
 
     // Photo/Document Handling
     const getFiles = (field: any) => {
@@ -361,7 +403,7 @@ export function JournalistProfile() {
     const userRoleStr = (user?.role || user?.roleName || user?.workflowStepKey || '').toUpperCase();
     const isPmoOrGc = userRoleStr.includes('PMO') || userRoleStr.includes('GC');
     const isMfaOfficer = userRoleStr.includes('MFA') || userRoleStr.includes('EFA');
-    const approvals = application.approvals || [];
+    const approvals = application?.approvals || [];
 
     const pmoGcApprovals = (application?.approvals || []).filter((a: any) => {
         const step = a.workflowStep || a.approvalWorkflowStep;
@@ -457,6 +499,100 @@ export function JournalistProfile() {
             };
             return (order[a.name] || 99) - (order[b.name] || 99);
         });
+
+    const isMultiMemberForm = Boolean(
+        application?.form?.allowMultiMember ||
+        crewMembersList.length > 0
+    );
+
+    const allTabsList = useMemo(() => {
+        const list: {
+            id: string;
+            name: string;
+            type: 'category' | 'equipment' | 'crew';
+            fieldCount: number;
+            icon: any;
+            index: number;
+        }[] = displayCategories.map((cat, idx) => ({
+            id: cat.name,
+            name: cat.name,
+            type: 'category',
+            fieldCount: cat.fields.length,
+            icon: getCategoryIcon(cat.name),
+            index: idx
+        }));
+
+        list.push({
+            id: 'equipment',
+            name: 'Equipment',
+            type: 'equipment',
+            fieldCount: eqData?.total ?? totalDeclaredEquipment,
+            icon: Briefcase,
+            index: list.length
+        });
+
+        if (isMultiMemberForm) {
+            list.push({
+                id: 'crew',
+                name: 'Crew Members',
+                type: 'crew',
+                fieldCount: crewMembersList.length,
+                icon: Users,
+                index: list.length
+            });
+        }
+
+        return list;
+    }, [displayCategories, eqData?.total, totalDeclaredEquipment, isMultiMemberForm, crewMembersList.length]);
+
+    useEffect(() => {
+        if (!selectedTab && allTabsList.length > 0) {
+            setSelectedTab(allTabsList[0].id);
+        }
+    }, [allTabsList, selectedTab]);
+
+    const currentActiveTab = selectedTab || (allTabsList[0]?.id || 'equipment');
+    const currentTabIndex = allTabsList.findIndex(t => t.id === currentActiveTab);
+    const prevTab = currentTabIndex > 0 ? allTabsList[currentTabIndex - 1] : null;
+    const nextTab = currentTabIndex >= 0 && currentTabIndex < allTabsList.length - 1 ? allTabsList[currentTabIndex + 1] : null;
+
+    const checkTabsScroll = () => {
+        if (tabsRailRef.current) {
+            const { scrollLeft, scrollWidth, clientWidth } = tabsRailRef.current;
+            setCanScrollTabsLeft(scrollLeft > 6);
+            setCanScrollTabsRight(scrollLeft < scrollWidth - clientWidth - 6);
+        }
+    };
+
+    useEffect(() => {
+        checkTabsScroll();
+        const handleResize = () => checkTabsScroll();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [allTabsList]);
+
+    const scrollTabsRail = (direction: 'left' | 'right') => {
+        if (tabsRailRef.current) {
+            const scrollAmount = 280;
+            tabsRailRef.current.scrollBy({
+                left: direction === 'left' ? -scrollAmount : scrollAmount,
+                behavior: 'smooth'
+            });
+            setTimeout(checkTabsScroll, 320);
+        }
+    };
+
+    const handleSelectTab = (tabId: string) => {
+        setSelectedTab(tabId);
+        setTabSearchQuery('');
+        setTimeout(() => {
+            const trigger = document.getElementById(`tab-pill-${tabId}`);
+            if (trigger) {
+                trigger.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+            checkTabsScroll();
+        }, 60);
+    };
 
     // Form-specific fields for the Rejection Dialog: strictly scoped to THIS application's form
     const applicationFormFields = (() => {
@@ -599,318 +735,645 @@ export function JournalistProfile() {
 
     const canApprove = isSuperAdmin || !!userActionableApproval;
 
-    // DEBUG: Permission Check
-    // const hasDynamicApprove = checkPermission('application:approve:dynamic');
-    // const hasManageExit = checkPermission('application:manage-exit-workflow');
-    // console.log('DEBUG: canApprove breakdown:', {
-    //     isSuperAdmin,
-    //     isExitPhase,
-    //     hasDynamicApprove,
-    //     hasManageExit,
-    //     hasActionableApproval: !!userActionableApproval,
-    //     relevantStepId: relevantStep?.id,
-    //     userPermissionsCount: user?.permissions?.length,
-    //     userPermissions: user?.permissions?.map(p => p.key) 
-    // });
+    if (applicationLoading || templatesLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="text-muted-foreground font-medium animate-pulse">Loading Application Details...</p>
+            </div>
+        );
+    }
 
+    if (!application) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <ShieldCheck className="h-16 w-16 text-gray-300" />
+                <h3 className="text-xl font-bold text-gray-900">Application Not Found</h3>
+                <p className="text-muted-foreground">The requested application could not be loaded.</p>
+                <Button variant="outline" onClick={() => navigate(-1)}>
+                    <ChevronLeft className="mr-2 h-4 w-4" /> Go Back
+                </Button>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
             
 
 
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+            {/* Top Navigation & Breadcrumbs Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="p-0 h-auto text-gray-500 hover:text-gray-900"
+                        className="h-9 w-9 p-0 rounded-xl border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                         onClick={() => navigate(-1)}
+                        title="Go back"
                     >
                         <ChevronLeft className="h-5 w-5" />
                     </Button>
-                    <h2 className="text-3xl font-bold font-sans text-gray-900">Journalist Profile</h2>
+                    <div>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+                            <span className="hover:text-slate-600 cursor-pointer" onClick={() => navigate('/dashboard')}>Dashboard</span>
+                            <span>/</span>
+                            <span className="hover:text-slate-600 cursor-pointer" onClick={() => navigate(-1)}>Applications</span>
+                            <span>/</span>
+                            <span className="text-slate-600 font-semibold truncate max-w-[200px]">{fullname}</span>
+                        </div>
+                        <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">Journalist Profile & Dossier</h2>
+                    </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <Button
                         variant="outline"
+                        size="sm"
                         onClick={() => exportJournalistDetailToCSV(application)}
-                        className="gap-2"
+                        className="gap-1.5 rounded-xl border-slate-200 text-slate-700 font-bold hover:bg-slate-50 text-xs shadow-2xs"
                     >
-                        <Download className="h-4 w-4" />
+                        <Download className="h-3.5 w-3.5" />
                         Export CSV
                     </Button>
                     <Button
                         variant="outline"
+                        size="sm"
                         onClick={() => exportJournalistDetailToPDF(application as any)}
-                        className="gap-2"
+                        className="gap-1.5 rounded-xl border-slate-200 text-slate-700 font-bold hover:bg-slate-50 text-xs shadow-2xs"
                     >
-                        <Download className="h-4 w-4" />
+                        <Download className="h-3.5 w-3.5" />
                         Export PDF
                     </Button>
                     {application.equipment?.some((e: any) => e.status === 'APPROVED') && (
                         <Button
                             variant="default"
+                            size="sm"
                             onClick={() => exportClearanceLetterToPDF(application)}
-                            className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                            className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs"
                         >
-                            <ShieldCheck className="h-4 w-4" />
+                            <ShieldCheck className="h-3.5 w-3.5" />
                             Clearance Letter
                         </Button>
                     )}
                 </div>
             </div>
 
-            {/* Debug Panel Removed */}
-
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Main Content - Left */}
                 <div className="lg:col-span-8 space-y-6 order-2 lg:order-1">
-                    {/* Basic Info Card */}
-                    <Card className="bg-white border-0 shadow-sm">
-                        <CardContent className="p-4 md:p-6 flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
-                            <div className="h-20 w-20 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
-                                <img src={photoUrl} alt={fullname} className="h-full w-full object-cover" />
+                    {/* Executive Dossier Header Card */}
+                    <Card className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+                        {/* Reference header strip */}
+                        <div className="bg-slate-50/80 border-b border-slate-100 px-5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <Badge variant="outline" className="bg-white text-slate-700 font-bold border-slate-200 shadow-2xs">
+                                    {application?.form?.name || 'Accreditation Dossier'}
+                                </Badge>
+                                <span className="font-mono text-slate-500 font-medium">Ref: #APP-{application.id}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => handleCopyValue(String(application.id), 'app-id')}
+                                    className="text-slate-400 hover:text-blue-600 transition-colors"
+                                    title="Copy Application ID"
+                                >
+                                    {copiedFieldId === 'app-id' ? <CheckCheck className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                                </button>
                             </div>
-                            <div className="flex-1 w-full">
-                                <h3 className="text-xl font-bold text-gray-900">{fullname}</h3>
-                                <div className="text-gray-500 text-sm flex flex-col gap-1 mt-1">
-                                    <div className="flex items-center justify-center sm:justify-start gap-2">
-                                        <Briefcase className="h-3 w-3" />
-                                        <span>{roleTitle}</span>
+                            <div className="flex items-center gap-2 text-slate-500 text-xs">
+                                <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                                <span>Applied: {application.createdAt ? new Date(application.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}</span>
+                            </div>
+                        </div>
+
+                        <CardContent className="p-5 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
+                                <div className="relative h-20 w-20 sm:h-24 sm:w-24 rounded-2xl overflow-hidden bg-slate-100 border-2 border-white shadow-md ring-1 ring-slate-200 shrink-0">
+                                    <img src={photoUrl} alt={fullname} className="h-full w-full object-cover" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-center sm:justify-start gap-2.5 flex-wrap">
+                                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">{fullname}</h3>
+                                        {/* Status badge */}
+                                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
+                                            application.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                            application.status === 'REJECTED' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                                            'bg-amber-100 text-amber-800 border border-amber-200'
+                                        }`}>
+                                            {application.status === 'APPROVED' ? <CheckCircle2 className="h-3.5 w-3.5" /> :
+                                             application.status === 'REJECTED' ? <XCircle className="h-3.5 w-3.5" /> :
+                                             <Clock className="h-3.5 w-3.5" />}
+                                            {application.status}
+                                        </span>
                                     </div>
-                                    <div className="flex items-center justify-center sm:justify-start gap-2">
-                                        <span className="text-lg leading-none">{getFlagEmoji(country)}</span>
-                                        <span>{fullCountryName}</span>
+
+                                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-xs text-slate-600">
+                                        <div className="inline-flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-lg font-semibold text-slate-700">
+                                            <Briefcase className="h-3.5 w-3.5 text-slate-500" />
+                                            <span>{roleTitle}</span>
+                                        </div>
+                                        <div className="inline-flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-lg font-semibold text-slate-700">
+                                            <span className="text-sm leading-none">{getFlagEmoji(country)}</span>
+                                            <span>{fullCountryName}</span>
+                                        </div>
+                                        {organization && (
+                                            <div className="inline-flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-lg font-semibold text-slate-700">
+                                                <Building className="h-3.5 w-3.5 text-slate-500" />
+                                                <span>{formData.media_house || formData.media_organization || formData.organization || organization}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Contact metadata chips */}
+                                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-1 text-xs text-slate-500">
+                                        {(formData.email || application.user?.email) && (
+                                            <span className="inline-flex items-center gap-1 hover:text-slate-800 font-medium">
+                                                <Mail className="h-3 w-3 text-slate-400" />
+                                                {formData.email || application.user?.email}
+                                            </span>
+                                        )}
+                                        {(formData.phone_number || formData.phone || application.user?.phoneNumber) && (
+                                            <span className="inline-flex items-center gap-1 hover:text-slate-800 font-medium">
+                                                <Phone className="h-3 w-3 text-slate-400" />
+                                                {formData.phone_number || formData.phone || application.user?.phoneNumber}
+                                            </span>
+                                        )}
+                                        {(formData.passport_number || formData.passportNumber) && (
+                                            <span className="inline-flex items-center gap-1 font-mono text-slate-700 font-semibold bg-slate-50 px-2 py-0.5 rounded border border-slate-200/60">
+                                                Passport: {formData.passport_number || formData.passportNumber}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
-                                <span>• {organization}</span>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Tabs */}
-                    {(() => {
-                        const crewMembersList = crewData?.members || application?.members || [];
-                        const isMultiMemberForm = Boolean(
-                            application?.form?.allowMultiMember ||
-                            crewMembersList.length > 0
-                        );
-                        return (
-                            <Tabs defaultValue={displayCategories.length > 0 ? displayCategories[0].name : "equipment"} className="w-full">
-                                <div className="bg-white rounded-lg p-1 shadow-sm mb-4">
-                                    <TabsList className="w-full justify-start bg-transparent h-auto p-0 gap-6 border-b rounded-none px-4 flex-wrap">
-                                        {/* Dynamic Tabs */}
-                                        {displayCategories.map((cat) => (
-                                            <TabsTrigger key={cat.name} value={cat.name} className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
-                                                <FileText className="h-4 w-4" /> {cat.name}
-                                            </TabsTrigger>
-                                        ))}
+                    {/* Executive Multi-Tab Navigation Rail */}
+                    <Tabs value={currentActiveTab} onValueChange={handleSelectTab} className="w-full">
+                        {/* Tab Bar Container */}
+                        <div className="bg-white border border-slate-200/90 rounded-2xl shadow-xs p-2 mb-6">
+                            <div className="flex items-center gap-1.5">
+                                {/* Left Scroll Chevron */}
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => scrollTabsRail('left')}
+                                    disabled={!canScrollTabsLeft}
+                                    className={`h-9 w-9 shrink-0 rounded-xl transition-all ${
+                                        canScrollTabsLeft
+                                            ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                                            : 'text-slate-300 opacity-40 cursor-not-allowed'
+                                    }`}
+                                    title="Scroll categories left"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
 
-                                        <TabsTrigger value="equipment" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
-                                            <Briefcase className="h-4 w-4" /> Equipment
-                                            <span className="ml-1 text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded-full">{totalDeclaredEquipment}</span>
-                                        </TabsTrigger>
-
-                                        {isMultiMemberForm && (
-                                            <TabsTrigger value="crew" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
-                                                <Users className="h-4 w-4" /> Crew Members
-                                                {crewMembersList.length > 0 && (
-                                                    <span className="ml-1 text-[10px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded-full">
-                                                        {crewMembersList.length}
+                                {/* Horizontally Scrollable Tabs Rail */}
+                                <div
+                                    ref={tabsRailRef}
+                                    onScroll={checkTabsScroll}
+                                    className="flex-1 overflow-x-auto scrollbar-none scroll-smooth flex items-center gap-1.5 py-0.5 px-1"
+                                >
+                                    <TabsList className="bg-transparent h-auto p-0 gap-1.5 flex items-center shrink-0">
+                                        {allTabsList.map((tab) => {
+                                            const Icon = tab.icon;
+                                            const isActive = currentActiveTab === tab.id;
+                                            return (
+                                                <TabsTrigger
+                                                    key={tab.id}
+                                                    id={`tab-pill-${tab.id}`}
+                                                    value={tab.id}
+                                                    onClick={() => handleSelectTab(tab.id)}
+                                                    className={`group relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 select-none ${
+                                                        isActive
+                                                            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 border border-blue-600'
+                                                            : 'bg-slate-50/80 hover:bg-slate-100/90 text-slate-600 hover:text-slate-900 border border-slate-200/70'
+                                                    }`}
+                                                >
+                                                    <Icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                                                    <span className="truncate max-w-[160px] sm:max-w-[200px]">{tab.name}</span>
+                                                    <span
+                                                        className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded-full shrink-0 transition-colors ${
+                                                            isActive
+                                                                ? 'bg-white/20 text-white'
+                                                                : 'bg-slate-200/70 text-slate-600 group-hover:bg-slate-200'
+                                                        }`}
+                                                    >
+                                                        {tab.fieldCount}
                                                     </span>
-                                                )}
-                                            </TabsTrigger>
-                                        )}
+                                                </TabsTrigger>
+                                            );
+                                        })}
                                     </TabsList>
                                 </div>
 
-                        {/* Dynamic Content Tabs */}
-                        {displayCategories.map((category) => (
-                            <TabsContent key={category.name} value={category.name}>
-                                <Card className="bg-white border-0 shadow-sm">
-                                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                        <CardTitle className="text-lg font-bold">{category.name}</CardTitle>
-                                        <FileText className="h-5 w-5 text-gray-500" />
-                                    </CardHeader>
-                                    <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-4">
-                                        {category.fields
-                                            .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
-                                            .map((field: any) => {
-                                                const value = formData[field.field_name];
+                                {/* Right Scroll Chevron */}
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => scrollTabsRail('right')}
+                                    disabled={!canScrollTabsRight}
+                                    className={`h-9 w-9 shrink-0 rounded-xl transition-all ${
+                                        canScrollTabsRight
+                                            ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                                            : 'text-slate-300 opacity-40 cursor-not-allowed'
+                                    }`}
+                                    title="Scroll categories right"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
 
-                                                let activeSubFields: any[] = [];
-                                                if ((field.field_type === 'select' || field.field_type === 'dropdown') && field.field_options) {
-                                                    let parsedOpts: any = {};
-                                                    try {
-                                                        parsedOpts = typeof field.field_options === 'string' ? JSON.parse(field.field_options) : field.field_options || {};
-                                                    } catch { }
-                                                    const nestedMap = parsedOpts?.nestedFields || parsedOpts?.nested_fields || {};
-                                                    const strVal = value ? String(value).trim() : '';
-                                                    const matchKey = strVal ? Object.keys(nestedMap).find(k => k.trim().toLowerCase() === strVal.toLowerCase()) : null;
-                                                    if (matchKey) {
-                                                        activeSubFields = nestedMap[matchKey].map((sf: any) => ({
-                                                            field_name: sf.field_name || sf.fieldName || (sf.label ? sf.label.toLowerCase().replace(/[^a-z0-9]+/g, '_') : 'sub_field'),
-                                                            field_type: sf.field_type || sf.type || 'text',
-                                                            label: sf.label || '',
-                                                            is_sub_field: true
-                                                        }));
-                                                    }
-                                                }
+                                {/* DropdownMenu Jump Selector for Many Tabs */}
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-9 gap-1.5 px-3 rounded-xl border-slate-200 text-slate-700 hover:text-blue-600 hover:border-blue-200 bg-slate-50/70 shrink-0 font-bold text-xs"
+                                        >
+                                            <Layers className="h-3.5 w-3.5 text-blue-600" />
+                                            <span className="hidden sm:inline">All Sections</span>
+                                            <Badge variant="secondary" className="px-1.5 py-0 text-[10px] bg-slate-200/80 text-slate-700 font-bold">
+                                                {allTabsList.length}
+                                            </Badge>
+                                            <ChevronDown className="h-3 w-3 text-slate-400" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-64 max-h-[360px] overflow-y-auto p-1.5">
+                                        <DropdownMenuLabel className="text-xs font-bold uppercase tracking-wider text-slate-400 px-2 py-1.5">
+                                            Jump to Section ({allTabsList.length})
+                                        </DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        {allTabsList.map((tab, idx) => {
+                                            const Icon = tab.icon;
+                                            const isActive = currentActiveTab === tab.id;
+                                            return (
+                                                <DropdownMenuItem
+                                                    key={tab.id}
+                                                    onClick={() => handleSelectTab(tab.id)}
+                                                    className={`flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer text-xs ${
+                                                        isActive ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700 hover:bg-slate-100'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-2.5 truncate pr-2">
+                                                        <span className="text-[10px] font-bold text-slate-400 w-4 text-center">{idx + 1}</span>
+                                                        <Icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
+                                                        <span className="truncate">{tab.name}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                        <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-100 font-bold text-slate-600">
+                                                            {tab.fieldCount}
+                                                        </span>
+                                                        {isActive && <Check className="h-3.5 w-3.5 text-blue-600" />}
+                                                    </div>
+                                                </DropdownMenuItem>
+                                            );
+                                        })}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        </div>
 
-                                                const renderFieldData = (f: any, val: any) => {
-                                                    if (f.field_type === 'file') {
-                                                        const files = getFiles(val);
-                                                        if (files.length === 0) return null;
-                                                        return (
-                                                            <div key={f.field_name} className={`col-span-1 sm:col-span-2 lg:col-span-4 mt-2 ${f.is_sub_field ? 'pl-4 border-l-2 border-emerald-500 bg-emerald-50/30 py-3 pr-3 rounded-2xl' : ''}`}>
-                                                                <p className="text-xs font-bold text-gray-400 uppercase mb-3">{f.label}</p>
-                                                                <div className="flex flex-wrap gap-4">
-                                                                    {files.map((file: string, idx: number) => (
-                                                                        <a
-                                                                            key={idx}
-                                                                            href={getFileUrl(file)}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            className="group relative h-32 w-48 rounded-lg overflow-hidden border bg-gray-50 flex-shrink-0"
-                                                                        >
-                                                                            <div className="h-full w-full flex flex-col items-center justify-center p-2">
-                                                                                <FileText className="h-8 w-8 text-blue-400 mb-2" />
-                                                                                <span className="text-[10px] text-gray-500 truncate w-full text-center px-2">
-                                                                                    {f.label} {idx + 1}
-                                                                                </span>
-                                                                            </div>
-                                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                                                <Download className="h-5 w-5 text-white" />
-                                                                            </div>
-                                                                        </a>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    }
+                        {/* Dynamic Category Content Tabs */}
+                        {displayCategories.map((category, catIdx) => {
+                            const CatIcon = getCategoryIcon(category.name);
+                            const sortedFields = (category.fields || []).slice().sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0));
+                            const fieldsToRender = sortedFields.filter((field: any) => {
+                                if (!tabSearchQuery.trim()) return true;
+                                const q = tabSearchQuery.toLowerCase();
+                                const label = (field.label || '').toLowerCase();
+                                const fname = (field.field_name || '').toLowerCase();
+                                const val = String(formData[field.field_name] || '').toLowerCase();
+                                return label.includes(q) || fname.includes(q) || val.includes(q);
+                            });
 
-                                                    if (f.field_type === 'repeater' || f.field_type === 'table' || f.field_type === 'repeater_table') {
-                                                        const rows = Array.isArray(val) ? val : [];
-                                                        let opts: any = {};
-                                                        try {
-                                                            opts = typeof f.field_options === 'string' ? JSON.parse(f.field_options) : f.field_options || {};
-                                                        } catch { }
-                                                        const subfields: any[] = opts.subfields || [];
+                            return (
+                                <TabsContent key={category.name} value={category.name} className="mt-0 focus-visible:outline-none">
+                                    <Card className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+                                        {/* Category Header Banner */}
+                                        <div className="p-4 sm:p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 via-white to-slate-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 shrink-0">
+                                                    <CatIcon className="h-5 w-5" />
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <h3 className="text-lg font-bold text-slate-900">{category.name}</h3>
+                                                        <Badge variant="outline" className="text-[10px] font-bold text-blue-700 bg-blue-50/80 border-blue-200">
+                                                            Section {catIdx + 1} of {allTabsList.length}
+                                                        </Badge>
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 mt-0.5">
+                                                        {category.fields.length} {category.fields.length === 1 ? 'information field' : 'information fields'} declared in this category
+                                                    </p>
+                                                </div>
+                                            </div>
 
-                                                        return (
-                                                            <div key={f.field_name} className="col-span-1 sm:col-span-2 lg:col-span-4 mt-2">
-                                                                <p className="text-xs font-bold text-gray-400 uppercase mb-2">{f.label}</p>
-                                                                {rows.length === 0 ? (
-                                                                    <p className="text-sm font-medium text-gray-400 italic">No entries provided</p>
-                                                                ) : (
-                                                                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
-                                                                        <div className="overflow-x-auto">
-                                                                            <table className="w-full text-left border-collapse text-xs">
-                                                                                <thead>
-                                                                                    <tr className="bg-slate-50 border-b border-slate-200 font-bold uppercase tracking-wider text-slate-500">
-                                                                                        <th className="py-2.5 px-3 w-10 text-center">#</th>
-                                                                                        {subfields.length > 0 ? (
-                                                                                            subfields.map((sf: any) => (
-                                                                                                <th key={sf.key} className="py-2.5 px-3">{sf.label}</th>
-                                                                                            ))
-                                                                                        ) : (
-                                                                                            Object.keys(rows[0] || {}).map((k) => (
-                                                                                                <th key={k} className="py-2.5 px-3 uppercase">{k.replace(/_/g, ' ')}</th>
-                                                                                            ))
-                                                                                        )}
-                                                                                    </tr>
-                                                                                </thead>
-                                                                                <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                                                                                    {rows.map((row: any, rIdx: number) => (
-                                                                                        <tr key={rIdx} className="hover:bg-slate-50/60">
-                                                                                            <td className="py-2 px-3 text-center text-slate-400 font-bold">{rIdx + 1}</td>
-                                                                                            {subfields.length > 0 ? (
-                                                                                                subfields.map((sf: any) => (
-                                                                                                    <td key={sf.key} className="py-2 px-3">{row[sf.key] || '-'}</td>
-                                                                                                ))
+                                            {/* In-category search filter if fields > 4 */}
+                                            {category.fields.length > 4 && (
+                                                <div className="relative sm:w-64">
+                                                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                                    <Input
+                                                        placeholder={`Filter ${category.name}...`}
+                                                        value={tabSearchQuery}
+                                                        onChange={(e) => setTabSearchQuery(e.target.value)}
+                                                        className="h-8 pl-8 pr-8 text-xs bg-white rounded-lg border-slate-200"
+                                                    />
+                                                    {tabSearchQuery && (
+                                                        <button
+                                                            onClick={() => setTabSearchQuery('')}
+                                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                                        >
+                                                            <X className="h-3 w-3" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <CardContent className="p-4 sm:p-6 space-y-6">
+                                            {fieldsToRender.length === 0 ? (
+                                                <div className="py-12 text-center text-slate-400 text-xs italic bg-slate-50/60 rounded-xl border border-dashed border-slate-200">
+                                                    {tabSearchQuery ? `No fields match "${tabSearchQuery}".` : 'No fields found in this category.'}
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    {fieldsToRender.map((field: any) => {
+                                                        const value = formData[field.field_name];
+
+                                                        let activeSubFields: any[] = [];
+                                                        if ((field.field_type === 'select' || field.field_type === 'dropdown') && field.field_options) {
+                                                            let parsedOpts: any = {};
+                                                            try {
+                                                                parsedOpts = typeof field.field_options === 'string' ? JSON.parse(field.field_options) : field.field_options || {};
+                                                            } catch { }
+                                                            const nestedMap = parsedOpts?.nestedFields || parsedOpts?.nested_fields || {};
+                                                            const strVal = value ? String(value).trim() : '';
+                                                            const matchKey = strVal ? Object.keys(nestedMap).find(k => k.trim().toLowerCase() === strVal.toLowerCase()) : null;
+                                                            if (matchKey) {
+                                                                activeSubFields = nestedMap[matchKey].map((sf: any) => ({
+                                                                    field_name: sf.field_name || sf.fieldName || (sf.label ? sf.label.toLowerCase().replace(/[^a-z0-9]+/g, '_') : 'sub_field'),
+                                                                    field_type: sf.field_type || sf.type || 'text',
+                                                                    label: sf.label || '',
+                                                                    is_sub_field: true
+                                                                }));
+                                                            }
+                                                        }
+
+                                                        const renderFieldTile = (f: any, val: any) => {
+                                                            // File upload attachment field
+                                                            if (f.field_type === 'file') {
+                                                                const files = getFiles(val);
+                                                                if (files.length === 0) return null;
+                                                                return (
+                                                                    <div key={f.field_name} className={`col-span-1 sm:col-span-2 lg:col-span-3 bg-slate-50/70 border border-slate-200/80 rounded-xl p-4 space-y-3 ${f.is_sub_field ? 'border-l-4 border-l-blue-500 bg-blue-50/20' : ''}`}>
+                                                                        <div className="flex items-center justify-between">
+                                                                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{f.label}</span>
+                                                                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                                                                                {files.length} {files.length === 1 ? 'file' : 'files'}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                                                            {files.map((file: string, idx: number) => {
+                                                                                const url = getFileUrl(file);
+                                                                                const isImg = file.match(/\.(jpg|jpeg|png|webp|gif)$/i);
+                                                                                return (
+                                                                                    <a
+                                                                                        key={idx}
+                                                                                        href={url}
+                                                                                        target="_blank"
+                                                                                        rel="noopener noreferrer"
+                                                                                        className="group relative flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-xs transition-all"
+                                                                                    >
+                                                                                        <div className="h-10 w-10 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 overflow-hidden">
+                                                                                            {isImg ? (
+                                                                                                <img src={url} alt={f.label} className="h-full w-full object-cover" />
                                                                                             ) : (
-                                                                                                Object.keys(row).map((k) => (
-                                                                                                    <td key={k} className="py-2 px-3">{row[k]?.toString() || '-'}</td>
-                                                                                                ))
+                                                                                                <FileText className="h-5 w-5 text-blue-600" />
                                                                                             )}
-                                                                                        </tr>
-                                                                                    ))}
-                                                                                </tbody>
-                                                                            </table>
+                                                                                        </div>
+                                                                                        <div className="min-w-0 flex-1">
+                                                                                            <p className="text-xs font-bold text-slate-900 truncate group-hover:text-blue-600">
+                                                                                                {f.label} {files.length > 1 ? `#${idx + 1}` : ''}
+                                                                                            </p>
+                                                                                            <p className="text-[10px] text-slate-400 truncate mt-0.5">Click to view document</p>
+                                                                                        </div>
+                                                                                        <ExternalLink className="h-3.5 w-3.5 text-slate-400 group-hover:text-blue-600 shrink-0" />
+                                                                                    </a>
+                                                                                );
+                                                                            })}
                                                                         </div>
                                                                     </div>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    }
+                                                                );
+                                                            }
 
-                                                    if (f.field_type === 'checkbox_group') {
-                                                        const items = Array.isArray(val) ? val : typeof val === 'string' && val.trim() ? [val] : [];
-                                                        return (
-                                                            <div key={f.field_name} className="col-span-1 sm:col-span-2 lg:col-span-4">
-                                                                <p className="text-xs font-bold text-gray-400 uppercase">{f.label}</p>
-                                                                <div className="flex flex-wrap gap-2 mt-1.5">
-                                                                    {items.length > 0 ? (
-                                                                        items.map((item: string, iIdx: number) => (
-                                                                            <span key={iIdx} className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/60 font-semibold text-xs rounded-lg">
-                                                                                {item}
+                                                            // Repeater / Table field
+                                                            if (f.field_type === 'repeater' || f.field_type === 'table' || f.field_type === 'repeater_table') {
+                                                                const rows = Array.isArray(val) ? val : [];
+                                                                let opts: any = {};
+                                                                try {
+                                                                    opts = typeof f.field_options === 'string' ? JSON.parse(f.field_options) : f.field_options || {};
+                                                                } catch { }
+                                                                const subfields: any[] = opts.subfields || [];
+
+                                                                return (
+                                                                    <div key={f.field_name} className="col-span-1 sm:col-span-2 lg:col-span-3 bg-slate-50/70 border border-slate-200/80 rounded-xl p-4 space-y-2.5">
+                                                                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{f.label}</span>
+                                                                        {rows.length === 0 ? (
+                                                                            <p className="text-xs font-medium text-slate-400 italic">No entries provided</p>
+                                                                        ) : (
+                                                                            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs bg-white">
+                                                                                <div className="overflow-x-auto">
+                                                                                    <table className="w-full text-left border-collapse text-xs">
+                                                                                        <thead>
+                                                                                            <tr className="bg-slate-50 border-b border-slate-200 font-bold uppercase tracking-wider text-slate-500">
+                                                                                                <th className="py-2.5 px-3 w-10 text-center">#</th>
+                                                                                                {subfields.length > 0 ? (
+                                                                                                    subfields.map((sf: any) => (
+                                                                                                        <th key={sf.key} className="py-2.5 px-3">{sf.label}</th>
+                                                                                                    ))
+                                                                                                ) : (
+                                                                                                    Object.keys(rows[0] || {}).map((k) => (
+                                                                                                        <th key={k} className="py-2.5 px-3 uppercase">{k.replace(/_/g, ' ')}</th>
+                                                                                                    ))
+                                                                                                )}
+                                                                                            </tr>
+                                                                                        </thead>
+                                                                                        <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                                                                                            {rows.map((row: any, rIdx: number) => (
+                                                                                                <tr key={rIdx} className="hover:bg-slate-50/60">
+                                                                                                    <td className="py-2 px-3 text-center text-slate-400 font-bold">{rIdx + 1}</td>
+                                                                                                    {subfields.length > 0 ? (
+                                                                                                        subfields.map((sf: any) => (
+                                                                                                            <td key={sf.key} className="py-2 px-3">{row[sf.key] || '-'}</td>
+                                                                                                        ))
+                                                                                                    ) : (
+                                                                                                        Object.keys(row).map((k) => (
+                                                                                                            <td key={k} className="py-2 px-3">{row[k]?.toString() || '-'}</td>
+                                                                                                        ))
+                                                                                                    )}
+                                                                                                </tr>
+                                                                                            ))}
+                                                                                        </tbody>
+                                                                                    </table>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            // Checkbox group
+                                                            if (f.field_type === 'checkbox_group') {
+                                                                const items = Array.isArray(val) ? val : typeof val === 'string' && val.trim() ? [val] : [];
+                                                                return (
+                                                                    <div key={f.field_name} className="col-span-1 sm:col-span-2 lg:col-span-3 bg-slate-50/70 border border-slate-200/80 rounded-xl p-3.5 space-y-2">
+                                                                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{f.label}</span>
+                                                                        <div className="flex flex-wrap gap-1.5">
+                                                                            {items.length > 0 ? (
+                                                                                items.map((item: string, iIdx: number) => (
+                                                                                    <span key={iIdx} className="px-2.5 py-1 bg-blue-50 text-blue-800 border border-blue-200/60 font-semibold text-xs rounded-lg">
+                                                                                        {item}
+                                                                                    </span>
+                                                                                ))
+                                                                            ) : (
+                                                                                <span className="text-xs text-slate-400 italic">None selected</span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            // Long text / textarea
+                                                            if (f.field_type === 'textarea') {
+                                                                return (
+                                                                    <div key={f.field_name} className="col-span-1 sm:col-span-2 lg:col-span-3 bg-slate-50/70 border border-slate-200/80 rounded-xl p-4 space-y-2">
+                                                                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{f.label}</span>
+                                                                        <div className="text-sm font-medium text-slate-800 whitespace-pre-wrap leading-relaxed bg-white p-3 rounded-lg border border-slate-200/60">
+                                                                            {val ? String(val) : <span className="text-xs text-slate-400 italic">Not provided</span>}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            // Default standard field tile
+                                                            return (
+                                                                <div
+                                                                    key={f.field_name}
+                                                                    className={`group relative bg-slate-50/70 hover:bg-white border border-slate-200/80 hover:border-blue-200 hover:shadow-xs transition-all rounded-xl p-3.5 flex flex-col justify-between ${
+                                                                        f.is_sub_field ? 'border-l-4 border-l-blue-500 bg-blue-50/30' : ''
+                                                                    }`}
+                                                                >
+                                                                    <div className="flex items-start justify-between gap-1.5">
+                                                                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 line-clamp-1" title={f.label}>
+                                                                            {f.label}
+                                                                        </span>
+                                                                        {val && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleCopyValue(String(val), f.field_name)}
+                                                                                className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-blue-600 p-0.5 rounded"
+                                                                                title="Copy value"
+                                                                            >
+                                                                                {copiedFieldId === f.field_name ? <CheckCheck className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="mt-1.5">
+                                                                        {val === undefined || val === null || val === '' ? (
+                                                                            <span className="text-xs text-slate-400 italic">Not provided</span>
+                                                                        ) : typeof val === 'boolean' ? (
+                                                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${val ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                                                                                {val ? 'Yes' : 'No'}
                                                                             </span>
-                                                                        ))
-                                                                    ) : (
-                                                                        <span className="text-sm font-medium text-gray-400 italic">None selected</span>
-                                                                    )}
+                                                                        ) : (
+                                                                            <span className="text-sm font-bold text-slate-900 break-words">{String(val)}</span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
-                                                            </div>
+                                                            );
+                                                        };
+
+                                                        return (
+                                                            <React.Fragment key={field.field_name}>
+                                                                {renderFieldTile(field, value)}
+                                                                {activeSubFields.map(sf => renderFieldTile(sf, formData[sf.field_name]))}
+                                                            </React.Fragment>
                                                         );
-                                                    }
+                                                    })}
+                                                </div>
+                                            )}
 
-                                                    return (
-                                                        <div key={f.field_name} className={`${f.field_type === 'textarea' ? 'col-span-1 sm:col-span-2 lg:col-span-4' : ''} ${f.is_sub_field ? 'pl-4 border-l-2 border-emerald-500 bg-emerald-50/30 p-3 rounded-2xl' : ''}`}>
-                                                            <p className="text-xs font-bold text-gray-400 uppercase">{f.label}</p>
-                                                            <p className="text-sm font-bold text-gray-900 mt-1">{val?.toString() || 'N/A'}</p>
-                                                        </div>
-                                                    );
-                                                };
+                                            {/* Linear Tab Navigation Controls at Bottom of Card */}
+                                            <div className="pt-6 border-t border-slate-100 flex items-center justify-between gap-3">
+                                                {prevTab ? (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleSelectTab(prevTab.id)}
+                                                        className="text-xs font-bold text-slate-600 hover:text-blue-600 hover:border-blue-200 rounded-xl gap-1.5"
+                                                    >
+                                                        <ArrowLeft className="h-3.5 w-3.5" />
+                                                        <span>Previous: {prevTab.name}</span>
+                                                    </Button>
+                                                ) : <div />}
 
-                                                return (
-                                                    <React.Fragment key={field.field_name}>
-                                                        {renderFieldData(field, value)}
-                                                        {activeSubFields.map(sf => renderFieldData(sf, formData[sf.field_name]))}
-                                                    </React.Fragment>
-                                                );
-                                            })}
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-                        ))}
+                                                {nextTab && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="default"
+                                                        size="sm"
+                                                        onClick={() => handleSelectTab(nextTab.id)}
+                                                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl gap-1.5 shadow-xs"
+                                                    >
+                                                        <span>Next: {nextTab.name}</span>
+                                                        <ArrowRight className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </TabsContent>
+                            );
+                        })}
 
                         {/* Equipment Content - Server Paginated */}
-                        <TabsContent value="equipment">
-                            <Card className="bg-white border-0 shadow-sm">
-                                <CardHeader className="pb-2">
+                        <TabsContent value="equipment" className="mt-0 focus-visible:outline-none">
+                            <Card className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+                                <CardHeader className="p-4 sm:p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 via-white to-slate-50/30">
                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                         <div className="flex items-center gap-3">
-                                            <CardTitle className="text-lg font-bold">Equipment Details</CardTitle>
-                                            <span className="text-xs bg-slate-100 text-slate-600 font-bold px-2 py-1 rounded-full">
-                                                {eqData?.total ?? totalDeclaredEquipment} declared
-                                            </span>
+                                            <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 shrink-0">
+                                                <Briefcase className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <CardTitle className="text-lg font-bold text-slate-900">Declared Equipment</CardTitle>
+                                                    <Badge variant="outline" className="text-[10px] font-bold text-blue-700 bg-blue-50/80 border-blue-200">
+                                                        {eqData?.total ?? totalDeclaredEquipment} Items
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-xs text-slate-500 mt-0.5">Media gear, cameras, transmission and drone hardware declared for customs clearance</p>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg">
+                                        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/70">
                                             {['ALL', 'PENDING', 'APPROVED', 'REJECTED'].map((status) => (
                                                 <button
                                                     key={status}
+                                                    type="button"
                                                     onClick={() => { setEqFilter(status); setEqPage(1); }}
-                                                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
+                                                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
                                                         eqFilter === status
-                                                            ? status === 'APPROVED' ? 'bg-green-600 text-white shadow-sm'
-                                                            : status === 'REJECTED' ? 'bg-red-600 text-white shadow-sm'
-                                                            : status === 'PENDING' ? 'bg-yellow-500 text-white shadow-sm'
-                                                            : 'bg-white text-gray-900 shadow-sm'
-                                                            : 'text-gray-500 hover:text-gray-700'
+                                                            ? status === 'APPROVED' ? 'bg-emerald-600 text-white shadow-xs'
+                                                            : status === 'REJECTED' ? 'bg-rose-600 text-white shadow-xs'
+                                                            : status === 'PENDING' ? 'bg-amber-500 text-white shadow-xs'
+                                                            : 'bg-white text-slate-900 shadow-xs'
+                                                            : 'text-slate-600 hover:text-slate-900'
                                                     }`}
                                                 >
                                                     {status === 'ALL' ? 'All' : status.charAt(0) + status.slice(1).toLowerCase()}
@@ -919,71 +1382,71 @@ export function JournalistProfile() {
                                         </div>
                                     </div>
                                 </CardHeader>
-                                <CardContent className="space-y-4 pt-4">
+                                <CardContent className="p-4 sm:p-6 space-y-4">
                                     {eqLoading ? (
-                                        <div className="flex items-center justify-center py-12">
+                                        <div className="flex items-center justify-center py-16">
                                             <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-                                            <span className="ml-2 text-sm text-gray-500">Loading equipment...</span>
+                                            <span className="ml-2 text-sm text-slate-500 font-medium">Loading equipment records...</span>
                                         </div>
                                     ) : !eqData?.equipment || eqData.equipment.length === 0 ? (
-                                        <div className="text-center py-12">
-                                            <Briefcase className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                                            <p className="text-gray-500 italic">No equipment found{eqFilter !== 'ALL' ? ` with status "${eqFilter}"` : ''}.</p>
+                                        <div className="text-center py-16 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                                            <Briefcase className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                                            <p className="text-slate-500 font-medium text-sm">No equipment found{eqFilter !== 'ALL' ? ` with status "${eqFilter}"` : ''}.</p>
                                         </div>
                                     ) : (
-                                        <div className={`space-y-4 ${eqFetching ? 'opacity-50 pointer-events-none' : ''}`}>
+                                        <div className={`space-y-3.5 ${eqFetching ? 'opacity-50 pointer-events-none' : ''}`}>
                                             {eqData.equipment.map((item, idx) => (
-                                                <div key={item.id || idx} className="border rounded-md p-4 bg-gray-50/50">
+                                                <div key={item.id || idx} className="border border-slate-200/80 rounded-xl p-4 bg-slate-50/50 hover:bg-white hover:border-slate-300 transition-all">
                                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                                         <div>
-                                                            <p className="text-xs font-bold text-gray-400 uppercase">TYPE</p>
-                                                            <p className="text-sm font-bold text-gray-900">{item.type}</p>
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TYPE</p>
+                                                            <p className="text-sm font-bold text-slate-900 mt-0.5">{item.type}</p>
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs font-bold text-gray-400 uppercase">DESCRIPTION</p>
-                                                            <p className="text-sm text-gray-900">{item.description}</p>
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">DESCRIPTION</p>
+                                                            <p className="text-sm text-slate-800 mt-0.5">{item.description}</p>
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs font-bold text-gray-400 uppercase">SERIAL NO.</p>
-                                                            <p className="text-sm font-mono text-gray-700">{item.serialNumber || 'N/A'}</p>
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">SERIAL NO.</p>
+                                                            <p className="text-sm font-mono text-slate-700 mt-0.5">{item.serialNumber || 'N/A'}</p>
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs font-bold text-gray-400 uppercase">VALUE</p>
-                                                            <p className="text-sm font-bold text-gray-900">{item.value} {item.currency}</p>
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">VALUE</p>
+                                                            <p className="text-sm font-bold text-slate-900 mt-0.5">{item.value} {item.currency}</p>
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs font-bold text-gray-400 uppercase">QUANTITY</p>
-                                                            <p className="text-sm font-bold text-gray-900">{item.quantity}</p>
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">QUANTITY</p>
+                                                            <p className="text-sm font-bold text-slate-900 mt-0.5">{item.quantity}</p>
                                                         </div>
                                                         <div className="flex flex-col">
-                                                            <p className="text-xs font-bold text-gray-400 uppercase">STATUS</p>
-                                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full w-fit ${item.status?.toUpperCase() === 'APPROVED' ? 'bg-green-100 text-green-700' : item.status?.toUpperCase() === 'REJECTED' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">STATUS</p>
+                                                            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full w-fit mt-0.5 ${item.status?.toUpperCase() === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : item.status?.toUpperCase() === 'REJECTED' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>
                                                                 {item.status}
                                                             </span>
                                                         </div>
                                                     </div>
 
                                                     {item.rejectionReason && item.status === 'REJECTED' && (
-                                                        <div className="mt-2 pt-2 border-t">
-                                                            <p className="text-xs font-bold text-gray-400 uppercase">REJECTION REASON</p>
-                                                            <p className="text-sm text-red-600">{item.rejectionReason}</p>
+                                                        <div className="mt-3 pt-3 border-t border-rose-100 bg-rose-50/50 p-2.5 rounded-lg">
+                                                            <p className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">REJECTION REASON</p>
+                                                            <p className="text-xs text-rose-800 mt-0.5">{item.rejectionReason}</p>
                                                         </div>
                                                     )}
 
                                                     {/* Equipment Approval Buttons */}
                                                     {canUpdateEquipment && (
-                                                        <div className="mt-4 pt-4 border-t flex gap-2">
+                                                        <div className="mt-3 pt-3 border-t border-slate-200/60 flex gap-2">
                                                             {item.status?.toUpperCase() !== 'APPROVED' && (
                                                                 <Button
                                                                     size="sm"
-                                                                    className="bg-[#009b4d] hover:bg-[#007a3d] text-white font-bold"
+                                                                    className="bg-[#009b4d] hover:bg-[#007a3d] text-white font-bold text-xs rounded-lg"
                                                                     onClick={() => openEquipmentDialog(item, EquipmentStatus.APPROVED)}
                                                                     disabled={isEquipmentUpdating}
                                                                 >
                                                                     {isEquipmentUpdating && selectedEquipment?.id === item.id && equipmentStatus === EquipmentStatus.APPROVED ? (
-                                                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
                                                                     ) : (
-                                                                        <Check className="h-4 w-4 mr-2" />
+                                                                        <Check className="h-3.5 w-3.5 mr-1.5" />
                                                                     )}
                                                                     {isPmoOrGc ? 'Send Consent' : 'Approve'}
                                                                 </Button>
@@ -992,14 +1455,14 @@ export function JournalistProfile() {
                                                                 <Button
                                                                     size="sm"
                                                                     variant="outline"
-                                                                    className="text-amber-600 border-amber-200 hover:bg-amber-50 font-bold"
+                                                                    className="text-amber-600 border-amber-200 hover:bg-amber-50 font-bold text-xs rounded-lg"
                                                                     onClick={() => handleEquipmentApproval(item.id, EquipmentStatus.PENDING)}
                                                                     disabled={isEquipmentUpdating}
                                                                 >
                                                                     {isEquipmentUpdating && selectedEquipment?.id === item.id ? (
-                                                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
                                                                     ) : (
-                                                                        <RotateCcw className="h-4 w-4 mr-2" />
+                                                                        <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
                                                                     )}
                                                                     Revoke Approval
                                                                 </Button>
@@ -1008,11 +1471,11 @@ export function JournalistProfile() {
                                                                 <Button
                                                                     size="sm"
                                                                     variant="outline"
-                                                                    className="text-red-600 border-red-200 hover:bg-red-50 font-bold"
+                                                                    className="text-rose-600 border-rose-200 hover:bg-rose-50 font-bold text-xs rounded-lg"
                                                                     onClick={() => openEquipmentDialog(item, EquipmentStatus.REJECTED)}
                                                                     disabled={isEquipmentUpdating}
                                                                 >
-                                                                    <X className="h-4 w-4 mr-2" />
+                                                                    <X className="h-3.5 w-3.5 mr-1.5" />
                                                                     Reject
                                                                 </Button>
                                                             )}
@@ -1025,8 +1488,8 @@ export function JournalistProfile() {
 
                                     {/* Pagination Controls */}
                                     {eqData && eqData.pages > 1 && (
-                                        <div className="flex items-center justify-between pt-4 border-t">
-                                            <p className="text-xs text-gray-500">
+                                        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                                            <p className="text-xs text-slate-500 font-medium">
                                                 Showing {((eqData.currentPage - 1) * eqData.limit) + 1}–{Math.min(eqData.currentPage * eqData.limit, eqData.total)} of {eqData.total}
                                             </p>
                                             <div className="flex items-center gap-1">
@@ -1035,7 +1498,7 @@ export function JournalistProfile() {
                                                     size="sm"
                                                     disabled={eqPage <= 1 || eqFetching}
                                                     onClick={() => setEqPage(p => Math.max(1, p - 1))}
-                                                    className="h-8 w-8 p-0"
+                                                    className="h-8 w-8 p-0 rounded-lg"
                                                 >
                                                     <ChevronLeft className="h-4 w-4" />
                                                 </Button>
@@ -1055,7 +1518,7 @@ export function JournalistProfile() {
                                                             key={pageNum}
                                                             variant={eqPage === pageNum ? 'default' : 'outline'}
                                                             size="sm"
-                                                            className={`h-8 w-8 p-0 text-xs font-bold ${eqPage === pageNum ? 'bg-blue-600 text-white' : ''}`}
+                                                            className={`h-8 w-8 p-0 text-xs font-bold rounded-lg ${eqPage === pageNum ? 'bg-blue-600 text-white' : ''}`}
                                                             onClick={() => setEqPage(pageNum)}
                                                             disabled={eqFetching}
                                                         >
@@ -1068,37 +1531,116 @@ export function JournalistProfile() {
                                                     size="sm"
                                                     disabled={eqPage >= (eqData?.pages || 1) || eqFetching}
                                                     onClick={() => setEqPage(p => p + 1)}
-                                                    className="h-8 w-8 p-0"
+                                                    className="h-8 w-8 p-0 rounded-lg"
                                                 >
                                                     <ChevronRight className="h-4 w-4" />
                                                 </Button>
                                             </div>
                                         </div>
                                     )}
+
+                                    {/* Linear Tab Navigation Controls at Bottom of Equipment Card */}
+                                    <div className="pt-6 border-t border-slate-100 flex items-center justify-between gap-3">
+                                        {prevTab ? (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => handleSelectTab(prevTab.id)}
+                                                className="text-xs font-bold text-slate-600 hover:text-blue-600 hover:border-blue-200 rounded-xl gap-1.5"
+                                            >
+                                                <ArrowLeft className="h-3.5 w-3.5" />
+                                                <span>Previous: {prevTab.name}</span>
+                                            </Button>
+                                        ) : <div />}
+
+                                        {nextTab && (
+                                            <Button
+                                                type="button"
+                                                variant="default"
+                                                size="sm"
+                                                onClick={() => handleSelectTab(nextTab.id)}
+                                                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl gap-1.5 shadow-xs"
+                                            >
+                                                <span>Next: {nextTab.name}</span>
+                                                <ArrowRight className="h-3.5 w-3.5" />
+                                            </Button>
+                                        )}
+                                    </div>
                                 </CardContent>
                             </Card>
                         </TabsContent>
 
+                        {/* Crew Members Manifest Tab */}
                         {isMultiMemberForm && (
-                            <TabsContent value="crew">
-                                <CrewMemberReviewTable applicationId={Number(id)} />
+                            <TabsContent value="crew" className="mt-0 focus-visible:outline-none">
+                                <Card className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+                                    <CardHeader className="p-4 sm:p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 via-white to-slate-50/30">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">
+                                                <Users className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <CardTitle className="text-lg font-bold text-slate-900">Crew Members & Production Personnel</CardTitle>
+                                                    <Badge variant="outline" className="text-[10px] font-bold text-indigo-700 bg-indigo-50/80 border-indigo-200">
+                                                        {crewMembersList.length} Members
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-xs text-slate-500 mt-0.5">Review credential details, passport numbers, and roles for each crew member</p>
+                                            </div>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="p-4 sm:p-6 space-y-6">
+                                        <CrewMemberReviewTable applicationId={Number(id)} />
+
+                                        {/* Linear Tab Navigation Controls at Bottom of Crew Card */}
+                                        <div className="pt-6 border-t border-slate-100 flex items-center justify-between gap-3">
+                                            {prevTab ? (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleSelectTab(prevTab.id)}
+                                                    className="text-xs font-bold text-slate-600 hover:text-blue-600 hover:border-blue-200 rounded-xl gap-1.5"
+                                                >
+                                                    <ArrowLeft className="h-3.5 w-3.5" />
+                                                    <span>Previous: {prevTab.name}</span>
+                                                </Button>
+                                            ) : <div />}
+
+                                            {nextTab && (
+                                                <Button
+                                                    type="button"
+                                                    variant="default"
+                                                    size="sm"
+                                                    onClick={() => handleSelectTab(nextTab.id)}
+                                                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl gap-1.5 shadow-xs"
+                                                >
+                                                    <span>Next: {nextTab.name}</span>
+                                                    <ArrowRight className="h-3.5 w-3.5" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             </TabsContent>
                         )}
                     </Tabs>
-                        );
-                    })()}
                 </div>
 
                 {/* Right Sidebar - Decision Panel */}
                 <div className="lg:col-span-4 space-y-6 order-1 lg:order-2">
-                    <Card className="bg-white border-0 shadow-sm">
-                        <CardHeader>
+                    <Card className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+                        <CardHeader className="bg-slate-50/70 border-b border-slate-100 p-4 sm:p-5">
                             <div className="flex items-start justify-between">
                                 <div className="flex items-start gap-3">
-                                    <ShieldCheck className="h-5 w-5 text-blue-600" />
+                                    <div className="p-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 shrink-0">
+                                        <ShieldCheck className="h-5 w-5" />
+                                    </div>
                                     <div>
                                         <h3 className="font-bold text-gray-900">Decision Panel</h3>
-                                        <div className="flex flex-col gap-1">
+                                        <div className="flex flex-col gap-1 mt-0.5">
                                             <p className="text-xs text-gray-500 leading-tight">Current Status: <span className="font-bold">{application.status}</span></p>
                                             {userActionableApproval?.isResubmitted && (
                                                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 w-fit animate-pulse border border-amber-200 uppercase tracking-wider">
@@ -1111,15 +1653,15 @@ export function JournalistProfile() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="text-blue-600 border-blue-200 hover:bg-blue-50 font-bold"
+                                    className="text-blue-600 border-blue-200 hover:bg-blue-50 font-bold rounded-xl text-xs"
                                     onClick={() => setShowHistoryDialog(true)}
                                 >
-                                    <History className="h-4 w-4 mr-2" />
+                                    <History className="h-3.5 w-3.5 mr-1.5" />
                                     History
                                 </Button>
                             </div>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="p-4 sm:p-5 space-y-4">
                             <SystemCheckSuccess show={showSystemCheck} />
 
                             {/* Crew Manifest Information Card */}
