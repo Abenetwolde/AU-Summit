@@ -926,10 +926,37 @@ export interface SuperAdminOverview {
     totalExited?: SuperAdminMetric;
 }
 
+export interface ActivePublishedFormInfo {
+    formId: number;
+    name: string;
+    formKey: string;
+}
+
+export interface FormApplicantDistribution {
+    formId: number;
+    name: string;
+    formKey: string;
+    count: number;
+    percentage: number;
+    approved: number;
+    pending: number;
+    rejected: number;
+    submitted: number;
+}
+
+export interface FormApplicantTimeSeriesPoint {
+    date: string;
+    total: number;
+    [formKey: string]: number | string;
+}
+
 export interface SuperAdminCharts {
     timeSeries: { date: string; count: number }[];
     statusDistribution: { status: string; count: number }[];
     roleDistribution: { roleName: string; count: number }[];
+    formTimeSeries?: FormApplicantTimeSeriesPoint[];
+    formDistribution?: FormApplicantDistribution[];
+    activeForms?: ActivePublishedFormInfo[];
 }
 
 export interface SuperAdminStakeholder {

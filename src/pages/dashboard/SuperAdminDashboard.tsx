@@ -6,7 +6,7 @@ import {
   Filter, Building2, Volume2, Plane, Shield, TrendingUp, Factory,
   Package, LayoutDashboard, Eye, CalendarDays, Calendar,
   Download as DownloadIcon, FileText as FileTextIcon,
-  Plus, Minus, LogOut
+  Plus, Minus, LogOut, Layers, Activity, BarChart2
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, CartesianGrid, Legend, BarChart, Bar, LabelList } from 'recharts';
 import { type ClassValue, clsx } from "clsx";
@@ -102,6 +102,47 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(({ className, v
 ));
 Progress.displayName = "Progress";
 
+const CustomProgramTimeSeriesTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload || !payload.length) return null;
+  const dayTotal = payload.reduce((sum: number, entry: any) => sum + (Number(entry.value) || 0), 0);
+  let formattedDate = label;
+  try {
+    const d = new Date(label);
+    if (!isNaN(d.getTime())) {
+      formattedDate = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+  } catch {}
+
+  return (
+    <div className="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-xl p-3.5 shadow-xl text-xs space-y-2 min-w-[220px]">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 gap-3">
+        <span className="font-bold text-slate-800">{formattedDate}</span>
+        <span className="font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full text-[11px]">
+          {dayTotal} {dayTotal === 1 ? 'applicant' : 'applicants'}
+        </span>
+      </div>
+      <div className="space-y-1.5">
+        {payload.map((entry: any, i: number) => {
+          const num = Number(entry.value || 0);
+          const percent = dayTotal > 0 ? Math.round((num / dayTotal) * 100) : 0;
+          return (
+            <div key={i} className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.color || entry.fill || '#3b82f6' }} />
+                <span className="text-slate-600 truncate max-w-[150px]" title={entry.name}>{entry.name}</span>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="font-black text-slate-900">{num}</span>
+                <span className="text-[10px] text-slate-400 ml-1">({percent}%)</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 // --- MAIN PAGE ---
 export default function SuperAdminDashboard() {
   const [mounted, setMounted] = useState(false);
@@ -155,6 +196,22 @@ export default function SuperAdminDashboard() {
   const [stakeholderWorkflowType, setStakeholderWorkflowType] = useState<'ENTRY' | 'EXIT'>('ENTRY');
   const [stakeholderMetricType, setStakeholderMetricType] = useState<'pending' | 'total' | 'approved'>('pending');
   const [selectedStakeholderDetail, setSelectedStakeholderDetail] = useState<string | null>(null);
+
+  // Active Published Form (Event Program) Statistics State
+  const [programTrendRange, setProgramTrendRange] = useState<'thisMonth' | 'lastMonth' | 'all'>('thisMonth');
+  const [programChartType, setProgramChartType] = useState<'area' | 'bar'>('area');
+  const [selectedProgramFilter, setSelectedProgramFilter] = useState<string>('all');
+
+  const PROGRAM_PALETTE = React.useMemo(() => [
+    { stroke: '#3b82f6', fill: '#3b82f6', lightBg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+    { stroke: '#10b981', fill: '#10b981', lightBg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+    { stroke: '#f59e0b', fill: '#f59e0b', lightBg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+    { stroke: '#8b5cf6', fill: '#8b5cf6', lightBg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+    { stroke: '#ec4899', fill: '#ec4899', lightBg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
+    { stroke: '#06b6d4', fill: '#06b6d4', lightBg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200' },
+    { stroke: '#f97316', fill: '#f97316', lightBg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
+    { stroke: '#6366f1', fill: '#6366f1', lightBg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
+  ], []);
 
   // Curated harmonious color palette for dynamically fetched organizations
   const DYNAMIC_ORG_COLORS = [
@@ -338,8 +395,9 @@ export default function SuperAdminDashboard() {
     }
   }, [performanceData, selectedStakeholder]);
 
-  // Utility to filter data for a specific month
-  const filterByMonthRange = (data: any[], range: 'thisMonth' | 'lastMonth') => {
+  // Utility to filter data for a specific month or all
+  const filterByMonthRange = (data: any[], range: 'thisMonth' | 'lastMonth' | 'all') => {
+    if (range === 'all') return data || [];
     const now = new Date();
     let targetMonth = now.getMonth();
     let targetYear = now.getFullYear();
@@ -357,6 +415,72 @@ export default function SuperAdminDashboard() {
       return d.getMonth() === targetMonth && d.getFullYear() === targetYear;
     });
   };
+
+  // Active published programs list
+  const activeProgramsList = React.useMemo(() => {
+    if (adminCharts?.activeForms && adminCharts.activeForms.length > 0) {
+      return adminCharts.activeForms;
+    }
+    if (adminCharts?.formDistribution && adminCharts.formDistribution.length > 0) {
+      return adminCharts.formDistribution.map(f => ({
+        formId: f.formId,
+        name: f.name,
+        formKey: f.formKey || `form_${f.formId}`
+      }));
+    }
+    return (activeForms || []).map(f => ({
+      formId: f.form_id,
+      name: f.name,
+      formKey: `form_${f.form_id}`
+    }));
+  }, [adminCharts, activeForms]);
+
+  // Program applicant distribution
+  const programDistributionData = React.useMemo(() => {
+    if (adminCharts?.formDistribution && adminCharts.formDistribution.length > 0) {
+      return adminCharts.formDistribution;
+    }
+    return (activeForms || []).map(f => ({
+      formId: f.form_id,
+      name: f.name,
+      formKey: `form_${f.form_id}`,
+      count: 0,
+      percentage: 0,
+      approved: 0,
+      pending: 0,
+      rejected: 0,
+      submitted: 0
+    }));
+  }, [adminCharts?.formDistribution, activeForms]);
+
+  // Program Pie Chart data
+  const programPieData = React.useMemo(() => {
+    return programDistributionData.map((item, idx) => {
+      const paletteItem = PROGRAM_PALETTE[idx % PROGRAM_PALETTE.length];
+      return {
+        name: item.name,
+        value: item.count,
+        percentage: item.percentage,
+        color: paletteItem.stroke,
+        formId: item.formId,
+        formKey: item.formKey,
+        approved: item.approved,
+        pending: item.pending,
+        rejected: item.rejected,
+        submitted: item.submitted
+      };
+    });
+  }, [programDistributionData, PROGRAM_PALETTE]);
+
+  const totalProgramApplicants = React.useMemo(() => {
+    return programPieData.reduce((acc, curr) => acc + curr.value, 0);
+  }, [programPieData]);
+
+  // Filtered Time Series by Program
+  const filteredProgramTimeSeries = React.useMemo(() => {
+    const raw = adminCharts?.formTimeSeries || [];
+    return filterByMonthRange(raw, programTrendRange);
+  }, [adminCharts?.formTimeSeries, programTrendRange]);
 
   // Utility to format minutes
   const formatMinutes = (minutes: number) => {
@@ -765,6 +889,435 @@ export default function SuperAdminDashboard() {
               </CardContent>
             </Card>
 
+          </div>
+
+          {/* ========================================================================= */}
+          {/* SECTION: ACTIVE PUBLISHED FORMS (EVENT PROGRAMS) APPLICANT STATISTICS     */}
+          {/* ========================================================================= */}
+          <div id="chart-program-applicant-analytics" className="space-y-4 animate-slide-up" style={{ animationDelay: '0.10s' }}>
+            {/* Header Banner with Active Program Count & Interactive Controls */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white shadow-lg border border-slate-700/50">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <div className="h-8 w-8 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400 shrink-0">
+                    <Layers className="h-4 w-4" />
+                  </div>
+                  <h2 className="text-xl font-extrabold tracking-tight text-white">
+                    Active Program Applicant Analytics
+                  </h2>
+                  <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                    {activeProgramsList.length} Active Published {activeProgramsList.length === 1 ? 'Program' : 'Programs'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 max-w-2xl">
+                  Real-time applicant distribution and daily registration trends broken down by each active published accreditation program.
+                </p>
+              </div>
+
+              {/* Action Controls */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Time Series Chart Type Switcher */}
+                <div className="inline-flex rounded-xl p-1 bg-slate-800/80 border border-slate-700/80 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setProgramChartType('area')}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5",
+                      programChartType === 'area'
+                        ? "bg-indigo-600 text-white shadow-sm font-bold"
+                        : "text-slate-400 hover:text-white"
+                    )}
+                  >
+                    <Activity className="h-3 w-3" /> Area Trend
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProgramChartType('bar')}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5",
+                      programChartType === 'bar'
+                        ? "bg-indigo-600 text-white shadow-sm font-bold"
+                        : "text-slate-400 hover:text-white"
+                    )}
+                  >
+                    <BarChart2 className="h-3 w-3" /> Stacked Bar
+                  </button>
+                </div>
+
+                {/* Timeframe selector */}
+                <div className="relative group">
+                  <select
+                    value={programTrendRange}
+                    onChange={(e) => setProgramTrendRange(e.target.value as any)}
+                    className="appearance-none bg-slate-800/90 text-white border border-slate-700 rounded-xl px-3 py-1.5 pr-8 text-xs outline-none font-medium hover:border-indigo-400 transition-colors cursor-pointer"
+                  >
+                    <option value="thisMonth">This Month</option>
+                    <option value="lastMonth">Last Month</option>
+                    <option value="all">All Dates</option>
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 pointer-events-none" />
+                </div>
+
+                {/* Program Filter Switcher */}
+                <div className="relative group">
+                  <select
+                    value={selectedProgramFilter}
+                    onChange={(e) => setSelectedProgramFilter(e.target.value)}
+                    className="appearance-none bg-slate-800/90 text-white border border-slate-700 rounded-xl px-3 py-1.5 pr-8 text-xs outline-none font-medium hover:border-indigo-400 transition-colors cursor-pointer max-w-[170px] truncate"
+                  >
+                    <option value="all">All Active Programs</option>
+                    {activeProgramsList.map(p => (
+                      <option key={p.formKey} value={p.formKey}>{p.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Program Pills Strip */}
+            {activeProgramsList.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {programDistributionData.map((item, idx) => {
+                  const palette = PROGRAM_PALETTE[idx % PROGRAM_PALETTE.length];
+                  const isSelected = selectedProgramFilter === item.formKey;
+
+                  return (
+                    <div
+                      key={item.formKey}
+                      onClick={() => setSelectedProgramFilter(isSelected ? 'all' : item.formKey)}
+                      className={cn(
+                        "p-3.5 rounded-xl border bg-white shadow-2xs transition-all cursor-pointer group flex flex-col justify-between",
+                        isSelected
+                          ? "ring-2 ring-indigo-500 border-indigo-300 shadow-md bg-indigo-50/20"
+                          : "border-slate-200/80 hover:border-slate-300 hover:shadow-xs"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: palette.stroke }} />
+                          <p className="text-xs font-bold text-slate-800 truncate" title={item.name}>
+                            {item.name}
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md shrink-0" style={{ backgroundColor: `${palette.stroke}15`, color: palette.stroke }}>
+                          {item.percentage}% share
+                        </span>
+                      </div>
+
+                      <div className="flex items-baseline justify-between mt-2.5 pt-2 border-t border-slate-100">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xl font-black text-slate-900">{item.count}</span>
+                          <span className="text-[11px] font-semibold text-slate-400">applicants</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold">
+                          <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded" title="Approved applicants">
+                            ✓ {item.approved}
+                          </span>
+                          <span className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded" title="In Review / Pending">
+                            ⏳ {item.pending}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Main Visualizations: Left = Time Series, Right = Pie Chart */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-stretch">
+              
+              {/* LEFT: Time Series Breakdown */}
+              <Card className="lg:col-span-7 border-0 shadow-sm bg-white overflow-hidden flex flex-col justify-between">
+                <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-base font-bold text-slate-800">
+                        Applicant Influx by Program (Time Series)
+                      </CardTitle>
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wide bg-blue-50 text-blue-700 border border-blue-200">
+                        {programTrendRange === 'thisMonth' ? 'This Month' : programTrendRange === 'lastMonth' ? 'Last Month' : 'All Recorded Dates'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Daily applicant submissions segmented across active published programs
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-xl font-black text-slate-900 leading-none">
+                      {filteredProgramTimeSeries.reduce((acc, curr: any) => acc + (Number(curr.total) || 0), 0)}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider mt-0.5">
+                      Period Submissions
+                    </span>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="p-4 sm:p-6 flex-1 flex flex-col justify-between">
+                  {filteredProgramTimeSeries.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                      <Clock className="h-10 w-10 text-slate-300 mb-2" />
+                      <p className="text-sm font-semibold text-slate-600">No applicant submissions recorded</p>
+                      <p className="text-xs text-slate-400 mt-1">There are no applicant submissions in the selected timeframe.</p>
+                    </div>
+                  ) : (
+                    <div className="h-[280px] sm:h-[320px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        {programChartType === 'area' ? (
+                          <AreaChart data={filteredProgramTimeSeries} margin={{ top: 10, right: 15, left: -10, bottom: 0 }}>
+                            <defs>
+                              {activeProgramsList.map((prog, idx) => {
+                                const pal = PROGRAM_PALETTE[idx % PROGRAM_PALETTE.length];
+                                return (
+                                  <linearGradient key={prog.formKey} id={`progGrad_${prog.formKey}`} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={pal.stroke} stopOpacity={0.4} />
+                                    <stop offset="95%" stopColor={pal.stroke} stopOpacity={0.0} />
+                                  </linearGradient>
+                                );
+                              })}
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                            <XAxis 
+                              dataKey="date" 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }}
+                              tickFormatter={v => {
+                                try {
+                                  const d = new Date(v);
+                                  return !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : v;
+                                } catch {
+                                  return v;
+                                }
+                              }}
+                            />
+                            <YAxis 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }} 
+                              allowDecimals={false}
+                            />
+                            <Tooltip content={<CustomProgramTimeSeriesTooltip />} />
+                            {activeProgramsList.map((prog, idx) => {
+                              const pal = PROGRAM_PALETTE[idx % PROGRAM_PALETTE.length];
+                              if (selectedProgramFilter !== 'all' && selectedProgramFilter !== prog.formKey) {
+                                return null;
+                              }
+                              return (
+                                <Area
+                                  key={prog.formKey}
+                                  type="monotone"
+                                  dataKey={prog.formKey}
+                                  name={prog.name}
+                                  stroke={pal.stroke}
+                                  strokeWidth={2.5}
+                                  fill={`url(#progGrad_${prog.formKey})`}
+                                  dot={{ r: 2.5, fill: pal.stroke, stroke: '#fff', strokeWidth: 1.5 }}
+                                  activeDot={{ r: 5, stroke: pal.stroke, strokeWidth: 2, fill: '#fff' }}
+                                />
+                              );
+                            })}
+                          </AreaChart>
+                        ) : (
+                          <BarChart data={filteredProgramTimeSeries} margin={{ top: 10, right: 15, left: -10, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                            <XAxis 
+                              dataKey="date" 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }}
+                              tickFormatter={v => {
+                                try {
+                                  const d = new Date(v);
+                                  return !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : v;
+                                } catch {
+                                  return v;
+                                }
+                              }}
+                            />
+                            <YAxis 
+                              axisLine={false} 
+                              tickLine={false} 
+                              tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }} 
+                              allowDecimals={false}
+                            />
+                            <Tooltip content={<CustomProgramTimeSeriesTooltip />} />
+                            {activeProgramsList.map((prog, idx) => {
+                              const pal = PROGRAM_PALETTE[idx % PROGRAM_PALETTE.length];
+                              if (selectedProgramFilter !== 'all' && selectedProgramFilter !== prog.formKey) {
+                                return null;
+                              }
+                              return (
+                                <Bar
+                                  key={prog.formKey}
+                                  dataKey={prog.formKey}
+                                  name={prog.name}
+                                  fill={pal.stroke}
+                                  radius={[4, 4, 0, 0]}
+                                  stackId="programStack"
+                                />
+                              );
+                            })}
+                          </BarChart>
+                        )}
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Dynamic Interactive Legend */}
+                  <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100 text-xs">
+                    {activeProgramsList.map((prog, idx) => {
+                      const pal = PROGRAM_PALETTE[idx % PROGRAM_PALETTE.length];
+                      const isSelected = selectedProgramFilter === prog.formKey;
+
+                      return (
+                        <button
+                          key={prog.formKey}
+                          type="button"
+                          onClick={() => setSelectedProgramFilter(isSelected ? 'all' : prog.formKey)}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all text-xs font-medium cursor-pointer",
+                            isSelected
+                              ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                              : "bg-slate-50 text-slate-700 border-slate-200/80 hover:bg-slate-100"
+                          )}
+                        >
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: pal.stroke }} />
+                          <span className="truncate max-w-[180px]">{prog.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* RIGHT: Pie Chart Breakdown */}
+              <Card className="lg:col-span-5 border-0 shadow-sm bg-white overflow-hidden flex flex-col justify-between">
+                <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base font-bold text-slate-800">
+                      Applicant Share by Program
+                    </CardTitle>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Percentage share & status breakdown of active programs
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-xl">
+                    Donut View
+                  </span>
+                </CardHeader>
+
+                <CardContent className="p-4 sm:p-6 flex-1 flex flex-col justify-between">
+                  {totalProgramApplicants === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                      <Users className="h-10 w-10 text-slate-300 mb-2" />
+                      <p className="text-sm font-semibold text-slate-600">No applicants registered</p>
+                      <p className="text-xs text-slate-400 mt-1">No applications are currently linked to active published forms.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Donut Pie Chart */}
+                      <div className="h-[210px] sm:h-[230px] w-full relative flex items-center justify-center">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={programPieData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={65}
+                              outerRadius={98}
+                              paddingAngle={4}
+                              dataKey="value"
+                              stroke="none"
+                            >
+                              {programPieData.map((entry, idx) => (
+                                <Cell key={`prog-cell-${idx}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                                borderRadius: '12px',
+                                border: '1px solid rgba(226, 232, 240, 0.8)',
+                                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                                fontSize: '12px'
+                              }}
+                              formatter={(val: any, name: any, item: any) => {
+                                const numVal = Number(val || 0);
+                                const percent = totalProgramApplicants > 0 ? Math.round((numVal / totalProgramApplicants) * 100) : 0;
+                                return [`${numVal} applicants (${percent}%)`, item.payload.name];
+                              }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+
+                        {/* Center Counter */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                          <span className="text-2xl sm:text-3xl font-black text-slate-900">{totalProgramApplicants}</span>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                            Total Applicants
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Detailed Program List with Progress Bars */}
+                      <div className="space-y-2.5 mt-3 max-h-[175px] overflow-y-auto pr-1">
+                        {programPieData.map((prog) => {
+                          return (
+                            <div
+                              key={prog.formKey}
+                              onClick={() => setSelectedProgramFilter(selectedProgramFilter === prog.formKey ? 'all' : prog.formKey)}
+                              className={cn(
+                                "p-2.5 rounded-xl border transition-all cursor-pointer",
+                                selectedProgramFilter === prog.formKey
+                                  ? "bg-slate-50 border-slate-300 shadow-xs ring-1 ring-slate-400/30"
+                                  : "bg-white hover:bg-slate-50/60 border-slate-100"
+                              )}
+                            >
+                              <div className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: prog.color }} />
+                                  <span className="font-bold text-slate-800 truncate" title={prog.name}>
+                                    {prog.name}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="font-black text-slate-900">{prog.value}</span>
+                                  <span className="text-[11px] font-semibold text-slate-400">({prog.percentage}%)</span>
+                                </div>
+                              </div>
+
+                              {/* Progress bar */}
+                              <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{
+                                    width: `${Math.min(100, Math.max(prog.percentage, 2))}%`,
+                                    backgroundColor: prog.color
+                                  }}
+                                />
+                              </div>
+
+                              {/* Quick sub-status pills */}
+                              <div className="flex items-center justify-between gap-2 mt-1.5 text-[10px] text-slate-400 font-medium">
+                                <span>{prog.approved} Approved</span>
+                                <span>•</span>
+                                <span>{prog.pending} In Review</span>
+                                <span>•</span>
+                                <span>{prog.rejected} Rejected</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+            </div>
           </div>
 
           {/* ROW 1: Application Trends + Stakeholder Performance */}
