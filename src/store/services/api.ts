@@ -945,6 +945,9 @@ export interface FormWorkflowStepStats {
     role?: string;
     key?: string;
     color?: string;
+    organizationName?: string | null;
+    organizationId?: number | null;
+    organizationLogo?: string | null;
 }
 
 export interface FormWorkflowStatus {

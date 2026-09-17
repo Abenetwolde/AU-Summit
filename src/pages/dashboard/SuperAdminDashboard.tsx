@@ -156,43 +156,47 @@ export default function SuperAdminDashboard() {
   const [stakeholderMetricType, setStakeholderMetricType] = useState<'pending' | 'total' | 'approved'>('pending');
   const [selectedStakeholderDetail, setSelectedStakeholderDetail] = useState<string | null>(null);
 
-  // Helper to normalize stakeholder keys across multiple forms
-  const normalizeStakeholderStep = (key?: string, role?: string, name?: string) => {
-    const k = (key || '').toLowerCase().trim();
-    const r = (role || '').toLowerCase().trim();
-    const n = (name || '').toLowerCase().trim();
+  // Curated harmonious color palette for dynamically fetched organizations
+  const DYNAMIC_ORG_COLORS = [
+    '#3b82f6', // Blue
+    '#10b981', // Emerald
+    '#f59e0b', // Amber
+    '#8b5cf6', // Violet
+    '#ec4899', // Pink
+    '#06b6d4', // Cyan
+    '#6366f1', // Indigo
+    '#14b8a6', // Teal
+    '#f97316', // Orange
+    '#84cc16', // Lime
+    '#e11d48', // Rose
+    '#64748b', // Slate
+  ];
 
-    if (k.includes('niss') || r.includes('niss') || n.includes('niss')) {
-      return { id: 'niss', label: 'NISS (Intelligence & Security)', color: '#6366f1' };
-    }
-    if (k.includes('immigrat') || r.includes('immigrat') || n.includes('immigrat')) {
-      return { id: 'immigration', label: 'Immigration Services', color: '#3b82f6' };
-    }
-    if (k.includes('custom') || r.includes('custom') || n.includes('custom')) {
-      return { id: 'customs', label: 'Customs Commission', color: '#f97316' };
-    }
-    if (k.includes('secur') || r.includes('secur') || n.includes('secur') || k.includes('police') || n.includes('police')) {
-      return { id: 'security', label: 'Federal Police & Security', color: '#10b981' };
-    }
-    if (k.includes('media') || r.includes('media') || n.includes('media') || k.includes('press') || n.includes('press')) {
-      return { id: 'media', label: 'Media Authority', color: '#8b5cf6' };
-    }
-    if (k.includes('drone') || r.includes('drone') || n.includes('drone') || k.includes('aviation') || n.includes('aviation')) {
-      return { id: 'drone', label: 'Civil Aviation (Drone Clearance)', color: '#06b6d4' };
-    }
-    if (k.includes('equip') || r.includes('equip') || n.includes('equip')) {
-      return { id: 'equipment', label: 'Equipment Verification', color: '#ec4899' };
-    }
-    if (k.includes('mofa') || r.includes('mofa') || n.includes('mofa') || k.includes('embassy') || n.includes('embassy')) {
-      return { id: 'mofa', label: 'Ministry of Foreign Affairs (MOFA)', color: '#14b8a6' };
-    }
-    if (k.includes('protocol') || r.includes('protocol') || n.includes('protocol')) {
-      return { id: 'protocol', label: 'State Protocol', color: '#eab308' };
+  // Helper to dynamically resolve stakeholder key and organization name from DB
+  const getStakeholderIdentity = (stepData: any, stepName: string) => {
+    // 1. Primary: Use the organization name fetched directly from the database where step approver role exists
+    const orgName = (stepData?.organizationName || stepData?.organization || '').trim();
+    if (orgName) {
+      const orgId = stepData.organizationId ? `org_${stepData.organizationId}` : orgName.toLowerCase().replace(/[^a-z0-9]/gi, '_');
+      let hash = 0;
+      for (let i = 0; i < orgId.length; i++) {
+        hash = ((hash << 5) - hash) + orgId.charCodeAt(i);
+        hash |= 0;
+      }
+      const color = stepData?.color || DYNAMIC_ORG_COLORS[Math.abs(hash) % DYNAMIC_ORG_COLORS.length];
+      return { id: orgId, label: orgName, color };
     }
 
-    const rawId = (k || r || n || 'other').replace(/[^a-z0-9]/gi, '_');
-    const rawLabel = role || name || key || 'Review Step';
-    return { id: rawId, label: rawLabel, color: '#64748b' };
+    // 2. Fallback: If role has no organization in DB, use role or step name from DB
+    const fallbackLabel = (stepData?.role || stepName || stepData?.key || 'Unassigned Organization').trim();
+    const rawId = fallbackLabel.toLowerCase().replace(/[^a-z0-9]/gi, '_');
+    let fallbackHash = 0;
+    for (let i = 0; i < rawId.length; i++) {
+      fallbackHash = ((fallbackHash << 5) - fallbackHash) + rawId.charCodeAt(i);
+      fallbackHash |= 0;
+    }
+    const color = stepData?.color || DYNAMIC_ORG_COLORS[Math.abs(fallbackHash) % DYNAMIC_ORG_COLORS.length];
+    return { id: rawId, label: fallbackLabel, color };
   };
 
   // Aggregated stakeholder workload across all active forms
@@ -212,6 +216,8 @@ export default function SuperAdminDashboard() {
       formContributions: {
         formId: number;
         formName: string;
+        stepName: string;
+        role?: string;
         pending: number;
         approved: number;
         rejected: number;
@@ -222,7 +228,7 @@ export default function SuperAdminDashboard() {
     if (targetStatus.forms && Array.isArray(targetStatus.forms) && targetStatus.forms.length > 0) {
       targetStatus.forms.forEach((formItem: any) => {
         Object.entries(formItem.steps || {}).forEach(([stepName, stepData]: [string, any]) => {
-          const { id, label, color } = normalizeStakeholderStep(stepData.key, stepData.role, stepName);
+          const { id, label, color } = getStakeholderIdentity(stepData, stepName);
           if (!map[id]) {
             map[id] = {
               id,
@@ -250,6 +256,8 @@ export default function SuperAdminDashboard() {
           map[id].formContributions.push({
             formId: formItem.formId,
             formName: formItem.formName,
+            stepName,
+            role: stepData.role,
             pending,
             approved,
             rejected,
@@ -265,7 +273,7 @@ export default function SuperAdminDashboard() {
       // Legacy flat fallback
       Object.entries(targetStatus).forEach(([stepName, stats]: [string, any]) => {
         if (stepName === 'forms' || typeof stats !== 'object' || stats === null) return;
-        const { id, label, color } = normalizeStakeholderStep(stats.key, stats.role, stepName);
+        const { id, label, color } = getStakeholderIdentity(stats, stepName);
         if (!map[id]) {
           map[id] = {
             id,
@@ -288,6 +296,17 @@ export default function SuperAdminDashboard() {
         map[id].approved += approved;
         map[id].rejected += rejected;
         map[id].total += total;
+
+        map[id].formContributions.push({
+          formId: 0,
+          formName: 'Global Workflow',
+          stepName,
+          role: stats.role,
+          pending,
+          approved,
+          rejected,
+          total
+        });
       });
     }
 
@@ -862,7 +881,7 @@ export default function SuperAdminDashboard() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
-                  Aggregates workflow review steps with similar keys (e.g. NISS, Immigration, Customs) across all active forms
+                  Aggregates workflow review steps by organization where step approvers exist across all active forms
                 </p>
               </div>
 
@@ -1046,10 +1065,17 @@ export default function SuperAdminDashboard() {
                                 </p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                   {item.formContributions.map((contrib, cIdx) => (
-                                    <div key={cIdx} className="bg-white p-2 rounded-lg border border-slate-200/70 flex items-center justify-between">
-                                      <span className="font-medium text-slate-700 truncate mr-2" title={contrib.formName}>
-                                        {contrib.formName}
-                                      </span>
+                                    <div key={cIdx} className="bg-white p-2.5 rounded-lg border border-slate-200/70 flex items-center justify-between gap-2">
+                                      <div className="min-w-0 mr-2">
+                                        <span className="font-medium text-slate-700 truncate block" title={contrib.formName}>
+                                          {contrib.formName}
+                                        </span>
+                                        {contrib.stepName && (
+                                          <span className="text-[10px] text-slate-400 block truncate" title={`Step: ${contrib.stepName}${contrib.role ? ` • Role: ${contrib.role}` : ''}`}>
+                                            Step: {contrib.stepName}{contrib.role ? ` • ${contrib.role}` : ''}
+                                          </span>
+                                        )}
+                                      </div>
                                       <span className="font-bold text-slate-900 shrink-0">
                                         {contrib[stakeholderMetricType]} {stakeholderMetricType}
                                       </span>
