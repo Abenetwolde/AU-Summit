@@ -1203,15 +1203,15 @@ export const getFileUrl = (path?: any): string => {
 export const getApplicantPhotoUrl = (app: any): string => {
     if (!app) return '';
     const formData = app.formData || {};
-    const candidate = 
-        formData.profile_photo || 
-        formData.passport_photo || 
-        formData.photo || 
-        formData.photoUrl || 
-        formData.profilePhoto || 
-        formData.passportPhoto || 
-        app.photoUrl || 
-        app.profilePhoto || 
+    const candidate =
+        formData.profile_photo ||
+        formData.passport_photo ||
+        formData.photo ||
+        formData.photoUrl ||
+        formData.profilePhoto ||
+        formData.passportPhoto ||
+        app.photoUrl ||
+        app.profilePhoto ||
         app.user?.profilePhoto;
 
     return getFileUrl(candidate);

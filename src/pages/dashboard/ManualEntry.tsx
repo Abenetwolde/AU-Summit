@@ -35,7 +35,8 @@ import {
     ShieldCheck,
     CheckCircle2,
     Check,
-    ChevronsUpDown
+    ChevronsUpDown,
+    Lock
 } from 'lucide-react';
 
 import { cn } from "@/lib/utils";
@@ -148,6 +149,13 @@ export default function ManualEntry() {
 
     const selectedFormId = watch('formId');
     const { data: fullForm, isLoading: isLoadingForm } = useGetFormByIdQuery(selectedFormId || '', { skip: !selectedFormId });
+
+    const isCountryLocked = Boolean(
+        editApplication &&
+        (editApplication.approvals?.some((a: any) => a.status === 'APPROVED') ||
+         editApplication.applicationApprovals?.some((a: any) => a.status === 'APPROVED') ||
+         editApplication.status === 'APPROVED')
+    );
 
     // State for files/equipment
     const [files, setFiles] = useState<Record<string, File[]>>({});
@@ -919,9 +927,18 @@ export default function ManualEntry() {
                             </div>
 
                             <div className="space-y-2 md:col-span-1">
-                                <Label htmlFor="applyingFromCountryId" className="text-sm font-medium">Applying From</Label>
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="applyingFromCountryId" className="text-sm font-medium">Applying From</Label>
+                                    {isCountryLocked && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                                            <Lock className="w-3 h-3 text-slate-400" /> Locked
+                                        </span>
+                                    )}
+                                </div>
                                 <Select
+                                    value={watch('applyingFromCountryId') || ''}
                                     onValueChange={(val) => setValue('applyingFromCountryId', val)}
+                                    disabled={isCountryLocked}
                                 >
                                     <SelectTrigger className="h-11">
                                         <div className="flex items-center gap-2">
@@ -937,6 +954,11 @@ export default function ManualEntry() {
                                         ))}
                                     </SelectContent>
                                 </Select>
+                                {isCountryLocked && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Country cannot be modified because workflow review approval has commenced.
+                                    </p>
+                                )}
                             </div>
 
                             <div className="space-y-2 md:col-span-1">
