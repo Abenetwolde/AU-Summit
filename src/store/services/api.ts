@@ -1148,31 +1148,47 @@ export interface AdminAnalyticsResponse {
 
 // export const FILE_BASE_URL = 'http://localhost:5000';
 // export const FILE_BASE_URL = 'https://cw761gt5-3000.uks1.devtunnels.ms';
-export const getFileUrl = (path?: string | null): string => {
-    if (!path) {
-        console.log('[getFileUrl] empty path:', path);
-        return '';
-    }
+export const getFileUrl = (path?: any): string => {
+    if (!path) return '';
 
-    const trimmedPath = path.trim();
-    if (!trimmedPath) {
-        console.log('[getFileUrl] blank path after trim');
-        return '';
+    let target = path;
+    // Extract first item if array
+    if (Array.isArray(target)) {
+        target = target[0];
     }
+    // Extract path/url if object
+    if (target && typeof target === 'object') {
+        target = target.url || target.path || target.fileUrl || '';
+    }
+    if (typeof target !== 'string') return '';
 
-    // 🔁 Replace localhost base URL if present
-    if (/^https?:\/\/arrivalclearance.gov.et/i.test(trimmedPath)) {
+    let trimmedPath = target.trim();
+    if (!trimmedPath) return '';
+
+    // Handle JSON-stringified array or object
+    if (trimmedPath.startsWith('[') || trimmedPath.startsWith('{')) {
+        try {
+            const parsed = JSON.parse(trimmedPath);
+            if (Array.isArray(parsed)) target = parsed[0];
+            else if (typeof parsed === 'object') target = parsed.url || parsed.path || '';
+            if (typeof target === 'string') trimmedPath = target.trim();
+        } catch {
+            // ignore
+        }
+    }
+    if (!trimmedPath) return '';
+
+    // 🔁 Replace production or localhost base URL if present
+    if (/^https?:\/\/(?:api\.)?arrivalclearance\.gov\.et/i.test(trimmedPath)) {
         const replaced = trimmedPath.replace(
-            /^https?:\/\/arrivalclearance.gov.et/i,
+            /^https?:\/\/(?:api\.)?arrivalclearance\.gov\.et/i,
             FILE_BASE_URL
         );
-        console.log('[getFileUrl] replaced localhost URL:', replaced);
         return replaced;
     }
 
     // ✅ Keep other absolute URLs as-is
     if (/^https?:\/\//i.test(trimmedPath)) {
-        console.log('[getFileUrl] absolute URL:', trimmedPath);
         return trimmedPath;
     }
 
@@ -1181,8 +1197,24 @@ export const getFileUrl = (path?: string | null): string => {
     const separator = normalizedPath.startsWith('/') ? '' : '/';
     const finalUrl = `${FILE_BASE_URL}${separator}${normalizedPath}`;
 
-    console.log('[getFileUrl] resolved URL:', finalUrl);
     return finalUrl;
+};
+
+export const getApplicantPhotoUrl = (app: any): string => {
+    if (!app) return '';
+    const formData = app.formData || {};
+    const candidate = 
+        formData.profile_photo || 
+        formData.passport_photo || 
+        formData.photo || 
+        formData.photoUrl || 
+        formData.profilePhoto || 
+        formData.passportPhoto || 
+        app.photoUrl || 
+        app.profilePhoto || 
+        app.user?.profilePhoto;
+
+    return getFileUrl(candidate);
 };
 
 

@@ -5,8 +5,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CountrySelect } from '@/components/ui/country-select';
 import en from 'react-phone-number-input/locale/en';
-import { useGetApplicationsQuery } from '@/store/services/api';
+import { useGetApplicationsQuery, getApplicantPhotoUrl } from '@/store/services/api';
 import { FormFilter } from '@/components/dashboard/FormFilter';
+import { cn } from '@/lib/utils';
 
 // Type for workflow step info
 interface WorkflowStepInfo {
@@ -249,6 +250,7 @@ export function JournalistListReadonly() {
                                 const country = app.formData?.country || app.formData?.nationality || '';
                                 const passport = app.formData?.passport_number || 'N/A';
                                 const submissionDate = app.createdAt ? new Date(app.createdAt).toLocaleDateString('en-GB') : 'N/A';
+                                const photoUrl = getApplicantPhotoUrl(app);
 
                                 // EMA Status - using application.status
                                 const emaStatus = app.status || 'PENDING';
@@ -258,18 +260,30 @@ export function JournalistListReadonly() {
                                         <td className="p-4 align-middle text-gray-500">0{index + 1}</td>
                                         <td className="p-4 align-middle">
                                             <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-full overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200">
-                                                    {app.formData?.profile_photo ? (
-                                                        <img src={`${import.meta.env.VITE_API_BASE_URL}/${app.formData.profile_photo}`} alt={fullName} className="h-full w-full object-cover" />
-                                                    ) : (
-                                                        <div className="h-full w-full flex items-center justify-center bg-blue-50 text-blue-600 font-bold text-sm">
-
-                                                            {fullName.charAt(0).toUpperCase()}
-                                                        </div>
-                                                    )}
+                                                <div className="h-10 w-10 rounded-full overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200 relative flex items-center justify-center">
+                                                    {photoUrl ? (
+                                                        <img
+                                                            src={photoUrl}
+                                                            alt={fullName}
+                                                            className="h-full w-full object-cover"
+                                                            onError={(e) => {
+                                                                const target = e.currentTarget;
+                                                                target.style.display = 'none';
+                                                                const fallback = target.nextElementSibling as HTMLElement;
+                                                                if (fallback) fallback.style.display = 'flex';
+                                                            }}
+                                                        />
+                                                    ) : null}
+                                                    <div
+                                                        className={cn(
+                                                            "h-full w-full flex items-center justify-center bg-blue-50 text-blue-600 font-bold text-sm",
+                                                            photoUrl ? "hidden" : "flex"
+                                                        )}
+                                                    >
+                                                        {fullName.charAt(0).toUpperCase()}
+                                                    </div>
                                                 </div>
                                                 <div>
-
                                                     <div className="font-bold text-gray-900">{fullName}</div>
                                                     <div className="text-xs text-gray-500">{occupation}</div>
                                                 </div>
