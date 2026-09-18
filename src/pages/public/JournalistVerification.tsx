@@ -173,8 +173,9 @@ export function JournalistVerification() {
                 {/* Disclaimer */}
                 <div className="px-6 text-center space-y-4">
                     <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
-                        This verification portal is an official service of the African Union.
+                        This verification portal is an official service for verifying authorized personnel.
                         Unauthorized use or tampering with this system is strictly prohibited.
+
                     </p>
                 </div>
             </div>
