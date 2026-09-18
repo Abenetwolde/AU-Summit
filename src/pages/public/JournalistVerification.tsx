@@ -148,8 +148,8 @@ export function JournalistVerification() {
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Credential ID</p>
                                     <p className="font-mono font-bold text-slate-900">
                                         {journalist.isCrewMember
-                                            ? `AU-BDG-${String(journalist.applicationId || id).padStart(6, '0')}-M${journalist.id}`
-                                            : `AU-BDG-${String(journalist.id || id).padStart(6, '0')}`}
+                                            ? `VER-PER-${String(journalist.applicationId || id).padStart(6, '0')}-M${journalist.id}`
+                                            : `VER-PER-${String(journalist.id || id).padStart(6, '0')}`}
                                     </p>
                                 </div>
                             </div>
