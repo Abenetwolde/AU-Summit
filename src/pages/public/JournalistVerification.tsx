@@ -159,7 +159,7 @@ export function JournalistVerification() {
                         <div className="p-8 pt-0 text-center">
                             <div className="py-6 px-4 bg-slate-900 rounded-[2rem] space-y-3">
                                 <p className="text-white font-bold leading-snug">
-                                    Official African Union Delegate
+                                    Authorized Personnel
                                 </p>
                                 <div className="h-1 w-12 bg-primary mx-auto rounded-full" />
                                 <p className="text-slate-400 text-[10px] uppercase font-black tracking-[0.2em]">
