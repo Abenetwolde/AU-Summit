@@ -243,11 +243,11 @@ export const LetterEditor: React.FC<Props> = ({ templateId, existingConfig, onSa
                     </CardContent>
                 </Card>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     <Button onClick={handleSave} className="flex-1 bg-slate-900 hover:bg-black gap-2 h-11">
                         <Save className="h-4 w-4" /> Save Configuration
                     </Button>
-                    <Button onClick={onCancel} variant="outline" className="h-11 px-6">
+                    <Button onClick={onCancel} variant="outline" className="w-full sm:w-auto h-11 px-6">
                         <X className="h-4 w-4 mr-2" /> Cancel
                     </Button>
                 </div>
@@ -262,9 +262,9 @@ export const LetterEditor: React.FC<Props> = ({ templateId, existingConfig, onSa
                     <Badge variant="outline" className="bg-white border-primary/20 text-primary text-[10px]">A4 Scale Proofing</Badge>
                 </div>
 
-                <Card className="overflow-hidden border-slate-200 bg-slate-100 p-8 flex justify-center shadow-inner min-h-[800px]">
+                <Card className="overflow-x-auto border-slate-200 bg-slate-100 p-2 sm:p-8 flex justify-center shadow-inner min-h-[500px] sm:min-h-[800px] w-full">
                     <div
-                        className="bg-white shadow-2xl origin-top transition-all duration-300"
+                        className="bg-white shadow-2xl origin-top transition-all duration-300 shrink-0"
                         style={{
                             width: '8.27in', // A4 Width
                             height: '11.69in', // A4 Height

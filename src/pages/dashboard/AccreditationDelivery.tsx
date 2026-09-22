@@ -76,13 +76,13 @@ export function AccreditationDelivery() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <p className="text-sm text-muted-foreground mb-1">&gt; Delivery Tracking</p>
-                    <h2 className="text-3xl font-bold font-sans text-gray-900">Accreditation Delivery</h2>
-                    <p className="text-muted-foreground">Monitor the status of emails, QR codes, and invitation letters sent to journalists.</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold font-sans text-gray-900">Accreditation Delivery</h2>
+                    <p className="text-muted-foreground text-xs sm:text-sm">Monitor the status of emails, QR codes, and invitation letters sent to journalists.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                     <Button
                         variant="outline"
                         onClick={async () => {
@@ -94,7 +94,7 @@ export function AccreditationDelivery() {
                             }
                         }}
                         disabled={isSyncing}
-                        className="gap-2 border-orange-200 text-orange-700 hover:bg-orange-50"
+                        className="gap-2 border-orange-200 text-orange-700 hover:bg-orange-50 flex-1 sm:flex-none justify-center"
                     >
                         <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
                         Sync Missing Records
@@ -103,7 +103,7 @@ export function AccreditationDelivery() {
                         variant="outline"
                         onClick={() => refetch()}
                         disabled={isFetching}
-                        className="gap-2"
+                        className="gap-2 flex-1 sm:flex-none justify-center"
                     >
                         <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
                         Refresh
@@ -113,8 +113,8 @@ export function AccreditationDelivery() {
 
             {/* Filter Section */}
             <Card className="bg-gray-50/50">
-                <CardContent className="p-6">
-                    <div className="flex gap-4 items-end">
+                <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col md:flex-row gap-4 md:items-end">
                         <div className="flex-1 space-y-2">
                             <label className="text-sm font-medium">Search Journalists</label>
                             <div className="relative">
@@ -127,15 +127,15 @@ export function AccreditationDelivery() {
                                 />
                             </div>
                         </div>
-                        <div className="w-[280px] space-y-2">
+                        <div className="w-full md:w-[280px] space-y-2">
                             <label className="text-sm font-medium text-gray-500">Event Form</label>
                             <FormFilter 
-                                value={selectedFormId}
-                                onChange={setSelectedFormId}
+                                value={selectedFormId} 
+                                onChange={setSelectedFormId} 
                                 className="w-full"
                             />
                         </div>
-                        <Button className="bg-blue-700 hover:bg-blue-800 text-white h-11" onClick={() => setCurrentPage(1)}>
+                        <Button className="bg-blue-700 hover:bg-blue-800 text-white h-11 w-full md:w-auto justify-center" onClick={() => setCurrentPage(1)}>
                             Search
                         </Button>
                     </div>
@@ -145,7 +145,7 @@ export function AccreditationDelivery() {
             {/* Table */}
             <Card className="border-0 shadow-sm overflow-hidden bg-white">
                 <div className="relative w-full overflow-x-auto">
-                    <table className="w-full caption-bottom text-sm">
+                    <table className="w-full caption-bottom text-sm min-w-[700px]">
                         <thead className="[&_tr]:border-b bg-slate-50">
                             <tr className="border-b transition-colors hover:bg-muted/50">
                                 <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">ID</th>

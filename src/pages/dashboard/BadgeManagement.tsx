@@ -64,22 +64,22 @@ export function BadgeManagement() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold font-sans text-gray-900">Badge Management</h2>
-                    <p className="text-muted-foreground">Print event badge for approved journalists and delegates.</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold font-sans text-gray-900">Badge Management</h2>
+                    <p className="text-muted-foreground text-sm sm:text-base">Print event badge for approved journalists and delegates.</p>
                 </div>
-                <Button className="bg-green-600 hover:bg-green-700 text-white gap-2">
+                <Button className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white gap-2">
                     <Printer className="h-4 w-4" />
                     Printer Ready
                 </Button>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 <Card className="bg-white border-0 shadow-sm">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                    <CardContent className="p-4 sm:p-6 flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                             <Users className="h-6 w-6 text-blue-600" />
                         </div>
                         <div>
@@ -90,8 +90,8 @@ export function BadgeManagement() {
                 </Card>
 
                 <Card className="bg-white border-0 shadow-sm">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
+                    <CardContent className="p-4 sm:p-6 flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
                             <Clock className="h-6 w-6 text-orange-600" />
                         </div>
                         <div>
@@ -102,8 +102,8 @@ export function BadgeManagement() {
                 </Card>
 
                 <Card className="bg-white border-0 shadow-sm">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                    <CardContent className="p-4 sm:p-6 flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center shrink-0">
                             <BadgeCheck className="h-6 w-6 text-green-600" />
                         </div>
                         <div>
@@ -116,9 +116,9 @@ export function BadgeManagement() {
 
             {/* Filter Section */}
             <Card className="bg-white border-0 shadow-sm">
-                <CardContent className="p-6">
-                    <div className="flex items-end justify-between gap-4">
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-4">
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-500">Search</label>
                                 <div className="relative">
@@ -140,21 +140,18 @@ export function BadgeManagement() {
                                 />
                             </div>
                         </div>
-                        {/* <Button variant="outline" className="h-11 px-6 gap-2 bg-gray-50 border-gray-200 text-gray-700 font-bold">
-                            Filter <Filter className="h-4 w-4" />
-                        </Button> */}
                     </div>
                 </CardContent>
             </Card>
 
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-blue-600 font-bold">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-blue-600 font-bold text-sm sm:text-base">
                     <Printer className="h-4 w-4" />
                     Ready to Print
                 </div>
                 {selectedJournalists.length > 0 && (
                     <Button
-                        className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white gap-2"
                         onClick={handlePrintSelected}
                     >
                         <Printer className="h-4 w-4" />
@@ -164,8 +161,8 @@ export function BadgeManagement() {
             </div>
 
             <Card className="border-0 shadow-sm">
-                <div className="relative w-full overflow-auto">
-                    <table className="w-full caption-bottom text-sm">
+                <div className="relative w-full overflow-x-auto">
+                    <table className="w-full min-w-[700px] caption-bottom text-sm">
                         <thead className="[&_tr]:border-b bg-gray-50/50">
                             <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                                 <th className="h-12 px-4 text-left align-middle font-medium text-gray-500 uppercase text-xs tracking-wider">
@@ -258,7 +255,7 @@ export function BadgeManagement() {
                         </tbody>
                     </table>
                 </div>
-                <div className="p-4 border-t flex items-center justify-end gap-2">
+                <div className="p-4 border-t flex flex-wrap items-center justify-between sm:justify-end gap-2">
                     <Button
                         variant="outline"
                         size="sm"

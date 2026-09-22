@@ -50,46 +50,48 @@ export function BadgeSlipPreview() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 p-8">
-            <div className="max-w-2xl mx-auto space-y-8">
-                <div className="flex items-center justify-between">
+        <div className="min-h-screen bg-slate-50 p-3 sm:p-8">
+            <div className="max-w-2xl mx-auto space-y-6 sm:space-y-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <Button variant="ghost" className="gap-2" onClick={() => navigate(-1)}>
                         <ArrowLeft className="h-4 w-4" /> Back
                     </Button>
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => navigate('/au-admin/badge-templates')}>
+                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                        <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => navigate('/au-admin/badge-templates')}>
                             Edit Template
                         </Button>
-                        <Button className="bg-blue-600 hover:bg-blue-700 gap-2" onClick={handlePrint}>
+                        <Button className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 gap-2" onClick={handlePrint}>
                             <Printer className="h-4 w-4" />
                             Generate Official PDF
                         </Button>
                     </div>
                 </div>
 
-                <div className="bg-white p-12 rounded-2xl shadow-xl border border-slate-100 flex flex-col items-center">
+                <div className="bg-white p-4 sm:p-12 rounded-2xl shadow-xl border border-slate-100 flex flex-col items-center overflow-x-auto w-full">
                     <div className="mb-6 text-center">
                         <h2 className="text-xl font-bold text-slate-900 line-clamp-1">{activeTemplate.name}</h2>
                         <p className="text-sm text-slate-500">Live Preview of {application.user?.fullName}'s Badge</p>
                     </div>
 
-                    <div
-                        className="shadow-2xl bg-white relative overflow-hidden ring-1 ring-slate-200"
-                        style={{
-                            width: `${activeTemplate.width}px`,
-                            height: `${activeTemplate.height}px`,
-                        }}
-                    >
-                        <style dangerouslySetInnerHTML={{ __html: activeTemplate.cssStyles }} />
+                    <div className="w-full overflow-x-auto flex justify-center py-2">
                         <div
-                            className="badge-preview-content h-full w-full"
-                            dangerouslySetInnerHTML={{
-                                __html: sanitizeHTML(interpolateTemplate(activeTemplate.htmlContent, previewVars))
+                            className="shadow-2xl bg-white relative overflow-hidden ring-1 ring-slate-200 shrink-0"
+                            style={{
+                                width: `${activeTemplate.width}px`,
+                                height: `${activeTemplate.height}px`,
                             }}
-                        />
+                        >
+                            <style dangerouslySetInnerHTML={{ __html: activeTemplate.cssStyles }} />
+                            <div
+                                className="badge-preview-content h-full w-full"
+                                dangerouslySetInnerHTML={{
+                                    __html: sanitizeHTML(interpolateTemplate(activeTemplate.htmlContent, previewVars))
+                                }}
+                            />
+                        </div>
                     </div>
 
-                    <div className="mt-12 w-full grid grid-cols-2 gap-4 text-xs">
+                    <div className="mt-8 sm:mt-12 w-full grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                         <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
                             <span className="text-slate-400 block mb-1 uppercase font-bold tracking-wider">Dimensions</span>
                             <span className="text-slate-900 font-bold">{activeTemplate.width}px x {activeTemplate.height}px</span>

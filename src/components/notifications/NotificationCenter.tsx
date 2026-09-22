@@ -170,7 +170,7 @@ const NotificationCenter: React.FC = () => {
                     )}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 mr-4 mt-2 shadow-2xl border-slate-200/50 backdrop-blur-xl bg-white/95" align="end">
+            <PopoverContent className="w-[calc(100vw-2rem)] max-w-xs sm:w-80 p-0 mr-2 sm:mr-4 mt-2 shadow-2xl border-slate-200/50 backdrop-blur-xl bg-white/95" align="end">
                 <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50">
                     <h4 className="font-semibold text-slate-800 flex items-center gap-2 text-sm">
                         Notifications

@@ -140,13 +140,13 @@ export function RoleManagement() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold font-sans text-gray-900">Role Management</h2>
-                    <p className="text-muted-foreground">Define roles and assign them to organizations.</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold font-sans text-gray-900">Role Management</h2>
+                    <p className="text-muted-foreground text-xs sm:text-sm">Define roles and assign them to organizations.</p>
                 </div>
                 {canCreateRole && (
-                    <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                    <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto justify-center">
                         <Plus className="h-4 w-4" /> Create Role
                     </Button>
                 )}
@@ -154,9 +154,9 @@ export function RoleManagement() {
 
             {/* Filter */}
             <Card className="bg-white border-0 shadow-sm">
-                <CardContent className="p-6">
-                    <div className="flex items-end justify-between gap-4">
-                        <div className="flex-1 max-md">
+                <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                        <div className="flex-1 w-full">
                             <Label className="text-gray-500 text-xs uppercase font-bold">Search</Label>
                             <div className="relative mt-1">
                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -168,7 +168,7 @@ export function RoleManagement() {
                                 />
                             </div>
                         </div>
-                        <Button variant="outline" className="gap-2 border-gray-200 text-gray-600">
+                        <Button variant="outline" className="gap-2 border-gray-200 text-gray-600 w-full sm:w-auto justify-center">
                             <Filter className="h-4 w-4" /> Filter
                         </Button>
                     </div>

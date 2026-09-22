@@ -193,29 +193,29 @@ export default function ApiManagement() {
     const readOnly = user?.role === 'PMO';
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-700">
+        <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                         API Management Center
                     </h1>
-                    <p className="text-slate-500 mt-2 font-medium">
+                    <p className="text-slate-500 mt-1 sm:mt-2 text-sm sm:text-base font-medium">
                         Configure external providers and dynamic integration workflows.
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <div className="relative">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+                    <div className="relative w-full sm:w-[240px]">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <Input
                             placeholder="Search..."
-                            className="pl-10 w-[240px] rounded-full border-slate-200 focus:ring-blue-500"
+                            className="pl-10 w-full sm:w-[240px] rounded-full border-slate-200 focus:ring-blue-500"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
                     <Button
                         disabled={readOnly}
-                        className="rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
+                        className="w-full sm:w-auto rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
                         onClick={() => {
                             if (activeTab === 'providers') {
                                 setEditingProvider(null);
@@ -233,12 +233,12 @@ export default function ApiManagement() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="bg-slate-100 p-1 rounded-full w-fit mb-6">
-                    <TabsTrigger value="providers" className="rounded-full px-8 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <TabsList className="bg-slate-100 p-1 rounded-full w-full sm:w-fit flex overflow-x-auto mb-6">
+                    <TabsTrigger value="providers" className="flex-1 sm:flex-none whitespace-nowrap rounded-full px-4 sm:px-8 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
                         <Globe className="h-4 w-4 mr-2" />
                         API Providers
                     </TabsTrigger>
-                    <TabsTrigger value="integrations" className="rounded-full px-8 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <TabsTrigger value="integrations" className="flex-1 sm:flex-none whitespace-nowrap rounded-full px-4 sm:px-8 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
                         <Layers className="h-4 w-4 mr-2" />
                         Integrations
                     </TabsTrigger>
@@ -322,8 +322,8 @@ export default function ApiManagement() {
                             {integrationsLoading ? (
                                 <div className="p-8 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>
                             ) : filteredIntegrations.length > 0 ? (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full">
+                                <div className="overflow-x-auto w-full">
+                                    <table className="w-full min-w-[700px]">
                                         <thead>
                                             <tr className="bg-slate-50/50 text-left border-b border-slate-100">
                                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Order</th>

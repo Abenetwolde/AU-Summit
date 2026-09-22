@@ -30,7 +30,7 @@ export function DuplicateApplications() {
     });
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -51,7 +51,7 @@ export function DuplicateApplications() {
                     variant="outline"
                     onClick={() => data?.users && exportDuplicatesToPDF(data.users)}
                     disabled={!data?.users || data.users.length === 0}
-                    className="gap-2"
+                    className="gap-2 w-full sm:w-auto justify-center"
                 >
                     <Download className="w-4 h-4" />
                     Export PDF
@@ -99,8 +99,8 @@ export function DuplicateApplications() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[200px]">User Name</TableHead>
-                                        <TableHead className="w-[200px]">User Email</TableHead>
+                                        <TableHead className="w-[180px] sm:w-[200px]">User Name</TableHead>
+                                        <TableHead className="w-[180px] sm:w-[200px]">User Email</TableHead>
                                         <TableHead>Applications (Apply For)</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -114,17 +114,17 @@ export function DuplicateApplications() {
                                                 {user.email}
                                             </TableCell>
                                             <TableCell>
-                                                <div className="space-y-3">
+                                                <div className="space-y-3 min-w-[260px]">
                                                     {user.applications.map((app: DuplicateApplication) => (
                                                         <div key={app.applicationId} className="bg-slate-50 p-3 rounded-md border text-sm">
                                                             <div className="flex justify-between mb-1">
                                                                 <span className="font-semibold">ID: #{app.applicationId}</span>
                                                                 <Badge variant="outline">{app.status}</Badge>
                                                             </div>
-                                                            <div className="grid grid-cols-2 gap-2 text-gray-600">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-gray-600">
                                                                 <div><span className="font-medium text-gray-900">Name:</span> {app.firstName} {app.lastName}</div>
                                                                 <div><span className="font-medium text-gray-900">Country:</span> {app.country}</div>
-                                                                <div className="col-span-2"><span className="font-medium text-gray-900">Passport:</span> {app.passportNumber}</div>
+                                                                <div className="col-span-1 sm:col-span-2"><span className="font-medium text-gray-900">Passport:</span> {app.passportNumber}</div>
                                                             </div>
                                                         </div>
                                                     ))}

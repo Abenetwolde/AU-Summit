@@ -81,7 +81,7 @@ export function DashboardLayout() {
             alt="Organization Logo"
             className="h-8 w-auto object-contain"
           />
-          <h1 className="text-sm font-bold font-sans text-primary truncate max-w-[180px]">
+          <h1 className="text-sm font-bold font-sans text-primary truncate max-w-[130px] sm:max-w-[200px]">
             {getDisplayTitle()}
           </h1>
         </div>
@@ -110,7 +110,7 @@ export function DashboardLayout() {
       {/* ─── Sidebar ────────────────────────────────────────────── */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-[70] w-72 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 shadow-2xl md:shadow-none',
+          'fixed inset-y-0 left-0 z-[70] w-72 max-w-[85vw] bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 shadow-2xl md:shadow-none',
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -149,7 +149,7 @@ export function DashboardLayout() {
         <div className="border-b border-primary mx-4 mb-2" />
 
         <ScrollArea className="flex-1 px-4">
-          <nav className="space-y-1.5 pr-2">
+          <nav className="space-y-1.5 pr-2" onClick={() => setIsMobileMenuOpen(false)}>
             {/* Dashboard */}
             {user?.role && (
               <NavLink
@@ -659,7 +659,7 @@ export function DashboardLayout() {
       {/* Main Content */}
       <main className={cn(
         "flex-1 md:ml-72 flex flex-col min-h-screen overflow-x-hidden",
-        isFormBuilder && "h-screen max-h-screen overflow-hidden"
+        isFormBuilder && "h-auto md:h-screen md:max-h-screen overflow-y-auto md:overflow-hidden"
       )}>
         {/* Desktop Header */}
         <header className="hidden md:flex sticky top-0 right-0 left-0 h-16 bg-white/80 backdrop-blur-md border-b border-gray-100 z-40 items-center justify-end px-8 gap-4 shrink-0">
@@ -667,12 +667,12 @@ export function DashboardLayout() {
         </header>
 
         <div className={cn(
-          "flex-1 pt-20 md:pt-4 p-4 md:p-8 flex flex-col",
-          isFormBuilder && "pt-16 md:pt-3 px-3 md:px-5 pb-2 h-[calc(100vh-4rem)] overflow-hidden"
+          "flex-1 pt-20 md:pt-4 p-3 sm:p-4 md:p-8 flex flex-col",
+          isFormBuilder && "pt-16 md:pt-3 px-2 sm:px-3 md:px-5 pb-2 h-auto md:h-[calc(100vh-4rem)] overflow-y-auto md:overflow-hidden"
         )}>
           <div className={cn(
             "max-w-[1600px] w-full mx-auto",
-            isFormBuilder && "h-full flex flex-col flex-1 min-h-0 overflow-hidden"
+            isFormBuilder && "h-full flex flex-col flex-1 min-h-0 md:overflow-hidden"
           )}>
             <Outlet />
           </div>

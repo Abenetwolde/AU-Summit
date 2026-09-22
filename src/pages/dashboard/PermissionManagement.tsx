@@ -345,16 +345,16 @@ export function PermissionManagement() {
     }
 
     return (
-        <div className="space-y-6 w-full max-w-full p-6 flex flex-col h-screen" >
-            <div className="flex justify-between items-center shrink-0">
+        <div className="space-y-6 w-full max-w-full flex flex-col h-auto md:h-screen min-h-[calc(100vh-8rem)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Access Control Matrix</h1>
-                    <p className="text-muted-foreground">Manage system resources and permissions via API.</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Access Control Matrix</h1>
+                    <p className="text-muted-foreground text-xs sm:text-sm">Manage system resources and permissions via API.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                     {canManageCat && (
-                        <Button variant="outline" className="gap-2" onClick={() => setIsCategoryManagerOpen(true)}>
-                            <Settings className="h-4 w-4" /> Manage Categories
+                        <Button variant="outline" className="gap-2 flex-1 sm:flex-none justify-center" onClick={() => setIsCategoryManagerOpen(true)}>
+                            <Settings className="h-4 w-4" /> <span className="hidden sm:inline">Manage</span> Categories
                         </Button>
                     )}
 
@@ -363,7 +363,7 @@ export function PermissionManagement() {
                     {canCreatePerm && (
                         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button variant="default" className="gap-2">
+                                <Button variant="default" className="gap-2 flex-1 sm:flex-none justify-center">
                                     <Plus className="h-4 w-4" /> Create Resource
                                 </Button>
                             </DialogTrigger>
@@ -417,13 +417,13 @@ export function PermissionManagement() {
 
             <Card className="flex-1 flex flex-col overflow-hidden max-w-full">
                 <CardHeader className="py-4 border-b bg-gray-50/50 shrink-0">
-                    <div className="flex justify-between items-center gap-4">
-                        <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                             <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
                                 <Shield className="h-4 w-4 sm:hidden md:block" />
                                 <span className="hidden md:inline">RBAC Configuration</span>
                             </div>
-                            <div className="w-56">
+                            <div className="w-full sm:w-56">
                                 <Select value={selectedRoleGroup} onValueChange={setSelectedRoleGroup}>
                                     <SelectTrigger className="h-9 bg-white">
                                         <SelectValue placeholder="Filter Roles" />
@@ -436,7 +436,7 @@ export function PermissionManagement() {
                                 </Select>
                             </div>
                         </div>
-                        <div className="relative w-72">
+                        <div className="relative w-full sm:w-72">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
                             <Input
                                 placeholder="Search resources..."

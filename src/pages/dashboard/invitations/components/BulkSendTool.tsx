@@ -82,36 +82,36 @@ export const BulkSendTool: React.FC<Props> = ({ config }) => {
     return (
         <div className="w-full space-y-6 pb-20">
             {/* Steps Indicator */}
-            <div className="flex items-center justify-between px-10 mb-10">
+            <div className="flex items-center justify-between px-2 sm:px-10 mb-6 sm:mb-10 overflow-x-auto gap-2">
                 {[1, 2, 3].map(i => (
-                    <div key={i} className="flex items-center gap-3">
-                        <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= i ? 'bg-primary text-white' : 'bg-slate-200 text-slate-400'}`}>
+                    <div key={i} className="flex items-center gap-2 sm:gap-3 shrink-0">
+                        <div className={`h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= i ? 'bg-primary text-white' : 'bg-slate-200 text-slate-400'}`}>
                             {i}
                         </div>
-                        <span className={`text-xs font-bold uppercase tracking-wider ${step >= i ? 'text-slate-900' : 'text-slate-400'}`}>
-                            {i === 1 ? 'Upload' : i === 2 ? 'Map Columns' : 'Finished'}
+                        <span className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider ${step >= i ? 'text-slate-900' : 'text-slate-400'}`}>
+                            {i === 1 ? 'Upload' : i === 2 ? 'Map' : 'Done'}
                         </span>
-                        {i < 3 && <div className={`w-12 h-0.5 ${step > i ? 'bg-primary' : 'bg-slate-200'}`} />}
+                        {i < 3 && <div className={`w-6 sm:w-12 h-0.5 ${step > i ? 'bg-primary' : 'bg-slate-200'}`} />}
                     </div>
                 ))}
             </div>
 
             {step === 1 && (
                 <Card className="border-slate-200 bg-white">
-                    <CardHeader className="text-center p-10">
-                        <div className="bg-primary/5 h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <Upload className="h-10 w-10 text-primary" />
+                    <CardHeader className="text-center p-4 sm:p-10">
+                        <div className="bg-primary/5 h-16 w-16 sm:h-20 sm:w-20 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                            <Upload className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
                         </div>
-                        <CardTitle className="text-2xl font-bold">Upload Recipient List</CardTitle>
-                        <CardDescription>
+                        <CardTitle className="text-xl sm:text-2xl font-bold">Upload Recipient List</CardTitle>
+                        <CardDescription className="text-xs sm:text-sm">
                             Upload a CSV file containing the data for your invitations.
                             The system will help you map columns to your letter placeholders.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-10 pt-0 text-center">
+                    <CardContent className="p-4 sm:p-10 pt-0 text-center">
                         <label className="block w-full cursor-pointer">
-                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-12 hover:border-primary/50 hover:bg-slate-50 transition-all">
-                                <FileUp className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                            <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 sm:p-12 hover:border-primary/50 hover:bg-slate-50 transition-all">
+                                <FileUp className="h-10 w-10 sm:h-12 sm:w-12 text-slate-300 mx-auto mb-3 sm:mb-4" />
                                 <p className="text-sm font-medium text-slate-900">Click to upload CSV</p>
                                 <p className="text-xs text-slate-500 mt-1">or drag and drop file here</p>
                                 <input type="file" accept=".csv" onChange={onFileUpload} className="hidden" />
@@ -124,21 +124,21 @@ export const BulkSendTool: React.FC<Props> = ({ config }) => {
             {step === 2 && (
                 <div className="space-y-6">
                     <Card className="border-slate-200">
-                        <CardHeader className="bg-slate-50/50 border-b p-6">
-                            <CardTitle className="text-lg flex items-center gap-2">
+                        <CardHeader className="bg-slate-50/50 border-b p-4 sm:p-6">
+                            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                                 <ChevronRight className="h-4 w-4 text-primary" /> Map Data Columns
                             </CardTitle>
-                            <CardDescription>Match your CSV headers to the letter placeholders.</CardDescription>
+                            <CardDescription className="text-xs sm:text-sm">Match your CSV headers to the letter placeholders.</CardDescription>
                         </CardHeader>
-                        <CardContent className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                        <CardContent className="p-4 sm:p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4 sm:gap-y-6">
                                 {placeholders.map(p => (
-                                    <div key={p} className="flex items-center justify-between gap-4">
+                                    <div key={p} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
                                         <div className="flex-1">
                                             <p className="text-sm font-bold text-slate-900">{`{{${p}}}`}</p>
                                             <p className="text-[10px] text-slate-500">Placeholder in letter</p>
                                         </div>
-                                        <div className="w-1/2">
+                                        <div className="w-full sm:w-1/2">
                                             <Select
                                                 onValueChange={(val) => handleMappingChange(p, val)}
                                                 value={mapping[p]}
@@ -161,11 +161,11 @@ export const BulkSendTool: React.FC<Props> = ({ config }) => {
                     </Card>
 
                     <Card className="border-slate-200">
-                        <CardHeader className="p-6 pb-2">
+                        <CardHeader className="p-4 sm:p-6 pb-2">
                             <CardTitle className="text-md font-bold">Data Preview (First 3 rows)</CardTitle>
                         </CardHeader>
-                        <CardContent className="p-6 pt-0 overflow-auto">
-                            <Table>
+                        <CardContent className="p-4 sm:p-6 pt-0 overflow-x-auto w-full">
+                            <Table className="min-w-[450px]">
                                 <TableHeader>
                                     <TableRow>
                                         {headers.map(h => <TableHead key={h} className="text-[10px] uppercase">{h}</TableHead>)}
@@ -189,11 +189,11 @@ export const BulkSendTool: React.FC<Props> = ({ config }) => {
                         </p>
                     </div>
 
-                    <div className="flex gap-4">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                         <Button onClick={handleSend} disabled={isSending} className="flex-1 h-12 bg-slate-900 hover:bg-black gap-2">
                             {isSending ? 'Processing...' : `Send ${csvData.length} Invitations Now`}
                         </Button>
-                        <Button variant="outline" onClick={() => setStep(1)} className="h-12 px-6">Back</Button>
+                        <Button variant="outline" onClick={() => setStep(1)} className="w-full sm:w-auto h-12 px-6">Back</Button>
                     </div>
                 </div>
             )}

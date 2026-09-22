@@ -175,7 +175,7 @@ export function JournalistListReadonly() {
             <Card className="bg-white border-0 shadow-sm">
                 <CardContent className="p-4 md:p-6">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-500">Search</label>
                                 <div className="relative">
@@ -196,16 +196,16 @@ export function JournalistListReadonly() {
                                     placeholder="All Nationalities"
                                 />
                             </div>
-                            <div className="space-y-2">
+                            <div className="space-y-2 sm:col-span-2 lg:col-span-1">
                                 <label className="text-sm font-medium text-gray-500">Event Form</label>
                                 <FormFilter 
-                                    value={selectedFormId}
-                                    onChange={setSelectedFormId}
+                                    value={selectedFormId} 
+                                    onChange={setSelectedFormId} 
                                     className="w-full"
                                 />
                             </div>
                         </div>
-                        <Button variant="outline" className="h-11 px-6 gap-2 bg-gray-50 border-gray-200 text-gray-700 font-bold">
+                        <Button variant="outline" className="h-11 px-6 gap-2 bg-gray-50 border-gray-200 text-gray-700 font-bold w-full md:w-auto justify-center">
                             Filter <Filter className="h-4 w-4" />
                         </Button>
                     </div>

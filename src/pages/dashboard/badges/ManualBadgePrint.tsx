@@ -73,27 +73,27 @@ export function ManualBadgePrint() {
     const totalPages = data?.totalPages || 1;
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900 font-sans">Manual Badge Printing</h1>
-                    <p className="text-muted-foreground mt-1 text-lg">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 font-sans">Manual Badge Printing</h1>
+                    <p className="text-muted-foreground mt-1 text-sm sm:text-base">
                         Select an approved applicant to generate and print their official badge.
                     </p>
                 </div>
             </div>
 
             <Card className="border-0 shadow-xl overflow-hidden">
-                <CardHeader className="bg-slate-50/50 pb-8 border-b">
+                <CardHeader className="bg-slate-50/50 p-4 sm:p-6 pb-6 border-b">
                     <div className="flex flex-col gap-4">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
-                                <CardTitle className="font-sans text-xl font-bold">Approved Applicants</CardTitle>
-                                <CardDescription>Only fully approved applications are available for badge printing.</CardDescription>
+                                <CardTitle className="font-sans text-lg sm:text-xl font-bold">Approved Applicants</CardTitle>
+                                <CardDescription className="text-xs sm:text-sm">Only fully approved applications are available for badge printing.</CardDescription>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
                                 <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
-                                    <SelectTrigger className="w-[180px] h-11 bg-white">
+                                    <SelectTrigger className="w-full sm:w-[180px] h-11 bg-white">
                                         <SelectValue placeholder="Filter by status" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -116,8 +116,8 @@ export function ManualBadgePrint() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <Table>
+                    <div className="overflow-x-auto w-full">
+                        <Table className="min-w-[650px]">
                             <TableHeader>
                                 <TableRow className="bg-slate-50/50">
                                     <TableHead className="font-bold py-4">Applicant</TableHead>
@@ -230,8 +230,8 @@ export function ManualBadgePrint() {
                         </Table>
                     </div>
                     {!isLoading && applications.length > 0 && (
-                        <div className="flex items-center justify-between px-6 py-4 border-t bg-slate-50/30">
-                            <div className="text-sm text-slate-600">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t bg-slate-50/30">
+                            <div className="text-xs sm:text-sm text-slate-600 text-center sm:text-left">
                                 Page {page} of {totalPages} • {data?.total || 0} total applications
                             </div>
                             <div className="flex items-center gap-2">

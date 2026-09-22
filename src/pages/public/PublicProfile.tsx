@@ -39,39 +39,39 @@ export function PublicProfile() {
     const isExpired = profile.expiryDate ? new Date(profile.expiryDate) < new Date() : false;
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4 py-12 md:p-12">
-            <div className="max-w-md w-full space-y-6">
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center p-3 py-6 sm:p-6 sm:py-12 md:p-12">
+            <div className="max-w-md w-full space-y-4 sm:space-y-6">
                 {/* Status Banner */}
                 <div className={cn(
-                    "w-full py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg animate-in slide-in-from-top duration-500",
+                    "w-full py-3.5 sm:py-4 px-4 rounded-xl sm:rounded-2xl flex items-center justify-center gap-2.5 sm:gap-3 shadow-lg animate-in slide-in-from-top duration-500",
                     isExpired ? "bg-red-500 text-white" : "bg-green-600 text-white"
                 )}>
-                    {isExpired ? <XCircle className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
-                    <span className="text-lg font-black font-sans uppercase tracking-wider">
+                    {isExpired ? <XCircle className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" /> : <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />}
+                    <span className="text-sm sm:text-lg font-black font-sans uppercase tracking-wider text-center">
                         {isExpired ? 'EXPIRED CREDENTIAL' : 'VERIFIED MEDIA'}
                     </span>
                 </div>
 
                 {/* Profile Card */}
-                <Card className="border-0 shadow-2xl overflow-hidden bg-white rounded-[2.5rem]">
-                    <div className="h-32 bg-primary relative overflow-hidden">
+                <Card className="border-0 shadow-2xl overflow-hidden bg-white rounded-2xl sm:rounded-[2.5rem]">
+                    <div className="h-28 sm:h-32 bg-primary relative overflow-hidden">
                         <div className="absolute inset-0 bg-black/10" />
-                        <div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
-                            <div className="h-24 w-24 rounded-full border-4 border-white bg-slate-100 flex items-center justify-center overflow-hidden shadow-xl">
+                        <div className="absolute -bottom-10 sm:-bottom-12 left-1/2 -translate-x-1/2">
+                            <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full border-4 border-white bg-slate-100 flex items-center justify-center overflow-hidden shadow-xl">
                                 {profile.photoUrl ? (
                                     <img src={profile.photoUrl} alt={profile.fullName} className="h-full w-full object-cover" />
                                 ) : (
-                                    <User className="h-12 w-12 text-slate-300" />
+                                    <User className="h-10 w-10 sm:h-12 sm:w-12 text-slate-300" />
                                 )}
                             </div>
                         </div>
                     </div>
 
-                    <CardContent className="pt-16 pb-12 px-8 text-center">
-                        <h1 className="text-3xl font-black text-slate-900 font-sans leading-tight mb-2">
+                    <CardContent className="pt-14 sm:pt-16 pb-8 sm:pb-12 px-4 sm:px-8 text-center">
+                        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-sans leading-tight mb-2">
                             {profile.fullName}
                         </h1>
-                        <p className="text-primary font-bold text-lg mb-8">{profile.title}</p>
+                        <p className="text-primary font-bold text-base sm:text-lg mb-6 sm:mb-8">{profile.title}</p>
 
                         <div className="space-y-4 text-left">
                             <div className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">

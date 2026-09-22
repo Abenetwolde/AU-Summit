@@ -67,10 +67,10 @@ export function ManualApplications() {
     return (
         <div className="space-y-6">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 font-sans">Manual Applications</h2>
-                    <p className="text-muted-foreground mt-1">Manage and edit manually entered applications.</p>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 font-sans">Manual Applications</h2>
+                    <p className="text-muted-foreground text-sm sm:text-base mt-1">Manage and edit manually entered applications.</p>
                 </div>
             </div>
 
@@ -93,7 +93,7 @@ export function ManualApplications() {
 
             {/* Applications Table Card */}
             <Card className="border-none shadow-md overflow-hidden bg-white">
-                <CardHeader className="subtle-border-b px-6 py-4 flex flex-row items-center justify-between bg-gray-50/50">
+                <CardHeader className="subtle-border-b p-4 sm:px-6 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-gray-50/50">
                     <CardTitle className="text-lg font-bold flex items-center gap-2">
                         {isFetching ? <Loader2 className="h-4 w-4 animate-spin text-[#009b4d]" /> : <div className="h-2 w-2 rounded-full bg-[#009b4d]" />}
                         Applications List
@@ -115,8 +115,8 @@ export function ManualApplications() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
+                    <div className="overflow-x-auto w-full">
+                        <table className="w-full min-w-[650px]">
                             <thead>
                                 <tr className="bg-gray-50/30 text-gray-500 uppercase text-[11px] font-bold border-b border-gray-100">
                                     <th className="text-left py-4 px-6 tracking-wider">Applicant</th>

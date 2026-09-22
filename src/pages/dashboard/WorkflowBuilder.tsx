@@ -890,18 +890,18 @@ function WorkflowBuilderContent() {
     if (isStepsLoading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin text-slate-400" /></div>;
 
     return (
-        <div className="flex flex-col gap-6 p-1 h-[calc(100vh-120px)]">
-            <div className="flex items-center justify-between mb-2">
+        <div className="flex flex-col gap-4 sm:gap-6 p-1 min-h-[calc(100vh-120px)] h-auto md:h-[calc(100vh-120px)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Workflow Builder</h1>
                     <p className="text-sm text-muted-foreground">Manage and visualize accreditation and exit workflows.</p>
                 </div>
             </div>
 
-            <div className="flex flex-col gap-4 p-4 bg-white border rounded-xl shadow-sm">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="flex flex-col gap-1.5 min-w-[200px]">
+            <div className="flex flex-col gap-4 p-3 sm:p-4 bg-white border rounded-xl shadow-sm">
+                <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex flex-col gap-1.5 w-full sm:w-auto sm:min-w-[200px]">
                             <Label className="text-[10px] uppercase text-slate-500 font-bold px-1">Filter by Form</Label>
                             <FormFilter
                                 value={selectedFormId?.toString()}
@@ -911,7 +911,7 @@ function WorkflowBuilderContent() {
                             />
                         </div>
 
-                        <div className="flex flex-col gap-1.5 min-w-[150px]">
+                        <div className="flex flex-col gap-1.5 flex-1 sm:flex-none sm:min-w-[150px]">
                             <Label className="text-[10px] uppercase text-slate-500 font-bold px-1">Audience</Label>
                             <Select value={selectedAudience} onValueChange={v => setSelectedAudience(v as any)}>
                                 <SelectTrigger className="h-9 bg-slate-50">
@@ -924,7 +924,7 @@ function WorkflowBuilderContent() {
                             </Select>
                         </div>
 
-                        <div className="flex flex-col gap-1.5 min-w-[150px]">
+                        <div className="flex flex-col gap-1.5 flex-1 sm:flex-none sm:min-w-[150px]">
                             <Label className="text-[10px] uppercase text-slate-500 font-bold px-1">Phase</Label>
                             <Select value={selectedPhase} onValueChange={v => setSelectedPhase(v as any)}>
                                 <SelectTrigger className="h-9 bg-slate-50">
@@ -938,20 +938,20 @@ function WorkflowBuilderContent() {
                         </div>
                     </div>
 
-                    <div className="flex gap-2 self-end">
+                    <div className="flex flex-wrap gap-2 w-full xl:w-auto justify-end">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={handleOpenDuplicateWorkflow}
-                            className="h-9 border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                            className="h-9 border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex-1 sm:flex-none justify-center"
                             title="Duplicate workflow steps from another form"
                         >
                             <Copy className="mr-2 h-4 w-4 text-blue-600" /> Duplicate From Form
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => refetch()} className="h-9 border-slate-200">
+                        <Button variant="outline" size="sm" onClick={() => refetch()} className="h-9 border-slate-200 flex-1 sm:flex-none justify-center">
                             <RefreshCw className="mr-2 h-4 w-4" /> Reset
                         </Button>
-                        <Button size="sm" onClick={handleSaveFlow} disabled={isSaving} className="h-9 bg-slate-800 text-white hover:bg-slate-700">
+                        <Button size="sm" onClick={handleSaveFlow} disabled={isSaving} className="h-9 bg-slate-800 text-white hover:bg-slate-700 flex-1 sm:flex-none justify-center">
                             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                             Save Flow
                         </Button>
@@ -959,9 +959,9 @@ function WorkflowBuilderContent() {
                 </div>
             </div>
 
-            <div className="flex-1 flex overflow-hidden bg-slate-50 rounded-xl border shadow-sm relative min-h-[600px]">
+            <div className="flex-1 flex overflow-hidden bg-slate-50 rounded-xl border shadow-sm relative min-h-[500px]">
                 {/* Sidebar */}
-                <div className={cn("bg-white border-r flex flex-col transition-all duration-300 relative z-10", isSidebarOpen ? "w-80" : "w-0 overflow-hidden")}>
+                <div className={cn("bg-white border-r flex flex-col transition-all duration-300 relative z-10", isSidebarOpen ? "w-72 sm:w-80 max-w-[85vw]" : "w-0 overflow-hidden")}>
                     <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
                         <span className="font-semibold text-xs uppercase tracking-wider text-slate-500">Unplaced Steps</span>
                         <Button size="sm" onClick={() => { setCurrentStep({ color: '#3b82f6', isActive: true, targetAudience: 'INTERNATIONAL', formId: selectedFormId, isExitStep: selectedPhase === 'EXIT' }); setRoleSearchCreate(''); setIsCreateOpen(true); }} className="h-7 text-xs">

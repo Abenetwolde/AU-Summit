@@ -141,14 +141,14 @@ export default function EmbassyManagement() {
     };
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Embassy Management</h1>
-                    <p className="text-muted-foreground">Manage embassies and their overseeing countries.</p>
+                    <p className="text-muted-foreground text-xs sm:text-sm">Manage embassies and their overseeing countries.</p>
                 </div>
                 {canCreateEmbassy && (
-                    <Button onClick={() => { resetForm(); setIsCreateModalOpen(true); }}>
+                    <Button onClick={() => { resetForm(); setIsCreateModalOpen(true); }} className="w-full sm:w-auto justify-center">
                         <Plus className="mr-2 h-4 w-4" /> Add Embassy
                     </Button>
                 )}
@@ -171,10 +171,10 @@ export default function EmbassyManagement() {
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                     {filteredEmbassies.map((embassy) => (
                         <Card key={embassy.id} className="overflow-hidden">
-                            <CardContent className="p-6 space-y-4">
+                            <CardContent className="p-4 sm:p-6 space-y-4">
                                 <div className="flex justify-between items-start">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 bg-primary/10 rounded-lg">

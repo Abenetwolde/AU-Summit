@@ -176,14 +176,14 @@ export function UserManagement() {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 font-sans">User Management</h2>
-                    <p className="text-muted-foreground mt-1">Manage, filter and organize system users across all roles.</p>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 font-sans">User Management</h2>
+                    <p className="text-muted-foreground text-xs sm:text-sm mt-1">Manage, filter and organize system users across all roles.</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" onClick={handleExportCSV} className="gap-2 h-10 border-gray-200 hover:bg-gray-50">
+                <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                    <Button variant="outline" onClick={handleExportCSV} className="gap-2 h-10 border-gray-200 hover:bg-gray-50 flex-1 sm:flex-none justify-center">
                         <Download className="h-4 w-4" /> Export CSV
                     </Button>
-                    <Button variant="outline" onClick={handleExportPDF} className="gap-2 h-10 border-gray-200 hover:bg-gray-50">
+                    <Button variant="outline" onClick={handleExportPDF} className="gap-2 h-10 border-gray-200 hover:bg-gray-50 flex-1 sm:flex-none justify-center">
                         <Download className="h-4 w-4" /> Export PDF
                     </Button>
                     <Button
@@ -192,12 +192,12 @@ export function UserManagement() {
                             setSelectedUserForReset(null);
                             setResetPasswordModalOpen(true);
                         }}
-                        className="gap-2 h-10 border-amber-200 text-amber-800 hover:bg-amber-50 shadow-sm"
+                        className="gap-2 h-10 border-amber-200 text-amber-800 hover:bg-amber-50 shadow-sm flex-1 sm:flex-none justify-center"
                     >
                         <KeyRound className="h-4 w-4 text-amber-600" /> Reset Password
                     </Button>
                     {canCreateUser && (
-                        <Button onClick={() => setCreateModalOpen(true)} className="bg-[#009b4d] hover:bg-[#007a3d] gap-2 h-10 shadow-sm transition-all active:scale-95">
+                        <Button onClick={() => setCreateModalOpen(true)} className="bg-[#009b4d] hover:bg-[#007a3d] gap-2 h-10 shadow-sm transition-all active:scale-95 flex-1 sm:flex-none justify-center">
                             <Plus className="h-4 w-4" /> Create User
                         </Button>
                     )}
@@ -245,14 +245,14 @@ export function UserManagement() {
 
             {/* Users Table Card */}
             <Card className="border-none shadow-md overflow-hidden bg-white">
-                <CardHeader className="subtle-border-b px-6 py-4 flex flex-row items-center justify-between bg-gray-50/50">
+                <CardHeader className="subtle-border-b px-4 sm:px-6 py-4 flex flex-row items-center justify-between bg-gray-50/50">
                     <CardTitle className="text-lg font-bold flex items-center gap-2">
                         {isFetchingUsers ? <Loader2 className="h-4 w-4 animate-spin text-[#009b4d]" /> : <div className="h-2 w-2 rounded-full bg-[#009b4d]" />}
                         System Users
                         <span className="text-sm font-normal text-muted-foreground ml-1">({totalUsers} total)</span>
                     </CardTitle>
                     <div className="flex items-center gap-2">
-                        <p className="text-sm text-muted-foreground">Rows per page:</p>
+                        <p className="text-sm text-muted-foreground hidden sm:inline">Rows per page:</p>
                         <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}>
                             <SelectTrigger className="w-[70px] h-8 border-gray-200">
                                 <SelectValue placeholder="10" />
@@ -268,13 +268,13 @@ export function UserManagement() {
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full min-w-[650px]">
                             <thead>
                                 <tr className="bg-gray-50/30 text-gray-500 uppercase text-[11px] font-bold border-b border-gray-100">
-                                    <th className="text-left py-4 px-6 tracking-wider">User Details</th>
-                                    <th className="text-left py-4 px-6 tracking-wider">Role & Affiliation</th>
-                                    <th className="text-left py-4 px-6 tracking-wider">Status</th>
-                                    {canDeleteUser && <th className="text-right py-4 px-6 tracking-wider">Actions</th>}
+                                    <th className="text-left py-3 px-4 sm:py-4 sm:px-6 tracking-wider">User Details</th>
+                                    <th className="text-left py-3 px-4 sm:py-4 sm:px-6 tracking-wider">Role & Affiliation</th>
+                                    <th className="text-left py-3 px-4 sm:py-4 sm:px-6 tracking-wider">Status</th>
+                                    {canDeleteUser && <th className="text-right py-3 px-4 sm:py-4 sm:px-6 tracking-wider">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">

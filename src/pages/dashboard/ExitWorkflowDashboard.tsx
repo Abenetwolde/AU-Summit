@@ -157,7 +157,7 @@ export function ExitWorkflowDashboard() {
     };
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -174,12 +174,12 @@ export function ExitWorkflowDashboard() {
                         Manage applications in the exit approval phase
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                     <Button
                         variant="outline"
                         onClick={() => handleExport('csv')}
                         disabled={isExporting}
-                        className="gap-2"
+                        className="gap-2 flex-1 sm:flex-none justify-center"
                     >
                         {isExporting && exportType === 'csv' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         Export CSV
@@ -188,7 +188,7 @@ export function ExitWorkflowDashboard() {
                         variant="outline"
                         onClick={() => handleExport('pdf')}
                         disabled={isExporting}
-                        className="gap-2"
+                        className="gap-2 flex-1 sm:flex-none justify-center"
                     >
                         {isExporting && exportType === 'pdf' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         Export PDF

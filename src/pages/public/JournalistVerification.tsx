@@ -56,8 +56,8 @@ export function JournalistVerification() {
     const isVerified = journalist.status === 'APPROVED';
 
     return (
-        <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4 md:p-8">
-            <div className="max-w-md w-full space-y-8 animate-in fade-in zoom-in duration-700">
+        <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-3 py-6 sm:p-4 md:p-8">
+            <div className="max-w-md w-full space-y-6 sm:space-y-8 animate-in fade-in zoom-in duration-700">
                 {/* Branding */}
                 <div className="text-center space-y-2">
                     <div className="flex items-center justify-center gap-2 mb-4">
@@ -69,17 +69,17 @@ export function JournalistVerification() {
                 </div>
 
                 {/* Main Card */}
-                <Card className="border-0 shadow-[0_30px_60px_rgba(0,0,0,0.12)] rounded-[2.5rem] overflow-hidden bg-white">
+                <Card className="border-0 shadow-[0_30px_60px_rgba(0,0,0,0.12)] rounded-2xl sm:rounded-[2.5rem] overflow-hidden bg-white">
                     {/* Status Header */}
                     <div className={cn(
-                        "py-6 px-8 flex items-center justify-between",
+                        "py-4 px-4 sm:py-6 sm:px-8 flex items-center justify-between",
                         isVerified ? "bg-emerald-500" : "bg-amber-500"
                     )}>
                         <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md">
-                                <BadgeCheck className="h-6 w-6 text-white" />
+                            <div className="h-9 w-9 sm:h-10 sm:w-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md">
+                                <BadgeCheck className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                             </div>
-                            <span className="text-white font-black uppercase tracking-widest text-sm">
+                            <span className="text-white font-black uppercase tracking-widest text-xs sm:text-sm">
                                 {journalist.isCrewMember ? "VERIFIED CREW" : "VERIFIED MEDIA"}
                             </span>
                         </div>
@@ -88,43 +88,43 @@ export function JournalistVerification() {
 
                     <CardContent className="p-0">
                         {/* Profile Section */}
-                        <div className="p-8 text-center border-b border-slate-50">
-                            <div className="relative inline-block mb-6">
-                                <div className="h-32 w-32 rounded-[2.5rem] bg-slate-100 overflow-hidden shadow-2xl ring-4 ring-white ring-offset-4 ring-offset-slate-50">
+                        <div className="p-4 sm:p-8 text-center border-b border-slate-50">
+                            <div className="relative inline-block mb-4 sm:mb-6">
+                                <div className="h-28 w-28 sm:h-32 sm:w-32 rounded-2xl sm:rounded-[2.5rem] bg-slate-100 overflow-hidden shadow-2xl ring-4 ring-white ring-offset-4 ring-offset-slate-50">
                                     {journalist.photoUrl ? (
                                         <img src={journalist.photoUrl} alt={journalist.fullName} className="h-full w-full object-cover" />
                                     ) : (
                                         <div className="h-full w-full flex items-center justify-center">
-                                            <User className="h-12 w-12 text-slate-300" />
+                                            <User className="h-10 w-10 sm:h-12 sm:w-12 text-slate-300" />
                                         </div>
                                     )}
                                 </div>
                                 {isVerified && (
-                                    <div className="absolute -bottom-2 -right-2 h-10 w-10 bg-emerald-500 border-4 border-white rounded-full flex items-center justify-center shadow-lg">
-                                        <ShieldCheck className="h-5 w-5 text-white" />
+                                    <div className="absolute -bottom-2 -right-2 h-8 w-8 sm:h-10 sm:w-10 bg-emerald-500 border-3 sm:border-4 border-white rounded-full flex items-center justify-center shadow-lg">
+                                        <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                                     </div>
                                 )}
                             </div>
 
                             <div className="space-y-1">
-                                <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">
+                                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
                                     {journalist.fullName}
                                 </h2>
-                                <p className="text-primary font-extrabold text-sm uppercase tracking-wider">
+                                <p className="text-primary font-extrabold text-xs sm:text-sm uppercase tracking-wider">
                                     {journalist.title}
                                 </p>
                             </div>
                         </div>
 
                         {/* Details Section */}
-                        <div className="p-8 space-y-4">
-                            <div className="flex items-center gap-5 p-5 rounded-3xl bg-slate-50/50 border border-slate-100 transition-colors hover:bg-slate-50">
-                                <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100">
-                                    <Building2 className="h-6 w-6 text-slate-400" />
+                        <div className="p-4 sm:p-8 space-y-3 sm:space-y-4">
+                            <div className="flex items-center gap-3.5 sm:gap-5 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-slate-50/50 border border-slate-100 transition-colors hover:bg-slate-50">
+                                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-sm border border-slate-100 shrink-0">
+                                    <Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-slate-400" />
                                 </div>
                                 <div>
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Media Affiliation</p>
-                                    <p className="font-bold text-slate-900 leading-tight">{journalist.organization}</p>
+                                    <p className="font-bold text-slate-900 text-sm sm:text-base leading-tight">{journalist.organization}</p>
                                 </div>
                             </div>
 

@@ -272,16 +272,16 @@ export function OrganizationUsers() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header, Filters, Table – unchanged except minor cleanup */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Header, Filters, Table */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Organization Users</h1>
-          <p className="text-muted-foreground mt-1">Manage user accounts and roles within organizations</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Organization Users</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">Manage user accounts and roles within organizations</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {isSuperAdmin && (
-            <div className="w-64">
+            <div className="w-full sm:w-64">
               <Select
                 value={selectedOrgId?.toString()}
                 onValueChange={(val) => setSelectedOrgId(Number(val))}
@@ -305,7 +305,7 @@ export function OrganizationUsers() {
               setUserForReset(null);
               setShowResetPasswordModal(true);
             }}
-            className="gap-2 border-amber-200 text-amber-800 hover:bg-amber-50"
+            className="gap-2 border-amber-200 text-amber-800 hover:bg-amber-50 flex-1 sm:flex-none justify-center"
             disabled={isSuperAdmin && !selectedOrgId}
           >
             <KeyRound className="w-4 h-4 text-amber-600" />
@@ -313,7 +313,7 @@ export function OrganizationUsers() {
           </Button>
           <Button
             onClick={() => setShowCreateModal(true)}
-            className="gap-2"
+            className="gap-2 flex-1 sm:flex-none justify-center"
             disabled={isSuperAdmin && !selectedOrgId}
           >
             <UserPlus className="w-4 h-4" />

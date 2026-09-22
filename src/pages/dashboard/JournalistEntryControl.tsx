@@ -110,11 +110,11 @@ export function JournalistEntryControl() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <p className="text-sm text-muted-foreground mb-1">&gt; Arrival Confirmation</p>
-                    <h2 className="text-3xl font-bold font-sans text-gray-900">Journalist Arrival Management</h2>
-                    <p className="text-muted-foreground">Confirm and track journalist arrivals at the port of entry.</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold font-sans text-gray-900">Journalist Arrival Management</h2>
+                    <p className="text-muted-foreground text-xs sm:text-sm">Confirm and track journalist arrivals at the port of entry.</p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isFetching}>
@@ -189,7 +189,7 @@ export function JournalistEntryControl() {
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                     ) : (
-                        <table className="w-full caption-bottom text-sm">
+                        <table className="w-full caption-bottom text-sm min-w-[700px]">
                             <thead className="[&_tr]:border-b">
                                 <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">No</th>

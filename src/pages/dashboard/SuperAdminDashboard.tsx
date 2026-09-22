@@ -678,26 +678,26 @@ export default function SuperAdminDashboard() {
     `}</style>
 
       <main className="flex-1 min-w-0 overflow-x-hidden">
-        <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5 max-w-[1600px] mx-auto animate-fade-in">
+        <div className="space-y-4 sm:space-y-5 max-w-[1600px] mx-auto animate-fade-in">
 
           {/* Scope Indicator + Filter + Export Controls */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4 bg-slate-50 p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4 bg-slate-50 p-3 sm:p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
             <div className="flex items-center gap-2.5">
-              <span className="relative flex h-3 w-3">
+              <span className="relative flex h-3 w-3 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
               </span>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Analytics Scope:</span>
                 {selectedForm ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-sm">
-                    <FileTextIcon className="h-3.5 w-3.5 text-blue-600" />
-                    <span>{selectedForm.name}</span>
-                    <span className="text-[11px] text-blue-500 font-normal">({activeForms.length} active forms available)</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-sm">
+                    <FileTextIcon className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                    <span className="truncate max-w-[160px] sm:max-w-none">{selectedForm.name}</span>
+                    <span className="text-[11px] text-blue-500 font-normal hidden sm:inline">({activeForms.length} active forms available)</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-sm">
-                    <span>All Active Forms Combined</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-sm">
+                    <span>All Active Forms</span>
                     <span className="px-2 py-0.5 text-[10px] bg-emerald-200/70 text-emerald-800 rounded-full font-extrabold">
                       {activeForms.length} Active Events
                     </span>
@@ -709,9 +709,10 @@ export default function SuperAdminDashboard() {
             <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
               <FormFilter 
                 value={selectedFormId} 
-                onChange={setSelectedFormId} 
+                onChange={setSelectedFormId}
+                className="w-full sm:w-auto"
               />
-              <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-2 justify-center">
+              <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-2 justify-center flex-1 sm:flex-none">
                 <DownloadIcon className="h-4 w-4" /> <span className="hidden sm:inline">Export</span> CSV
               </Button>
               <Button
@@ -719,7 +720,7 @@ export default function SuperAdminDashboard() {
                 size="sm"
                 onClick={handleExportPDF}
                 disabled={isExportingPDF}
-                className="gap-2 text-white min-w-[120px] justify-center"
+                className="gap-2 text-white min-w-[120px] justify-center flex-1 sm:flex-none"
               >
                 {isExportingPDF ? (
                   <>
@@ -2284,21 +2285,21 @@ export default function SuperAdminDashboard() {
               </Button>
             </div>
             <Card className="border-0 shadow-sm overflow-hidden bg-white">
-              <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="overflow-x-auto w-full">
                 <table className="w-full text-left border-collapse min-w-[640px]">
                   <thead className="bg-slate-50/70">
                     <tr>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Journalist</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Organization</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Journalist</th>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Organization</th>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
+                      <th className="px-3 sm:px-6 py-3 sm:py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {recentApplications.map((app: any) => (
                       <tr key={app.id} className="hover:bg-slate-50/60 transition-colors group">
-                        <td className="px-6 py-4">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4">
                           <div className="flex items-center gap-3">
                             {(() => {
                               const firstName = app.formData?.first_name || '';
@@ -2308,7 +2309,7 @@ export default function SuperAdminDashboard() {
 
                               return (
                                 <>
-                                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center text-blue-700 font-semibold text-sm shadow-sm">
+                                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center text-blue-700 font-semibold text-sm shadow-sm shrink-0">
                                     {initials}
                                   </div>
                                   <div>
@@ -2320,10 +2321,10 @@ export default function SuperAdminDashboard() {
                             })()}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm font-medium text-slate-700">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium text-slate-700">
                           {app.formData?.organization_name || 'Individual'}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4">
                           <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${app.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' :
                             app.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
                               'bg-amber-100 text-amber-700'
@@ -2335,10 +2336,10 @@ export default function SuperAdminDashboard() {
                             {app.status || 'PENDING'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-500">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-slate-500">
                           {new Date(app.createdAt).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-right">
                           <Button variant="ghost" size="icon" className="h-9 w-9 text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-colors"
                             onClick={() => window.location.href = `/dashboard/journalists/${app.id}`}>
                             <Eye className="h-4.5 w-4.5" />

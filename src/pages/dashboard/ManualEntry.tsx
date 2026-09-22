@@ -816,14 +816,14 @@ export default function ManualEntry() {
     };
 
     return (
-        <div className="container mx-auto py-8 max-w-5xl space-y-8 animate-in fade-in duration-500 pb-20">
+        <div className="container mx-auto py-4 sm:py-8 max-w-5xl space-y-6 sm:space-y-8 animate-in fade-in duration-500 pb-20">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900 flex items-center gap-3">
-                        <UserPlus className="h-8 w-8 text-primary" />
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 flex items-center gap-2.5 sm:gap-3">
+                        <UserPlus className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
                         Manual Client Entry
                     </h1>
-                    <p className="text-muted-foreground mt-2">
+                    <p className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-base">
                         Register clients who signed up on external platforms or need manual processing.
                     </p>
                 </div>
@@ -832,7 +832,7 @@ export default function ManualEntry() {
             <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 <div className="lg:col-span-12 space-y-6">
                     <Card className="border-none shadow-xl bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-200">
-                        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-gray-100">
+                        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-gray-100 p-4 sm:p-6">
                             <CardTitle className="text-lg font-semibold flex items-center gap-2">
                                 <User className="h-5 w-5 text-primary" />
                                 Basic Information
@@ -841,7 +841,7 @@ export default function ManualEntry() {
                                 Enter the client's primary profile details.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="p-6 grid gap-6 md:grid-cols-4">
+                        <CardContent className="p-4 sm:p-6 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-4">
                             <div className="space-y-2 md:col-span-2">
                                 <Label htmlFor="fullName" className="text-sm font-medium">Full Name</Label>
                                 <div className="relative">
@@ -888,7 +888,7 @@ export default function ManualEntry() {
                     </Card>
 
                     <Card className="border-none shadow-xl bg-white/50 backdrop-blur-md overflow-hidden ring-1 ring-gray-200">
-                        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-gray-100">
+                        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent border-b border-gray-100 p-4 sm:p-6">
                             <CardTitle className="text-lg font-semibold flex items-center gap-2">
                                 <Layout className="h-5 w-5 text-primary" />
                                 Application Parameters
@@ -897,7 +897,7 @@ export default function ManualEntry() {
                                 Specify the form type and origin.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="p-6 grid gap-6 md:grid-cols-4">
+                        <CardContent className="p-4 sm:p-6 grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-4">
                             <div className="space-y-2 md:col-span-1">
                                 <Label htmlFor="formId" className="text-sm font-medium">Form Type</Label>
                                 <Select
@@ -1307,19 +1307,19 @@ export default function ManualEntry() {
                         </div>
                     )}
 
-                    <div className="flex justify-end gap-4 pt-4">
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4 pt-4">
                         <Button
                             type="button"
                             variant="outline"
                             onClick={() => navigate(-1)}
                             disabled={isLoading}
-                            className="px-8 h-12"
+                            className="w-full sm:w-auto px-8 h-12"
                         >
                             Cancel
                         </Button>
                         <Button
                             type="submit"
-                            className="px-8 h-12 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]"
+                            className="w-full sm:w-auto px-8 h-12 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]"
                             disabled={isLoading}
                         >
                             {isLoading ? (

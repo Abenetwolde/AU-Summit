@@ -165,23 +165,23 @@ export function OrganizationManagement() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold font-sans text-gray-900">Organization Management</h2>
-                    <p className="text-muted-foreground">Manage partner organizations and their access.</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold font-sans text-gray-900">Organization Management</h2>
+                    <p className="text-muted-foreground text-xs sm:text-sm">Manage partner organizations and their access.</p>
                 </div>
                 {canCreateOrg && (
-                    <Button onClick={() => { setIsCreateModalOpen(true); resetCreate(); }} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                    <Button onClick={() => { setIsCreateModalOpen(true); resetCreate(); }} className="gap-2 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto justify-center">
                         <Plus className="h-4 w-4" /> Add Organization
                     </Button>
                 )}
             </div>
 
             {/* Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 <Card className="bg-white border-0 shadow-sm">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                    <CardContent className="p-4 sm:p-6 flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                             <Building2 className="h-6 w-6 text-blue-600" />
                         </div>
                         <div>
@@ -191,8 +191,8 @@ export function OrganizationManagement() {
                     </CardContent>
                 </Card>
                 <Card className="bg-white border-0 shadow-sm">
-                    <CardContent className="p-6 flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                    <CardContent className="p-4 sm:p-6 flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center shrink-0">
                             <Users className="h-6 w-6 text-green-600" />
                         </div>
                         <div>
@@ -205,9 +205,9 @@ export function OrganizationManagement() {
 
             {/* Filters */}
             <Card className="bg-white border-0 shadow-sm">
-                <CardContent className="p-6">
-                    <div className="flex items-end justify-between gap-4">
-                        <div className="flex-1 max-w-md">
+                <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                        <div className="flex-1 w-full sm:max-w-md">
                             <Label className="text-gray-500 text-xs uppercase font-bold">Search</Label>
                             <div className="relative mt-1">
                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -219,7 +219,7 @@ export function OrganizationManagement() {
                                 />
                             </div>
                         </div>
-                        <Button variant="outline" className="gap-2 border-gray-200 text-gray-600">
+                        <Button variant="outline" className="gap-2 border-gray-200 text-gray-600 w-full sm:w-auto justify-center">
                             <Filter className="h-4 w-4" /> Filter
                         </Button>
                     </div>

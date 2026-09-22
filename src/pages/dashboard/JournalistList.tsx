@@ -249,18 +249,18 @@ export function JournalistList() {
     }
 
     return (
-        <div className="space-y-6  mx-auto">
-            <div className="flex items-center justify-between">
+        <div className="space-y-6 mx-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold font-sans text-gray-900">Journalists List</h2>
-                    <p className="text-muted-foreground font-bold">Total Applications: <span className="text-gray-900">{apiData?.total || 0}</span></p>
+                    <h2 className="text-2xl sm:text-3xl font-bold font-sans text-gray-900">Journalists List</h2>
+                    <p className="text-muted-foreground font-bold text-sm">Total Applications: <span className="text-gray-900">{apiData?.total || 0}</span></p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                     <Button
                         variant="outline"
                         onClick={() => setExportType('csv')}
                         disabled={isExporting}
-                        className="gap-2"
+                        className="gap-2 flex-1 sm:flex-none justify-center"
                     >
                         {isExporting && exportType === 'csv' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         Export CSV
@@ -269,7 +269,7 @@ export function JournalistList() {
                         variant="outline"
                         onClick={() => setExportType('pdf')}
                         disabled={isExporting}
-                        className="gap-2"
+                        className="gap-2 flex-1 sm:flex-none justify-center"
                     >
                         {isExporting && exportType === 'pdf' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         Export PDF
@@ -281,7 +281,7 @@ export function JournalistList() {
             <Card className="bg-white border-0 shadow-sm">
                 <CardContent className="p-4 md:p-6">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-500">Search</label>
                                 <div className="relative">
@@ -302,16 +302,16 @@ export function JournalistList() {
                                     placeholder="All Nationalities"
                                 />
                             </div>
-                            <div className="space-y-2">
+                            <div className="space-y-2 sm:col-span-2 lg:col-span-1">
                                 <label className="text-sm font-medium text-gray-500">Event Form</label>
                                 <FormFilter 
-                                    value={selectedFormId}
-                                    onChange={setSelectedFormId}
+                                    value={selectedFormId} 
+                                    onChange={setSelectedFormId} 
                                     className="w-full"
                                 />
                             </div>
                         </div>
-                        <Button variant="outline" className="h-11 px-6 gap-2 bg-gray-50 border-gray-200 text-gray-700 font-bold">
+                        <Button variant="outline" className="h-11 px-6 gap-2 bg-gray-50 border-gray-200 text-gray-700 font-bold w-full md:w-auto justify-center">
                             Filter <Filter className="h-4 w-4" />
                         </Button>
                     </div>

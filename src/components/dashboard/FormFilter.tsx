@@ -33,7 +33,7 @@ export const FormFilter: React.FC<FormFilterProps> = ({ value, onChange, classNa
   return (
     <div className={className}>
       <Select value={value || 'default'} onValueChange={handleValueChange}>
-        <SelectTrigger className="w-[280px] bg-background">
+        <SelectTrigger className="w-full sm:w-[280px] bg-background">
           <SelectValue placeholder="All Active Forms (Default)" />
         </SelectTrigger>
         <SelectContent>

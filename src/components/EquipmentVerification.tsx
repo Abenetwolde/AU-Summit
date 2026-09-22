@@ -82,12 +82,12 @@ export function EquipmentVerification({
 
     return (
         <Card className="bg-white border-0 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-2 gap-3">
                 <div className="flex flex-col">
                     <CardTitle className="text-lg font-bold">Equipment List</CardTitle>
                     <p className="text-xs text-gray-500 mt-1">Total items: {totalItems}</p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
                     {/* Status Filter */}
                     <div className="flex items-center gap-2">
                         <Filter className="h-4 w-4 text-gray-400" />
@@ -112,13 +112,13 @@ export function EquipmentVerification({
             </CardHeader>
             <CardContent className="space-y-4">
                 {/* Equipment Table */}
-                <div className="border border-gray-200 rounded-lg overflow-hidden relative">
+                <div className="border border-gray-200 rounded-lg overflow-x-auto relative w-full">
                     {isLoading && (
                         <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
                             <Loader2 className="h-8 w-8 text-primary animate-spin" />
                         </div>
                     )}
-                    <table className="w-full text-sm">
+                    <table className="w-full min-w-[550px] text-sm">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
                                 <th className="text-left px-4 py-3 text-xs font-black text-gray-500 uppercase tracking-tighter">Type</th>

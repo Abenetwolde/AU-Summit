@@ -54,8 +54,8 @@ export function JournalistDetail() {
                 <div className="lg:col-span-8 space-y-6">
                     {/* Basic Info Card */}
                     <Card className="bg-white border-0 shadow-sm">
-                        <CardContent className="p-6 flex items-start gap-4">
-                            <div className="h-20 w-20 rounded-full overflow-hidden bg-gray-200">
+                        <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                            <div className="h-20 w-20 rounded-full overflow-hidden bg-gray-200 shrink-0">
                                 <img src={journalist.photoUrl} alt={journalist.fullname} className="h-full w-full object-cover" />
                             </div>
                             <div>
@@ -71,7 +71,7 @@ export function JournalistDetail() {
                                     </div>
                                 </div>
                             </div>
-                            <div className="ml-auto flex items-center gap-2 text-sm text-gray-500">
+                            <div className="sm:ml-auto flex items-center gap-2 text-sm text-gray-500">
                                 <span>• CNN News</span>
                             </div>
                         </CardContent>
@@ -79,21 +79,21 @@ export function JournalistDetail() {
 
                     {/* Tabs */}
                     <Tabs defaultValue="personal" className="w-full">
-                        <div className="bg-white rounded-lg p-1 shadow-sm mb-4">
-                            <TabsList className="w-full justify-start bg-transparent h-auto p-0 gap-6 border-b rounded-none px-4">
-                                <TabsTrigger value="personal" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
+                        <div className="bg-white rounded-lg p-1 shadow-sm mb-4 overflow-x-auto">
+                            <TabsList className="w-full justify-start bg-transparent h-auto p-0 gap-4 sm:gap-6 border-b rounded-none px-2 sm:px-4 overflow-x-auto">
+                                <TabsTrigger value="personal" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500 whitespace-nowrap">
                                     <User className="h-4 w-4" /> Personal Details
                                 </TabsTrigger>
-                                <TabsTrigger value="contact" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
+                                <TabsTrigger value="contact" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500 whitespace-nowrap">
                                     <Phone className="h-4 w-4" /> Contact Info
                                 </TabsTrigger>
-                                <TabsTrigger value="passport" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
-                                    <FileText className="h-4 w-4" /> Passport Info
+                                <TabsTrigger value="passport" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500 whitespace-nowrap">
+                                    <FileText className="h-4 w-4" /> Passport Information
                                 </TabsTrigger>
-                                <TabsTrigger value="arrival" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
+                                <TabsTrigger value="arrival" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500 whitespace-nowrap">
                                     <Plane className="h-4 w-4" /> Arrival Info
                                 </TabsTrigger>
-                                <TabsTrigger value="media" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500">
+                                <TabsTrigger value="media" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-blue-600 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none pb-3 px-0 gap-2 font-bold text-gray-500 whitespace-nowrap">
                                     <Briefcase className="h-4 w-4" /> Media Accreditation
                                 </TabsTrigger>
                             </TabsList>
@@ -106,7 +106,7 @@ export function JournalistDetail() {
                                     <CardTitle className="text-lg font-bold">Personal Details</CardTitle>
                                     <User className="h-5 w-5 text-blue-600" />
                                 </CardHeader>
-                                <CardContent className="grid grid-cols-4 gap-6 pt-4">
+                                <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 pt-4">
                                     <div>
                                         <p className="text-xs font-bold text-gray-400 uppercase">FULL NAME</p>
                                         <p className="text-sm font-bold text-gray-900 mt-1">{journalist.fullname}</p>
@@ -138,7 +138,7 @@ export function JournalistDetail() {
                                     <CardTitle className="text-lg font-bold">Contact Info</CardTitle>
                                     <Phone className="h-5 w-5 text-teal-500" />
                                 </CardHeader>
-                                <CardContent className="grid grid-cols-4 gap-6 pt-4">
+                                <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 pt-4">
                                     <div>
                                         <p className="text-xs font-bold text-gray-400 uppercase">Personal Email</p>
                                         <p className="text-sm font-bold text-gray-900 mt-1">sara23@gmail.com</p>
@@ -159,7 +159,7 @@ export function JournalistDetail() {
                                     <FileText className="h-5 w-5 text-yellow-500" />
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
-                                    <div className="grid grid-cols-4 gap-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                                         <div>
                                             <p className="text-xs font-bold text-gray-400 uppercase">PASSPORT NUMBER</p>
                                             <p className="text-sm font-bold text-gray-900 mt-1">{journalist.passportNo}</p>
@@ -199,7 +199,7 @@ export function JournalistDetail() {
                                     <CardTitle className="text-lg font-bold">Arrival Information</CardTitle>
                                     <Plane className="h-5 w-5 text-green-500" />
                                 </CardHeader>
-                                <CardContent className="grid grid-cols-4 gap-6 pt-4">
+                                <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 pt-4">
                                     <div>
                                         <p className="text-xs font-bold text-gray-400 uppercase">EXPECTED ARRIVAL</p>
                                         <p className="text-sm font-bold text-gray-900 mt-1">04 DEC 2025</p>
@@ -216,7 +216,7 @@ export function JournalistDetail() {
                                         <p className="text-xs font-bold text-gray-400 uppercase">FLIGHT NO</p>
                                         <p className="text-sm font-bold text-gray-900 mt-1">ET 404</p>
                                     </div>
-                                    <div className="col-span-4">
+                                    <div className="col-span-1 sm:col-span-2 lg:col-span-4">
                                         <p className="text-xs font-bold text-gray-400 uppercase">ACCOMMODATION</p>
                                         <p className="text-sm font-bold text-gray-900 mt-1">{journalist.accommodation || 'Ethiopian Skylight Hotel, Bole International Airport, Addis Ababa'}</p>
                                     </div>
@@ -232,7 +232,7 @@ export function JournalistDetail() {
                                     <Briefcase className="h-5 w-5 text-purple-500" />
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
-                                    <div className="grid grid-cols-3 gap-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                         <div>
                                             <p className="text-xs font-bold text-gray-400 uppercase">ORGANIZATION</p>
                                             <p className="text-sm font-bold text-gray-900 mt-1">CNN NEWS</p>

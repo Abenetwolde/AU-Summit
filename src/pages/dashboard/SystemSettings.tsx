@@ -167,24 +167,24 @@ export function SystemSettings() {
 
     return (
         <div className="space-y-6 w-full pb-10">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">System Settings</h1>
-                    <p className="text-muted-foreground">Manage landing page content, branding, and configurations.</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">System Settings</h1>
+                    <p className="text-muted-foreground text-sm sm:text-base">Manage landing page content, branding, and configurations.</p>
                 </div>
-                <Button onClick={handleSave} disabled={isSaving} className="gap-2 bg-blue-600 hover:bg-blue-700">
+                <Button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto gap-2 bg-blue-600 hover:bg-blue-700">
                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     Save Changes
                 </Button>
             </div>
 
             <Tabs defaultValue="general" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 mb-8 h-auto">
-                    <TabsTrigger value="general">General</TabsTrigger>
-                    <TabsTrigger value="branding">Branding</TabsTrigger>
-                    <TabsTrigger value="registration">Registration</TabsTrigger>
-                    <TabsTrigger value="languages">Languages</TabsTrigger>
-                    <TabsTrigger value="contact">Contact</TabsTrigger>
+                <TabsList className="flex w-full overflow-x-auto justify-start h-auto p-1.5 bg-gray-100/80 backdrop-blur-sm border border-gray-200 shadow-sm rounded-xl mb-6 sm:mb-8 scrollbar-none">
+                    <TabsTrigger value="general" className="shrink-0 whitespace-nowrap px-3 py-2 text-xs sm:text-sm">General</TabsTrigger>
+                    <TabsTrigger value="branding" className="shrink-0 whitespace-nowrap px-3 py-2 text-xs sm:text-sm">Branding</TabsTrigger>
+                    <TabsTrigger value="registration" className="shrink-0 whitespace-nowrap px-3 py-2 text-xs sm:text-sm">Registration</TabsTrigger>
+                    <TabsTrigger value="languages" className="shrink-0 whitespace-nowrap px-3 py-2 text-xs sm:text-sm">Languages</TabsTrigger>
+                    <TabsTrigger value="contact" className="shrink-0 whitespace-nowrap px-3 py-2 text-xs sm:text-sm">Contact</TabsTrigger>
                 </TabsList>
 
                 {/* General Settings */}
@@ -293,7 +293,7 @@ export function SystemSettings() {
                                     Upload up to 5 high-quality images for the hero section background.
                                 </p>
 
-                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-4">
                                     {/* Existing Images */}
                                     {settings.heroBackgroundUrls?.map((url, index) => (
                                         <div key={index} className="group relative aspect-video rounded-xl overflow-hidden border bg-slate-100 shadow-sm hover:shadow-md transition-all">
@@ -436,11 +436,11 @@ export function SystemSettings() {
 
                             <div className="bg-slate-50 p-4 rounded-lg space-y-3">
                                 <Label className="text-sm font-semibold">Add New Language</Label>
-                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                     <Input value={newLang.code} onChange={e => setNewLang({ ...newLang, code: e.target.value })} placeholder="Code (e.g. es)" />
                                     <Input value={newLang.name} onChange={e => setNewLang({ ...newLang, name: e.target.value })} placeholder="Name (e.g. Spanish)" />
                                     <Input value={newLang.flagEmoji} onChange={e => setNewLang({ ...newLang, flagEmoji: e.target.value })} placeholder="Flag (e.g. 🇪🇸)" />
-                                    <Button onClick={addLanguage} className="bg-slate-800 text-white hover:bg-slate-900">
+                                    <Button onClick={addLanguage} className="w-full bg-slate-800 text-white hover:bg-slate-900">
                                         <Plus className="w-4 h-4 mr-2" /> Add
                                     </Button>
                                 </div>

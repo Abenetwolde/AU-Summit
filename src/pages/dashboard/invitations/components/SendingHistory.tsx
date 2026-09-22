@@ -32,25 +32,25 @@ export const SendingHistory: React.FC = () => {
 
     return (
         <Card className="border-slate-200">
-            <CardHeader className="bg-slate-50/30 border-b p-6">
-                <div className="flex items-center justify-between gap-4">
+            <CardHeader className="bg-slate-50/30 border-b p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                        <CardTitle className="text-xl font-bold">Sending Logs</CardTitle>
-                        <CardDescription>Audit trail of all personalized invitations sent through the system.</CardDescription>
+                        <CardTitle className="text-lg sm:text-xl font-bold">Sending Logs</CardTitle>
+                        <CardDescription className="text-xs sm:text-sm">Audit trail of all personalized invitations sent through the system.</CardDescription>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="relative w-64">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                        <div className="relative w-full sm:w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                            <Input placeholder="Search recipients..." className="pl-9 h-9 text-xs" />
+                            <Input placeholder="Search recipients..." className="pl-9 h-9 text-xs w-full" />
                         </div>
-                        <Button variant="outline" size="sm" className="h-9 text-xs">
+                        <Button variant="outline" size="sm" className="h-9 text-xs w-full sm:w-auto">
                             <Download className="h-3.5 w-3.5 mr-2" /> Export CSV
                         </Button>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="p-0">
-                <Table>
+            <CardContent className="p-0 overflow-x-auto w-full">
+                <Table className="min-w-[650px]">
                     <TableHeader className="bg-slate-50/50">
                         <TableRow>
                             <TableHead className="text-[10px] items-center font-bold uppercase tracking-widest pl-8">Recipient</TableHead>

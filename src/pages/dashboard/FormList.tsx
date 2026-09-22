@@ -381,40 +381,40 @@ export default function FormList() {
     }
 
     return (
-        <div className="p-8 space-y-6 bg-gray-50/50 min-h-screen">
+        <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">Form Management</h1>
-                    <p className="text-gray-500 mt-1">Create and manage application forms for accreditation and other processes.</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">Form Management</h1>
+                    <p className="text-gray-500 text-sm sm:text-base mt-1">Create and manage application forms for accreditation and other processes.</p>
                 </div>
                 {canCreateForm && (
-                    <Button onClick={() => navigate('/dashboard/forms/builder')} className="bg-black hover:bg-gray-800 text-white gap-2">
+                    <Button onClick={() => navigate('/dashboard/forms/builder')} className="w-full sm:w-auto bg-black hover:bg-gray-800 text-white gap-2">
                         <Plus className="h-4 w-4" /> Create New Form
                     </Button>
                 )}
             </div>
 
             <Card className="border-none shadow-sm bg-white">
-                <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
+                <CardHeader className="p-4 sm:p-6 pb-2">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                         <CardTitle className="text-lg">All Forms</CardTitle>
-                        <div className="relative w-64">
+                        <div className="relative w-full sm:w-64">
                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
                             <Input
                                 placeholder="Search forms..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-8"
+                                className="pl-8 w-full"
                             />
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent>
-                    <div className="rounded-md border">
-                        <Table>
+                <CardContent className="p-4 sm:p-6 pt-0">
+                    <div className="rounded-md border overflow-x-auto w-full">
+                        <Table className="min-w-[650px]">
                             <TableHeader>
                                 <TableRow className="bg-gray-50">
-                                    <TableHead className="w-[360px]">Form Details</TableHead>
+                                    <TableHead className="min-w-[220px] sm:w-[360px]">Form Details</TableHead>
                                     <TableHead>Type</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Last Updated</TableHead>

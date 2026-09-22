@@ -989,9 +989,9 @@ export function FormEditor() {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row h-full w-full gap-4 overflow-hidden">
-            {/* Toolbox (Left Sidebar) - Fixed in place, does not scroll with form content */}
-            <div className="w-full lg:w-72 shrink-0 h-full flex flex-col space-y-3 overflow-y-auto pr-1 custom-scrollbar">
+        <div className="flex flex-col lg:flex-row h-auto lg:h-full w-full gap-4 overflow-visible lg:overflow-hidden">
+            {/* Toolbox (Left Sidebar) - Fixed in place on desktop, stacks naturally on mobile */}
+            <div className="w-full lg:w-72 shrink-0 h-auto lg:h-full flex flex-col space-y-3 overflow-visible lg:overflow-y-auto pr-0 lg:pr-1 custom-scrollbar">
                 <Button variant="ghost" className="gap-2 text-gray-500 hover:text-gray-900 w-full justify-start shrink-0" onClick={() => navigate('/dashboard/forms')}>
                     <ArrowLeft className="h-4 w-4" /> Back to Forms
                 </Button>
@@ -1097,10 +1097,10 @@ export function FormEditor() {
             </div>
 
             {/* Canvas */}
-            <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
-                <Card className="h-full flex flex-col border-none shadow-md bg-white overflow-hidden">
-                    {/* Header stuck at the top without scrolling */}
-                    <CardHeader className="shrink-0 sticky top-0 z-20 border-b p-5 pb-3.5 space-y-3 bg-white/95 backdrop-blur-xs shadow-2xs">
+            <div className="flex-1 min-w-0 h-auto lg:h-full flex flex-col overflow-visible lg:overflow-hidden">
+                <Card className="h-auto lg:h-full flex flex-col border-none shadow-md bg-white overflow-visible lg:overflow-hidden">
+                    {/* Header stuck at the top without scrolling on desktop */}
+                    <CardHeader className="shrink-0 static lg:sticky lg:top-0 z-20 border-b p-3.5 sm:p-5 pb-3.5 space-y-3 bg-white/95 backdrop-blur-xs shadow-2xs">
                         {/* Top Bar: Form Name, Description and Action Buttons */}
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                             <div className="flex-1 max-w-2xl space-y-1.5">
@@ -1229,8 +1229,8 @@ export function FormEditor() {
                             </div>
                         </div>
                     </CardHeader>
-                    {/* Form Content - ONLY this area scrolls */}
-                    <CardContent className="flex-1 min-h-0 overflow-y-auto p-6 bg-gray-50/30 custom-scrollbar">
+                    {/* Form Content - scrolls properly on all screen sizes */}
+                    <CardContent className="flex-1 min-h-0 overflow-y-visible lg:overflow-y-auto p-3 sm:p-6 bg-gray-50/30 custom-scrollbar">
                         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                             <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
                                 <div className="max-w-3xl mx-auto space-y-6">
@@ -2095,10 +2095,10 @@ export function FormEditor() {
 
             {/* PREVIEW DIALOG */}
             <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="w-[calc(100%-2rem)] max-w-4xl max-h-[90vh] overflow-y-auto p-3 sm:p-6">
                     <DialogHeader><DialogTitle>Form Preview</DialogTitle></DialogHeader>
-                    <div className="space-y-6 p-4">
-                        <div className="p-6 bg-blue-600 text-white rounded-lg">
+                    <div className="space-y-6 p-1 sm:p-4">
+                        <div className="p-4 sm:p-6 bg-blue-600 text-white rounded-lg">
                             <h2 className="text-xl font-bold">{formName}</h2>
                             <p className="opacity-90 whitespace-pre-line text-sm mt-1">{formDescription}</p>
                         </div>

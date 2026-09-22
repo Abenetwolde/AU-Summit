@@ -194,18 +194,18 @@ export function AccreditedJournalists() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <p className="text-sm text-muted-foreground mb-1">&gt; Journalists</p>
-                    <h2 className="text-3xl font-bold font-sans text-gray-900">Accredited Journalists</h2>
-                    <p className="text-muted-foreground">View and manage journalists who have been approved for entry.</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold font-sans text-gray-900">Accredited Journalists</h2>
+                    <p className="text-muted-foreground text-xs sm:text-sm">View and manage journalists who have been approved for entry.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                     <Button
                         variant="outline"
                         onClick={handleExportCSV}
                         disabled={isExportingCSVPDF}
-                        className="gap-2"
+                        className="gap-2 flex-1 sm:flex-none justify-center"
                     >
                         {isExportingCSVPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         Export CSV
@@ -214,7 +214,7 @@ export function AccreditedJournalists() {
                         variant="outline"
                         onClick={handleExportPDF}
                         disabled={isExportingCSVPDF}
-                        className="gap-2"
+                        className="gap-2 flex-1 sm:flex-none justify-center"
                     >
                         {isExportingCSVPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                         Export PDF
@@ -223,7 +223,7 @@ export function AccreditedJournalists() {
                         variant="default"
                         onClick={handleExportProfilePictures}
                         disabled={isExportingPhotos}
-                        className="gap-2 bg-blue-600 hover:bg-blue-700"
+                        className="gap-2 bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none justify-center"
                     >
                         {isExportingPhotos ? (
                             <>
@@ -347,7 +347,7 @@ export function AccreditedJournalists() {
             {/* Table */}
             <Card className="border-0 shadow-sm overflow-hidden bg-white">
                 <div className="relative w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200">
-                    <table className="w-full caption-bottom text-sm">
+                    <table className="w-full caption-bottom text-sm min-w-[700px]">
                         <thead className="[&_tr]:border-b">
                             <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
                                 <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground uppercase text-xs">No</th>

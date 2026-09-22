@@ -17,11 +17,11 @@ export function BadgeCenter() {
     const [editingConfigId, setEditingConfigId] = useState<number | null>(null);
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900 font-sans">Badge Center</h1>
-                    <p className="text-muted-foreground mt-1 text-lg">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 font-sans">Badge Center</h1>
+                    <p className="text-muted-foreground mt-1 text-sm sm:text-base">
                         Design, configure, and manage event badges with automatic QR integration.
                     </p>
                 </div>
@@ -31,35 +31,35 @@ export function BadgeCenter() {
                             setEditingConfigId(null);
                             setActiveTab('designer');
                         }}
-                        className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 transition-all active:scale-95 px-6 h-11 text-base font-bold"
+                        className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 transition-all active:scale-95 px-5 sm:px-6 h-10 sm:h-11 text-sm sm:text-base font-bold"
                         disabled={readOnly}
                     >
-                        <Plus className="mr-2 h-5 w-5" />
+                        <Plus className="mr-2 h-4 sm:h-5 w-4 sm:w-5" />
                         Create New Config
                     </Button>
                 </div>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-5 lg:w-[750px] h-14 p-1.5 bg-gray-100/80 backdrop-blur-sm border border-gray-200 shadow-sm rounded-2xl mb-12">
-                    <TabsTrigger value="configs" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md transition-all font-bold text-sm">
-                        <SettingsIcon className="mr-2 h-4 w-4" />
+                <TabsList className="flex w-full overflow-x-auto justify-start lg:w-auto h-auto min-h-12 p-1.5 bg-gray-100/80 backdrop-blur-sm border border-gray-200 shadow-sm rounded-2xl mb-8 scrollbar-none">
+                    <TabsTrigger value="configs" className="shrink-0 whitespace-nowrap rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md transition-all font-bold text-xs sm:text-sm py-2 px-3">
+                        <SettingsIcon className="mr-1.5 sm:mr-2 h-4 w-4" />
                         Configurations
                     </TabsTrigger>
-                    <TabsTrigger value="designer" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md transition-all font-bold text-sm">
-                        <Layout className="mr-2 h-4 w-4" />
+                    <TabsTrigger value="designer" className="shrink-0 whitespace-nowrap rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md transition-all font-bold text-xs sm:text-sm py-2 px-3">
+                        <Layout className="mr-1.5 sm:mr-2 h-4 w-4" />
                         Designer
                     </TabsTrigger>
-                    <TabsTrigger value="gallery" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md transition-all font-bold text-sm">
-                        <BadgeCheck className="mr-2 h-4 w-4" />
+                    <TabsTrigger value="gallery" className="shrink-0 whitespace-nowrap rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md transition-all font-bold text-xs sm:text-sm py-2 px-3">
+                        <BadgeCheck className="mr-1.5 sm:mr-2 h-4 w-4" />
                         Templates
                     </TabsTrigger>
-                    <TabsTrigger value="manual-print" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md transition-all font-bold text-sm">
-                        <Printer className="mr-2 h-4 w-4" />
+                    <TabsTrigger value="manual-print" className="shrink-0 whitespace-nowrap rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md transition-all font-bold text-xs sm:text-sm py-2 px-3">
+                        <Printer className="mr-1.5 sm:mr-2 h-4 w-4" />
                         Manual Print
                     </TabsTrigger>
-                    <TabsTrigger value="history" className="rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md transition-all font-bold text-sm">
-                        <History className="mr-2 h-4 w-4" />
+                    <TabsTrigger value="history" className="shrink-0 whitespace-nowrap rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md transition-all font-bold text-xs sm:text-sm py-2 px-3">
+                        <History className="mr-1.5 sm:mr-2 h-4 w-4" />
                         History
                     </TabsTrigger>
                 </TabsList>

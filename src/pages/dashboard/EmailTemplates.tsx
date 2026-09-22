@@ -162,21 +162,19 @@ export function EmailTemplates() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold font-sans text-gray-900">Email Templates</h2>
+                    <h2 className="text-2xl sm:text-3xl font-bold font-sans text-gray-900">Email Templates</h2>
                     <p className="text-sm text-gray-500 mt-1">Manage automated system emails, triggers, and attachments</p>
                 </div>
-                {/* {!isReadOnly && ( */}
                 <Button
                     onClick={handleCreate}
-                    className="bg-[#009b4d] hover:bg-[#007a3d] gap-2 shadow-sm font-bold"
+                    className="w-full sm:w-auto bg-[#009b4d] hover:bg-[#007a3d] gap-2 shadow-sm font-bold"
                     disabled={isReadOnly}
                 >
                     <Plus className="h-4 w-4" />
                     Create Template
                 </Button>
-                {/* )} */}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -314,16 +312,16 @@ export function EmailTemplates() {
 
             {/* Template Editor Modal */}
             {isEditorOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-300">
                     <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border-0">
-                        <CardHeader className="border-b bg-white p-6 flex flex-row items-center justify-between">
+                        <CardHeader className="border-b bg-white p-4 sm:p-6 flex flex-row items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="p-2.5 bg-blue-50 rounded-xl">
-                                    <Mail className="h-6 w-6 text-blue-600" />
+                                <div className="p-2 sm:p-2.5 bg-blue-50 rounded-xl">
+                                    <Mail className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                                 </div>
                                 <div>
-                                    <CardTitle>{isReadOnly ? 'Template Details' : (editingTemplate.id ? 'Edit Template' : 'New Template')}</CardTitle>
-                                    <CardDescription>Configure how your automated emails look and feel</CardDescription>
+                                    <CardTitle className="text-base sm:text-lg">{isReadOnly ? 'Template Details' : (editingTemplate.id ? 'Edit Template' : 'New Template')}</CardTitle>
+                                    <CardDescription className="text-xs sm:text-sm">Configure how your automated emails look and feel</CardDescription>
                                 </div>
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => setIsEditorOpen(false)} className="rounded-full">
@@ -331,7 +329,7 @@ export function EmailTemplates() {
                             </Button>
                         </CardHeader>
 
-                        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30">
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50/30">
                             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                                 {/* Left Side - Form */}
                                 <div className="lg:col-span-3 space-y-6">

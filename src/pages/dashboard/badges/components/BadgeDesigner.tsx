@@ -288,7 +288,7 @@ export function BadgeDesigner({ onSave, configId }: { onSave?: () => void; confi
             </div>
 
             {/* Center: Canvas */}
-            <div className="flex-1 flex flex-col items-center justify-center bg-slate-100 rounded-2xl p-8 min-h-[600px] relative overflow-hidden">
+            <div className="flex-1 flex flex-col items-center justify-center bg-slate-100 rounded-2xl p-3 sm:p-8 min-h-[400px] sm:min-h-[600px] relative overflow-x-auto w-full">
                 {!selectedTemplate ? (
                     <div className="text-center space-y-4">
                         <div className="h-20 w-20 bg-white rounded-full flex items-center justify-center mx-auto shadow-sm">
@@ -298,10 +298,10 @@ export function BadgeDesigner({ onSave, configId }: { onSave?: () => void; confi
                         <p className="text-slate-500">Choose one of our professionally designed templates to begin customizing.</p>
                     </div>
                 ) : (
-                    <div className="relative group">
+                    <div className="relative group max-w-full overflow-x-auto p-1">
                         <div
                             ref={canvasRef}
-                            className="bg-white shadow-2xl relative overflow-hidden transition-all duration-300 border border-slate-200"
+                            className="bg-white shadow-2xl relative overflow-hidden transition-all duration-300 border border-slate-200 shrink-0 mx-auto"
                             style={{
                                 width: `${selectedTemplate.width}px`,
                                 height: `${selectedTemplate.height}px`,

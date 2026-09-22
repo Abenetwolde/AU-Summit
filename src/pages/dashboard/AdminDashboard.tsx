@@ -27,7 +27,7 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
 Card.displayName = "Card";
 
 const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("flex flex-col space-y-1.5 p-6", className)} {...props} />
+    <div ref={ref} className={cn("flex flex-col space-y-1.5 p-4 sm:p-6", className)} {...props} />
 ));
 CardHeader.displayName = "CardHeader";
 
@@ -37,7 +37,7 @@ const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HT
 CardTitle.displayName = "CardTitle";
 
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+    <div ref={ref} className={cn("p-4 sm:p-6 pt-0", className)} {...props} />
 ));
 CardContent.displayName = "CardContent";
 
@@ -128,7 +128,7 @@ export default function AdminDashboard() {
     const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6'];
 
     return (
-        <div className="p-6 md:p-8 space-y-8 max-w-[1600px] mx-auto animate-fade-in font-sans">
+        <div className="space-y-6 md:space-y-8 max-w-[1600px] mx-auto animate-fade-in font-sans">
             <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .animate-fade-in { animation: fadeIn 0.6s ease-out forwards; }
@@ -137,7 +137,7 @@ export default function AdminDashboard() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <div className="flex flex-wrap items-center gap-2.5">
-                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Executive Overview</h1>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Executive Overview</h1>
                         {!selectedFormId ? (
                             <Badge variant="neutral" className="bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 font-semibold text-xs py-0.5 px-2.5">
                                 <Globe className="h-3 w-3 text-emerald-600" />
@@ -150,29 +150,30 @@ export default function AdminDashboard() {
                             </Badge>
                         )}
                     </div>
-                    <p className="text-slate-500 font-medium mt-1">
+                    <p className="text-slate-500 font-medium text-xs sm:text-sm mt-1">
                         {[UserRole.SUPER_ADMIN, UserRole.PMO, UserRole.ORG_ADMIN].includes(user?.role as any)
                             ? "Review your assignment status, active form workloads, and performance metrics."
                             : "Review your current assignment status across active event forms."}
                     </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
                     <FormFilter
                         value={selectedFormId}
                         onChange={setSelectedFormId}
+                        className="w-full sm:w-auto"
                     />
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="gap-2" onClick={() => exportDashboardAnalyticsToCSV('Admin Dashboard', { kpis: analytics.kpis, charts: analytics.chartData })}>
+                    <div className="flex items-center gap-2 flex-1 sm:flex-none">
+                        <Button variant="outline" size="sm" className="gap-2 flex-1 sm:flex-none justify-center" onClick={() => exportDashboardAnalyticsToCSV('Admin Dashboard', { kpis: analytics.kpis, charts: analytics.chartData })}>
                             <Download className="h-4 w-4" />
                             CSV
                         </Button>
-                        <Button variant="outline" size="sm" className="gap-2 border-primary text-primary hover:bg-primary/5" onClick={() => exportElementToPDF('dashboard-visual-export', 'Executive_Dashboard')}>
+                        <Button variant="outline" size="sm" className="gap-2 border-primary text-primary hover:bg-primary/5 flex-1 sm:flex-none justify-center" onClick={() => exportElementToPDF('dashboard-visual-export', 'Executive_Dashboard')}>
                             <FileText className="h-4 w-4" />
                             PDF
                         </Button>
                     </div>
-                    <div className="flex items-center gap-3 bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm">
-                        <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+                    <div className="flex items-center gap-3 bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm w-full sm:w-auto">
+                        <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl shrink-0">
                             <Calendar className="h-5 w-5" />
                         </div>
                         <div className="pr-4">
